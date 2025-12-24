@@ -98,3 +98,20 @@ exports.getProductById = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch product details' });
   }
 };
+
+exports.getProductTemplates = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const { data: templates, error } = await supabase
+      .from('product_templates')
+      .select('*')
+      .eq('product_id', id);
+
+    if (error) throw error;
+    res.json(templates);
+  } catch (error) {
+    console.error('Error fetching product templates:', error);
+    res.status(500).json({ error: 'Failed to fetch product templates' });
+  }
+};

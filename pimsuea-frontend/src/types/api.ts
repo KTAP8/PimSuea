@@ -14,7 +14,6 @@ export interface ProductTemplate {
     id: string;
     product_id: string; // uuid
     side: string; // 'front', 'back', 'left_sleeve', etc.
-    display_name: string; // Thai label
     image_url: string; // URL to blank template
     print_area_config: {
         x: number;
