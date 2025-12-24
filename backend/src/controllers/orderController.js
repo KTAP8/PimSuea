@@ -1,21 +1,41 @@
-
 const { supabase } = require('../config/supabaseClient');
 
 exports.getUserOrders = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // MOCK: Fetch orders for the user
-    // const { data, error } = await supabase.from('orders').select('*').eq('user_id', userId);
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          quantity,
+          unit_price,
+          user_design:user_designs (
+            design_name,
+            preview_image_url
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-    console.log(`Fetching orders for user: ${userId}`);
+    if (error) throw error;
 
-    const mockOrders = [
-      { id: 'ORD-123', total: 598, status: 'shipped', created_at: new Date().toISOString() },
-      { id: 'ORD-124', total: 299, status: 'processing', created_at: new Date().toISOString() }
-    ];
+    // Transform to match frontend interface
+    const formattedOrders = orders.map(order => ({
+        ...order,
+        items: order.order_items ? order.order_items.map(item => ({
+            id: item.id,
+            quantity: item.quantity,
+            price: item.unit_price, // frontend expects 'price' in OrderItem
+            product_name: item.user_design?.design_name || 'Custom Design',
+            image: item.user_design?.preview_image_url
+        })) : []
+    }));
 
-    res.json(mockOrders);
+    res.json(formattedOrders);
   } catch (error) {
     console.error('Error fetching orders:', error);
     res.status(500).json({ error: 'Failed to fetch orders' });
@@ -27,28 +47,44 @@ exports.getOrderDetails = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // MOCK: Fetch order details (ensure it belongs to user)
-    // const { data, error } = await supabase
-    //   .from('orders')
-    //   .select('*, order_items(*)')
-    //   .eq('id', id)
-    //   .eq('user_id', userId)
-    //   .single();
+    const { data: order, error } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          quantity,
+          unit_price,
+          user_design:user_designs (
+            design_name,
+            preview_image_url
+          )
+        )
+      `)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
 
-    console.log(`Fetching order details for order ${id} and user ${userId}`);
+    if (error) {
+         if (error.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        throw error;
+    }
 
-    const mockOrderDetails = {
-      id: id,
-      user_id: userId,
-      total: 598,
-      status: 'shipped',
-      tracking_number: 'TRACK-999',
-      items: [
-        { product_name: 'Cotton T-Shirt', quantity: 2, price: 299 }
-      ]
+    const formattedOrder = {
+        ...order,
+        total: order.total_amount, // Alias if frontend expects 'total' in some places, but interface says total_amount
+        items: order.order_items ? order.order_items.map(item => ({
+            id: item.id,
+            quantity: item.quantity,
+            price: item.unit_price,
+            product_name: item.user_design?.design_name || 'Custom Design',
+            image: item.user_design?.preview_image_url
+        })) : []
     };
 
-    res.json(mockOrderDetails);
+    res.json(formattedOrder);
   } catch (error) {
     console.error('Error fetching order details:', error);
     res.status(500).json({ error: 'Failed to fetch order details' });

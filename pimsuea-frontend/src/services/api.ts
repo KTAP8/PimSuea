@@ -47,7 +47,7 @@ export const getNewsById = async (id: string | number): Promise<News> => {
 };
 
 export const getCategories = async (): Promise<Category[]> => {
-    const response = await api.get<Category[]>('/categories');
+    const response = await api.get<Category[]>('/catalog/categories');
     return response.data;
 };
 
@@ -57,27 +57,27 @@ export interface GetProductsParams {
 }
 
 export const getProducts = async (params?: GetProductsParams): Promise<Product[]> => {
-    const response = await api.get<Product[]>('/products', { params });
+    const response = await api.get<Product[]>('/catalog/products', { params });
     return response.data;
 };
 
 export const getProductById = async (id: string | number): Promise<Product> => {
-    const response = await api.get<Product>(`/products/${id}`);
+    const response = await api.get<Product>(`/catalog/products/${id}`);
     return response.data;
 };
 
 export const getMyDesigns = async (): Promise<any[]> => { // Type 'any' for now, can refine later
-    const response = await api.get('/designs/my');
+    const response = await api.get('/designs');
     return response.data;
 };
 
 export const getMyOrders = async (): Promise<Order[]> => {
-    const response = await api.get<Order[]>('/orders/my');
+    const response = await api.get<Order[]>('/orders');
     return response.data;
 };
 
 export const getWallet = async (): Promise<Transaction[]> => {
-    const response = await api.get<Transaction[]>('/wallet');
+    const response = await api.get<Transaction[]>('/wallet/transactions');
     return response.data;
 };
 

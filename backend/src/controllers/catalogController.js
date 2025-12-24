@@ -1,18 +1,14 @@
-
 const { supabase } = require('../config/supabaseClient');
 
 exports.getCategories = async (req, res) => {
   try {
-    // MOCK: Fetch all categories
-    // const { data, error } = await supabase.from('categories').select('*');
-    
-    const mockCategories = [
-      { id: 1, name: 'Apparel', slug: 'apparel' },
-      { id: 2, name: 'Accessories', slug: 'accessories' },
-      { id: 3, name: 'Stationery', slug: 'stationery' }
-    ];
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('id');
 
-    res.json(mockCategories);
+    if (error) throw error;
+    res.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Failed to fetch categories' });
@@ -20,29 +16,42 @@ exports.getCategories = async (req, res) => {
 };
 
 exports.getProducts = async (req, res) => {
-  const { category, is_beginner_friendly } = req.query;
+  const { category_id, is_beginner_friendly } = req.query;
 
   try {
-    // MOCK: Fetch products with filters
-    // let query = supabase.from('products').select('*');
-    // if (category) query = query.eq('category_slug', category);
-    // if (is_beginner_friendly === 'true') query = query.eq('is_beginner_friendly', true);
-    // const { data, error } = await query;
+    // Select columns and join images, filtering by is_active instead of is_published
+    // Map DB columns to Frontend names: title->name, base_price->price, details->description
+    let query = supabase
+      .from('products')
+      .select(`
+        id,
+        name:title,
+        price:base_price,
+        description:details,
+        is_beginner_friendly,
+        category_id,
+        product_images (image_url)
+      `)
+      .eq('is_active', true);
 
-    console.log(`Fetching products with filters: category=${category}, is_beginner_friendly=${is_beginner_friendly}`);
+    if (category_id && category_id !== 'undefined') {
+        query = query.eq('category_id', category_id);
+    }
+    
+    if (is_beginner_friendly === 'true') {
+        query = query.eq('is_beginner_friendly', true);
+    }
 
-    const mockProducts = [
-      { id: 101, name: 'Cotton T-Shirt', category: 'apparel', price: 299, is_beginner_friendly: true },
-      { id: 102, name: 'Canvas Tote Bag', category: 'accessories', price: 199, is_beginner_friendly: true },
-      { id: 106, name: 'Hoodie', category: 'apparel', price: 590, is_beginner_friendly: false }
-    ];
+    const { data: products, error } = await query;
 
-    // Simple in-memory filtering for mock
-    let filtered = mockProducts;
-    if (category) filtered = filtered.filter(p => p.category === category);
-    if (is_beginner_friendly === 'true') filtered = filtered.filter(p => p.is_beginner_friendly);
+    if (error) throw error;
 
-    res.json(filtered);
+    const formattedProducts = products.map(p => ({
+        ...p,
+        image_url: p.product_images && p.product_images.length > 0 ? p.product_images[0].image_url : null
+    }));
+
+    res.json(formattedProducts);
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -53,23 +62,37 @@ exports.getProductById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // MOCK: Fetch product details
-    // const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
+    const { data: product, error } = await supabase
+      .from('products')
+      .select(`
+        id,
+        name:title,
+        price:base_price,
+        description:details,
+        care_instructions,
+        size_guide,
+        is_beginner_friendly,
+        category_id,
+        product_images (image_url),
+        category:categories(name)
+      `)
+      .eq('id', id)
+      .single();
 
-    if (id === '999') {
-        return res.status(404).json({ error: 'Product not found' });
+    if (error) {
+        if (error.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        throw error;
     }
 
-    const mockProduct = {
-      id: id,
-      name: 'Mock Product',
-      description: 'Full details about this product...',
-      care_instructions: 'Wash cold, tumble dry low.',
-      size_guide: { S: '36"', M: '38"', L: '40"' },
-      price: 299
+    const formattedProduct = {
+        ...product,
+        images: product.product_images ? product.product_images.map(img => img.image_url) : [],
+        image_url: product.product_images && product.product_images.length > 0 ? product.product_images[0].image_url : null
     };
 
-    res.json(mockProduct);
+    res.json(formattedProduct);
   } catch (error) {
     console.error('Error fetching product details:', error);
     res.status(500).json({ error: 'Failed to fetch product details' });
