@@ -1,21 +1,54 @@
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, ShieldCheck, Loader2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getProductById } from "@/services/api";
+import type { Product } from "@/types/api";
 
 export default function ProductDetails() {
   const { id } = useParams();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - in real app would fetch by ID
-  const product = {
-    id,
-    name: "เสื้อยืด Basic Cotton",
-    price: 250,
-    description: "เสื้อยืดคอตตอน 100% สัมผัสนุ่ม สวมใส่สบาย ระบายอากาศได้ดี เหมาะสำหรับสภาพอากาศประเทศไทย ทรงสวย ไม่ย้วยง่าย",
-    colors: ["ขาว", "ดำ", "กรมท่า", "เทา"],
-    sizes: ["S", "M", "L", "XL", "2XL"],
-    image: "👕"
-  };
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!id) return;
+      try {
+        setLoading(true);
+        const data = await getProductById(id);
+        setProduct(data);
+      } catch (err) {
+        console.error("Failed to load product:", err);
+        setError("ไม่พบข้อมูลสินค้าหรือเกิดข้อผิดพลาด");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-red-500 space-y-4">
+        <AlertCircle className="w-12 h-12" />
+        <p className="text-xl font-semibold">{error || "ไม่พบสินค้า"}</p>
+        <Link to="/catalog">
+            <Button variant="outline">กลับไปแคตตาล็อก</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -25,21 +58,27 @@ export default function ProductDetails() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Left: Image */}
-        <div className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner">
-          {product.image}
+        <div className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner overflow-hidden">
+            {product.image_url ? (
+                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+            ) : (
+                <span>👕</span>
+            )}
         </div>
 
         {/* Right: Info */}
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
-            <p className="text-2xl font-bold text-primary">฿{product.price}</p>
+            <p className="text-2xl font-bold text-primary">฿{product.price.toLocaleString()}</p>
           </div>
 
+          {/* Placeholder for colors/sizes as API might not return them yet, keeping UI structure stable */}
           <div className="space-y-2">
             <h3 className="font-semibold">สีที่เลือกได้:</h3>
             <div className="flex gap-2">
-              {product.colors.map(c => (
+                {/* Mock colors for now as interface doesn't strictly define them yet */}
+              {["ขาว", "ดำ", "กรมท่า"].map(c => (
                 <div key={c} className="px-3 py-1 border rounded-md text-sm cursor-pointer hover:border-primary peer-checked:bg-primary">{c}</div>
               ))}
             </div>
@@ -62,7 +101,7 @@ export default function ProductDetails() {
               <TabsTrigger value="size" className="flex-1">ตารางไซส์</TabsTrigger>
             </TabsList>
             <TabsContent value="details" className="p-4 border rounded-b-lg border-t-0 mt-0">
-              <p className="text-gray-600 leading-relaxed">{product.description}</p>
+              <p className="text-gray-600 leading-relaxed">{product.description || "ไม่มีรายละเอียดสินค้า"}</p>
             </TabsContent>
             <TabsContent value="size" className="p-4 border rounded-b-lg border-t-0 mt-0">
                <div className="overflow-x-auto">

@@ -8,6 +8,7 @@ const catalogRoutes = require('./src/routes/catalogRoutes');
 const designRoutes = require('./src/routes/designRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const walletRoutes = require('./src/routes/walletRoutes');
+const articleRoutes = require('./src/routes/articleRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,6 +23,7 @@ app.use('/api/catalog', catalogRoutes);
 app.use('/api/designs', designRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/articles', articleRoutes);
 
 // Health check
 app.get('/', (req, res) => {

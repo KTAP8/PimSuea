@@ -9,6 +9,7 @@ import MyProducts from './pages/MyProducts';
 import Wallet from './pages/Wallet';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import NewsDetails from './pages/NewsDetails';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -32,6 +33,7 @@ function Layout() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
              <Route path="/" element={<Dashboard />} />
+             <Route path="/news/:id" element={<NewsDetails />} />
              <Route path="/catalog" element={<Catalog />} />
              <Route path="/product/:id" element={<ProductDetails />} />
              <Route path="/design/:id" element={<DesignCanvas />} />
