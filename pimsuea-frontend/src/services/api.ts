@@ -6,7 +6,8 @@ import type {
     Product, 
     Order, 
     Transaction,
-    News
+    News,
+    ProductTemplate
 } from '@/types/api';
 
 const api = axios.create({
@@ -63,6 +64,11 @@ export const getProducts = async (params?: GetProductsParams): Promise<Product[]
 
 export const getProductById = async (id: string | number): Promise<Product> => {
     const response = await api.get<Product>(`/catalog/products/${id}`);
+    return response.data;
+};
+
+export const getProductTemplates = async (id: string | number): Promise<ProductTemplate[]> => {
+    const response = await api.get<ProductTemplate[]>(`/catalog/products/${id}/templates`);
     return response.data;
 };
 

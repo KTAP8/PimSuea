@@ -10,6 +10,20 @@ export interface Category {
     icon: string;
 }
 
+export interface ProductTemplate {
+    id: string;
+    product_id: string; // uuid
+    side: string; // 'front', 'back', 'left_sleeve', etc.
+    display_name: string; // Thai label
+    image_url: string; // URL to blank template
+    print_area_config: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+}
+
 export interface Product {
     id: number;
     name: string;
@@ -20,6 +34,7 @@ export interface Product {
     is_beginner_friendly: boolean;
     sold_count?: number; // Optional as not all endpoints might return it
     rating?: number;    // Optional
+    templates?: ProductTemplate[];
 }
 
 export interface News {
