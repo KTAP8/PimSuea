@@ -6,7 +6,7 @@ import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2 } from "lucide-react";
 
 export default function DesignCanvas() {
   const { id } = useParams();
@@ -37,6 +37,15 @@ export default function DesignCanvas() {
   const savedDesigns = useRef<Record<string, object>>({});
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['sans-serif']));
   const [, forceUpdate] = useState({}); // Function to trigger re-render
+  
+  // History State
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyStep, setHistoryStep] = useState(-1);
+  
+  // Refs for reliable access inside Event Listeners (Stale Closure Fix)
+  const historyStack = useRef<string[]>([]);
+  const historyIndex = useRef(-1);
+  const isHistoryLocked = useRef(false);
 
   // Constraints Helper
   const applyConstraints = (canvas: fabric.Canvas) => {
@@ -174,7 +183,7 @@ export default function DesignCanvas() {
       const finalWidth = img.width * scaleFactor;
       const finalHeight = img.height * scaleFactor;
 
-      // 2. Setup Bounds Ref (ALWAYS needed for constraints/tools)
+      // 2. Setup Bounds Ref
       if (currentTemplate.print_area_config) {
         const { x, y, width: w, height: h } = currentTemplate.print_area_config;
         const scaledLeft = x * scaleFactor;
@@ -189,7 +198,6 @@ export default function DesignCanvas() {
             height: scaledHeight 
         };
         
-        // We also need the ClipRect REF for *new* objects
         const clipRect = new fabric.Rect({
             left: scaledLeft,
             top: scaledTop,
@@ -200,6 +208,20 @@ export default function DesignCanvas() {
         clipPathRef.current = clipRect;
       }
       
+      const initHistory = () => {
+          if (!isHistoryLocked.current) {
+               const json = JSON.stringify(newCanvas.toJSON(['name', 'selectable', 'evented', 'id']));
+               
+               // Set Refs
+               historyStack.current = [json];
+               historyIndex.current = 0;
+
+               // Sync State
+               setHistory([json]);
+               setHistoryStep(0);
+          }
+      };
+
       // 3. Execute Load Strategy
       if (currentTemplate && savedDesigns.current[currentTemplate.id]) {
            // PATH A: Restore
@@ -208,6 +230,7 @@ export default function DesignCanvas() {
                newCanvas.setHeight(finalHeight);
                applyConstraints(newCanvas);
                newCanvas.renderAll();
+               initHistory();
            });
       } else {
            // PATH B: Fresh Load
@@ -244,14 +267,48 @@ export default function DesignCanvas() {
                   name: 'static_bg', 
                 });
                 newCanvas.add(visualZone);
-                
-                // Note: clipping is applied to individual objects, so we don't add the clipRect to canvas
            }
            
            applyConstraints(newCanvas);
            newCanvas.renderAll();
            newCanvas.calcOffset();
+           initHistory();
       }
+
+      // 4. Bind History Events (After Init)
+      const onHistoryChange = () => {
+         if (isHistoryLocked.current) return;
+         const json = JSON.stringify(newCanvas.toJSON(['name', 'selectable', 'evented', 'id']));
+         
+         // Logic using Mutable Refs to avoid Stale Closures
+         const currentHistory = historyStack.current;
+         const currentIndex = historyIndex.current;
+         
+         // Slice forward history if we are in middle
+         const newHistory = currentHistory.slice(0, currentIndex + 1);
+         newHistory.push(json);
+         
+         // Update Refs
+         historyStack.current = newHistory;
+         historyIndex.current = newHistory.length - 1;
+         
+         // Sync State (for UI)
+         setHistory([...newHistory]);
+         setHistoryStep(newHistory.length - 1);
+      };
+
+      // Defer attachment slightly to avoid initial triggers? 
+      // Actually standard binding is fine because initHistory sets initial state, 
+      // and subsequent 'add' events should trigger new history.
+      // BUT 'loadFromJSON' might trigger 'object:added' which we want to ignore (locked).
+      // 'img.add' in Fresh Load triggers 'object:added'. We want that in initial state? 
+      // We manually called initHistory().
+      // If we attach listeners NOW, will they fire for existing objects? No, listeners fire on Future events.
+      // So this is safe.
+
+      newCanvas.on('object:added', onHistoryChange);
+      newCanvas.on('object:modified', onHistoryChange);
+      newCanvas.on('object:removed', onHistoryChange);
 
     }); 
 
@@ -470,6 +527,51 @@ export default function DesignCanvas() {
       selectedObject.set('fill', e.target.value);
       fabricRef.current.requestRenderAll();
       forceUpdate({});
+  };
+
+  // Undo / Redo
+  const undo = () => {
+      // Use Ref for Logic
+      if (historyIndex.current <= 0) return;
+      
+      isHistoryLocked.current = true;
+      const prevIndex = historyIndex.current - 1;
+      const json = historyStack.current[prevIndex];
+      
+      if (fabricRef.current) {
+          fabricRef.current.loadFromJSON(JSON.parse(json), () => {
+              fabricRef.current?.renderAll();
+              
+              // Verify constraints after undo
+              // applyConstraints(fabricRef.current!); // Already applied to canvas instance
+              
+              isHistoryLocked.current = false;
+              
+              // Updates Refs & State
+              historyIndex.current = prevIndex;
+              setHistoryStep(prevIndex);
+          });
+      }
+  };
+
+  const redo = () => {
+      // Use Ref for Logic
+      if (historyIndex.current >= historyStack.current.length - 1) return;
+      
+      isHistoryLocked.current = true;
+      const nextIndex = historyIndex.current + 1;
+      const json = historyStack.current[nextIndex];
+      
+      if (fabricRef.current) {
+          fabricRef.current.loadFromJSON(JSON.parse(json), () => {
+              fabricRef.current?.renderAll();
+              isHistoryLocked.current = false;
+              
+              // Updates Refs & State
+              historyIndex.current = nextIndex;
+              setHistoryStep(nextIndex);
+          });
+      }
   };
   
   // Add Text
@@ -775,6 +877,28 @@ export default function DesignCanvas() {
                 >
                     <RotateCcw className="w-5 h-5" />
                 </button>
+            </div>
+
+            {/* Undo / Redo Toolbar (Bottom Left) */}
+            <div className="absolute bottom-6 left-6 bg-white p-2 rounded-lg shadow-lg flex items-center gap-1 border z-20">
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={undo} 
+                    disabled={historyStep <= 0}
+                    className={historyStep <= 0 ? "opacity-30" : ""}
+                 >
+                    <Undo2 className="w-5 h-5" />
+                 </Button>
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={redo} 
+                    disabled={historyStep >= history.length - 1}
+                    className={historyStep >= history.length - 1 ? "opacity-30" : ""}
+                 >
+                    <Redo2 className="w-5 h-5" />
+                 </Button>
             </div>
 
         </main>
