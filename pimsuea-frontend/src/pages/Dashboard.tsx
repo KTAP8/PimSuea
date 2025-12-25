@@ -4,6 +4,9 @@ import { ArrowRight, Star, Loader2, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDashboard } from "@/services/api";
 import type { DashboardData } from "@/types/api";
+import { motion } from "framer-motion";
+
+import { BackgroundCells } from "@/components/ui/background-ripple-effect";
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -46,21 +49,30 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-12 pb-10">
+    <div className="pb-10">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-20 px-4 text-center rounded-b-[3rem] shadow-xl">
-        <h1 className="text-4xl md:text-6xl font-bold mb-6">ยินดีต้อนรับสู่ PimSuea</h1>
-        <p className="text-xl md:text-2xl mb-8 opacity-90 max-w-2xl mx-auto">
-          ศูนย์รวมงานสกรีนคุณภาพสูง ออกแบบเองได้ง่ายๆ เริ่มต้นเพียง 1 ชิ้น
-        </p>
-        <Link to="/catalog">
-          <Button size="lg" className="bg-white text-violet-600 hover:bg-gray-100 text-lg px-8 py-6 rounded-full font-bold shadow-lg transition-transform hover:scale-105">
-            เริ่มสั่งทำเลย <ArrowRight className="ml-2" />
-          </Button>
-        </Link>
-      </section>
+      <BackgroundCells className="h-[80vh] border-b">
+        <div className="text-center px-4 max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-slate-900 tracking-tight leading-tight">
+            ออกแบบ <br className="hidden md:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#07636D] to-teal-600">
+              สินค้าในสไตล์คุณ
+            </span>
+          </h1>
 
-      <div className="container mx-auto px-4 space-y-12">
+          <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            ศูนย์รวมงานสกรีนคุณภาพสูง ออกแบบเองได้ง่ายๆ <br className="hidden md:block" /> เริ่มต้นเพียง 1 ชิ้น ส่งตรงถึงบ้านคุณ
+          </p>
+
+          <Link to="/catalog">
+            <Button size="lg" className="bg-[#07636D] hover:bg-[#06545c] text-white rounded-full text-lg px-8 py-6 shadow-xl shadow-teal-900/10 transition-all hover:scale-105 hover:shadow-teal-900/20">
+              เริ่มสั่งทำเลย <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
+      </BackgroundCells>
+      
+      <div className="container mx-auto px-4 space-y-12 mt-12">
             {/* News Section */}
         {data?.news && data.news.length > 0 && (
             <section className="container mx-auto px-4">
