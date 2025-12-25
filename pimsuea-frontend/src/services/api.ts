@@ -77,6 +77,16 @@ export const getMyDesigns = async (): Promise<any[]> => { // Type 'any' for now,
     return response.data;
 };
 
+export const getDesignById = async (id: string): Promise<any> => {
+    const response = await api.get(`/designs/${id}`);
+    return response.data;
+};
+
+export const updateDesign = async (id: string, data: any): Promise<any> => {
+    const response = await api.put(`/designs/${id}`, data);
+    return response.data;
+};
+
 export const getMyOrders = async (): Promise<Order[]> => {
     const response = await api.get<Order[]>('/orders');
     return response.data;

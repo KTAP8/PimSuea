@@ -6,10 +6,21 @@ import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/services/api";
+
+import { getDesignById, updateDesign } from "@/services/api";
+import { useSearchParams } from "react-router-dom";
 
 export default function DesignCanvas() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const designId = searchParams.get('designId');
+  
+  // Design Name State
+  const [designName, setDesignName] = useState('Untitled Design');
   
   
   // Refs & State
@@ -23,10 +34,13 @@ export default function DesignCanvas() {
   const [currentTemplate, setCurrentTemplate] = useState<ProductTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   
+  const { user } = useAuth();
+  
   // Tools State
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [saving, setSaving] = useState(false);
   
   // Panning Refs
   const isDragging = useRef(false);
@@ -116,14 +130,28 @@ export default function DesignCanvas() {
         const data = await getProductTemplates(id);
         setTemplates(data);
         if (data.length > 0) setCurrentTemplate(data[0]);
+
+        // If Edit Mode: Fetch design data
+        if (designId) {
+            console.log("Loading Saved Design:", designId);
+            const design = await getDesignById(designId);
+            if (design && design.canvas_data) {
+                // Populate savedDesignsRef
+                savedDesigns.current = design.canvas_data;
+                // Set Design Name
+                if (design.design_name) setDesignName(design.design_name);
+                console.log("Loaded Canvas Data:", Object.keys(savedDesigns.current));
+            }
+        }
+
       } catch (err) {
-        console.error("Failed to load templates:", err);
+        console.error("Failed to load templates or design:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchTemplates();
-  }, [id]);
+  }, [id, designId]);
 
   // ------------------------------------------------------------------
   // COMBINED: Initialize Canvas & Load Template (Alignment Fix)
@@ -325,7 +353,7 @@ export default function DesignCanvas() {
       // Initial Layer Set
       updateLayers();
 
-    }); 
+    }, { crossOrigin: 'anonymous' }); 
 
     return () => {
       // Auto-save on unmount? Or just cleanup.
@@ -685,15 +713,37 @@ export default function DesignCanvas() {
     fabricRef.current.renderAll(); // Always manually render when using Refs
   };
 
-  // Handle Image Upload
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Check 'fabricRef.current' instead of 'fabricCanvas'
+  // Handle Image Upload with Persistent Storage
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !fabricRef.current) return;
+    if (!user) {
+        alert("กรุณาเข้าสู่ระบบเพื่ออัพโหลดรูปภาพ");
+        return;
+    }
     
     const file = e.target.files[0];
-    const url = URL.createObjectURL(file);
+    
+    try {
+        // Upload to 'design-assets' bucket
+        const timestamp = Date.now();
+        const fileName = `uploads/${user.id}/${timestamp}_${file.name.replace(/\s+/g, '_')}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('design-previews') // Reuse 'design-previews' or 'design-assets' if created. Using 'design-previews/uploads' for now to check permissions easily.
+            .upload(fileName, file);
 
-    addImageToCanvas(url);
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('design-previews')
+            .getPublicUrl(fileName);
+
+        addImageToCanvas(publicUrl);
+
+    } catch (err: any) {
+        console.error("Upload failed:", err);
+        alert(`อัพโหลดรูปภาพไม่สำเร็จ: ${err.message}`);
+    }
   };
 
   // Add Uploaded Image to Canvas (from sidebar click)
@@ -730,7 +780,7 @@ export default function DesignCanvas() {
         
         // IMPORTANT: Explicit re-render
         fabricRef.current.renderAll();
-    });
+    }, { crossOrigin: 'anonymous' });
   }
 
   // Delete Object
@@ -747,34 +797,116 @@ export default function DesignCanvas() {
      fabricRef.current.renderAll();
   };
 
+  const saveDesign = async () => {
+      if (!currentTemplate || !fabricRef.current) return;
+      if (!user) {
+          alert('กรุณาเข้าสู่ระบบเพื่อบันทึกงานออกแบบ');
+          return;
+      }
+      
+      setSaving(true);
+      try {
+          // 1. Prepare Data: Update current view
+          saveCurrentCanvas();
+          
+          // 2. Generate Preview
+          const previewDataUrl = fabricRef.current.toDataURL({
+              format: 'png',
+              multiplier: 0.5,
+          });
+          
+          const res = await fetch(previewDataUrl);
+          const blob = await res.blob();
+          
+          // 3. Upload to Supabase Storage
+          const timestamp = Date.now();
+          const fileName = `uid_${user.id}/${timestamp}_${currentTemplate.side}.png`;
+          const { error: uploadError } = await supabase.storage
+              .from('design-previews')
+              .upload(fileName, blob);
+              
+          if (uploadError) throw uploadError;
+          
+          const { data: { publicUrl } } = supabase.storage
+              .from('design-previews')
+              .getPublicUrl(fileName);
+              
+          // 4. Send to Backend API
+          // Ensure we have the full synced data
+          const canvasDataFull = savedDesigns.current;
+          
+          if (designId) {
+              // UPDATE (PUT)
+              await updateDesign(designId, {
+                 base_product_id: currentTemplate.product_id,
+                 design_name: designName, // Use Editable Name
+                 canvas_data: canvasDataFull,
+                 preview_image_url: publicUrl,
+              });
+              alert('บันทึกการแก้ไขเรียบร้อยแล้ว');
+          } else {
+              // CREATE (POST)
+              await api.post('/designs', {
+                 base_product_id: currentTemplate.product_id,
+                 design_name: designName, // Use Editable Name
+                 canvas_data: canvasDataFull,
+                 preview_image_url: publicUrl,
+              });
+              alert('บันทึกงานออกแบบเรียบร้อยแล้ว');
+          }
+          
+      } catch (error: any) {
+          console.error("Save failed:", error);
+          const msg = error.response?.data?.error || error.message || 'บันทึกไม่สำเร็จ';
+          alert(`เกิดข้อผิดพลาด: ${msg}`);
+      } finally {
+          setSaving(false);
+      }
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
     <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
       {/* HEADER */}
-      <header className="h-16 bg-white border-b flex items-center px-4 justify-between z-10 shadow-sm shrink-0">
+      <div className="h-16 bg-white border-b flex items-center justify-between px-4 z-10 w-full shrink-0">
         <div className="flex items-center gap-4">
-            <Link to={`/product/${id}`} className="p-2 hover:bg-gray-100 rounded-full">
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </Link>
-            <h1 className="font-bold text-lg hidden md:block">ห้องออกแบบสินค้า</h1>
-            <div className="h-6 w-px bg-gray-200 mx-2 hidden md:block"></div>
-            
-            {currentTemplate && (
-                    <span className="text-sm font-medium text-gray-900 border px-3 py-1 rounded-full bg-gray-50">
-                        มุมมอง: {
-                            currentTemplate.side.toLowerCase().includes('front') ? 'ด้านหน้า' :
-                            currentTemplate.side.toLowerCase().includes('back') ? 'ด้านหลัง' :
-                            currentTemplate.side
-                        }
-                    </span>
-            )}
+          <Link to="/my-products">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+          <div className="flex flex-col">
+            <input 
+                type="text" 
+                value={designName}
+                onChange={(e) => setDesignName(e.target.value)}
+                className="text-lg font-bold border-none focus:ring-0 p-0 h-auto bg-transparent w-full outline-none placeholder-gray-400"
+                placeholder="ตั้งชื่อผลงาน..."
+            />
+            <p className="text-xs text-muted-foreground">บันทึกอัตโนมัติล่าสุดเมื่อสักครู่</p>
+          </div>
         </div>
+        
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">บันทึกแบบร่าง</Button>
-            <Button size="sm">เพิ่มลงตะกร้า</Button>
+            <Button variant="outline" size="sm" onClick={() => {}} disabled={true}>
+                 ตัวอย่าง
+            </Button>
+            <Button size="sm" onClick={saveDesign} disabled={saving}>
+                {saving ? (
+                    <>
+                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                       กำลังบันทึก...
+                    </>
+                ) : (
+                    <>
+                       <Save className="w-4 h-4 mr-2" />
+                       บันทึก{designId ? 'การแก้ไข' : ''}
+                    </>
+                )}
+            </Button>
         </div>
-      </header>
+      </div>
 
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT TOOLBAR */}

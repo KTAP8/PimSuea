@@ -1,12 +1,8 @@
-
-require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
 const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
-
 
 if (!supabaseUrl || !supabasePublishableKey) {
   console.warn('Supabase URL or Publishable Key is missing. Using mock client for testing.');
@@ -21,8 +17,10 @@ if (!supabaseUrl || !supabasePublishableKey) {
       insert: () => ({ select: () => ({ data: [], error: null }) })
     })
   };
-  
-  module.exports = { supabase: mockSupabase, supabaseAdmin: null };
+
+  const getAuthenticatedSupabase = (token) => mockSupabase; // Mock doesn't care about token
+
+  module.exports = { supabase: mockSupabase, supabaseAdmin: null, getAuthenticatedSupabase };
 } else {
   // Client for public interaction (uses Publishable Key)
   const supabase = createClient(supabaseUrl, supabasePublishableKey);
@@ -32,7 +30,17 @@ if (!supabaseUrl || !supabasePublishableKey) {
     ? createClient(supabaseUrl, supabaseSecretKey) 
     : null;
 
-  module.exports = { supabase, supabaseAdmin };
+  const getAuthenticatedSupabase = (token) => {
+    return createClient(supabaseUrl, supabasePublishableKey, {
+      global: {
+        headers: {
+          Authorization: token
+        }
+      }
+    });
+  };
+
+  module.exports = { supabase, supabaseAdmin, getAuthenticatedSupabase };
 }
 
 
