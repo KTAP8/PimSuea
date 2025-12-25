@@ -8,5 +8,6 @@ router.get('/', requireAuth, designController.getUserDesigns);
 router.get('/:id', requireAuth, designController.getDesignById);
 router.post('/', requireAuth, designController.saveDesign);
 router.put('/:id', requireAuth, designController.updateDesign);
+router.delete('/:id', requireAuth, designController.deleteDesign);
 
 module.exports = router;

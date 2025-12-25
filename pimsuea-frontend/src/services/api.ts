@@ -87,6 +87,11 @@ export const updateDesign = async (id: string, data: any): Promise<any> => {
     return response.data;
 };
 
+export const deleteDesign = async (id: string): Promise<any> => {
+    const response = await api.delete(`/designs/${id}`);
+    return response.data;
+};
+
 export const getMyOrders = async (): Promise<Order[]> => {
     const response = await api.get<Order[]>('/orders');
     return response.data;

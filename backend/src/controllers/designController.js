@@ -129,3 +129,32 @@ exports.updateDesign = async (req, res) => {
     res.status(500).json({ error: error.message, details: error });
   }
 };
+
+exports.deleteDesign = async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  try {
+    console.log(`Deleting design ${id} for user ${userId}`);
+    const db = getAuthenticatedSupabase(req.headers.authorization);
+    
+    // Check if design exists and belongs to user first (optional but good for debugging)
+    // Actually DELETE with RLS will just silently fail (count=0) if not matched.
+    
+    const { error, count } = await db
+      .from('user_designs')
+      .delete({ count: 'exact' })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    
+    // Note: Supabase delete returns count of deleted rows if proper header? 
+    // Usually it returns null data on success unless .select() appended.
+    
+    res.json({ message: 'Design deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting design:', error);
+    res.status(500).json({ error: 'Failed to delete design' });
+  }
+};

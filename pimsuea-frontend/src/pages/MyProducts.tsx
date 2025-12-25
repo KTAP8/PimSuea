@@ -2,11 +2,36 @@ import { Edit2, Trash2, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getMyDesigns } from "@/services/api";
+import { getMyDesigns, deleteDesign } from "@/services/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function MyProducts() {
   const [designs, setDesigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+      if (!deleteId) return;
+      try {
+          await deleteDesign(deleteId);
+          // Remove from local state
+          setDesigns(prev => prev.filter(d => d.id !== deleteId));
+      } catch (error) {
+          console.error("Failed to delete design:", error);
+          alert("ลบไม่สำเร็จ กรุณาลองใหม่");
+      } finally {
+          setDeleteId(null);
+      }
+  };
 
   useEffect(() => {
     const fetchDesigns = async () => {
@@ -50,7 +75,9 @@ export default function MyProducts() {
                     <Link to={`/design/${design.base_product_id}?designId=${design.id}`}>
                          <Button size="icon" variant="secondary"><Edit2 className="w-4 h-4" /></Button>
                     </Link>
-                    <Button size="icon" variant="destructive"><Trash2 className="w-4 h-4" /></Button>
+                    <Button size="icon" variant="destructive" onClick={() => setDeleteId(design.id)}>
+                        <Trash2 className="w-4 h-4" />
+                    </Button>
                 </div>
             </div>
             <div className="p-4">
@@ -79,6 +106,23 @@ export default function MyProducts() {
             <span className="font-medium">เริ่มออกแบบงานใหม่</span>
         </Link>
       </div>
+
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>คุณแน่ใจหรือไม่ที่จะลบ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              การกระทำนี้ไม่สามารถย้อนกลับได้ งานออกแบบของคุณจะถูกลบออกจากระบบอย่างถาวร
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 focus:ring-red-600">
+              ลบงานออกแบบ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

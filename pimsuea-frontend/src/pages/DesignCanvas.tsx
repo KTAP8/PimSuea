@@ -5,6 +5,7 @@ import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
 import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
@@ -13,6 +14,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
 
 import { getDesignById, updateDesign } from "@/services/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSearchParams } from "react-router-dom";
 
 export default function DesignCanvas() {
@@ -54,6 +65,12 @@ export default function DesignCanvas() {
   
   // Track current preview URL for cleanup
   const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
+
+  // Upload Loading State
+  const [isUploading, setIsUploading] = useState(false);
+
+  // New Delete Dialog State
+  const [deleteImageName, setDeleteImageName] = useState<string | null>(null);
 
   // Auto-dismiss notification
   useEffect(() => {
@@ -780,21 +797,25 @@ export default function DesignCanvas() {
       }
   }, [showImageLibrary, user]);
 
-  const handleDeleteUpload = async (fileName: string, e: React.MouseEvent) => {
+  // Handle Image Deletion Step 1: Click (Open Dialog)
+  const handleDeleteClick = (fileName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('คุณต้องการลบรูปภาพนี้ใช่หรือไม่?')) return;
-    
-    if (!user) return;
+    setDeleteImageName(fileName);
+  };
+
+  // Handle Image Deletion Step 2: Confirm (Actual Delete)
+  const confirmDeleteImage = async () => {
+    if (!user || !deleteImageName) return;
 
     try {
         const { error } = await supabase.storage
             .from('design-assets')
-            .remove([`uploads/${user.id}/${fileName}`]);
+            .remove([`uploads/${user.id}/${deleteImageName}`]);
 
         if (error) throw error;
 
         // Optimistic Remove
-        setUserUploads(prev => prev.filter(f => f.name !== fileName));
+        setUserUploads(prev => prev.filter(f => f.name !== deleteImageName));
         
         setNotification({
              type: 'success', 
@@ -809,6 +830,8 @@ export default function DesignCanvas() {
              title: 'ลบไม่สำเร็จ', 
              message: err.message || 'เกิดข้อผิดพลาดในการลบ' 
         });
+    } finally {
+        setDeleteImageName(null);
     }
   };
 
@@ -820,9 +843,10 @@ export default function DesignCanvas() {
         return;
     }
     
+    setIsUploading(true);
     const file = e.target.files[0];
-    
-    // Optimistic UI? Or just wait.
+
+    // 1. Create Placeholder on Canvas - REMOVED (Using Skeleton Overlay instead)
     
     try {
         // Upload to 'design-assets' bucket
@@ -841,7 +865,7 @@ export default function DesignCanvas() {
 
         console.log("Uploaded Public URL:", publicUrl);
 
-        // Add to canvas
+        // Add to canvas (this will be the "replacement" of the placeholder)
         addImageToCanvas(publicUrl);
         
         // Refresh Library if open
@@ -854,6 +878,8 @@ export default function DesignCanvas() {
             title: 'อัพโหลดล้มเหลว',
             message: err.message || 'ไม่สามารถอัพโหลดรูปภาพได้'
         });
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -1087,11 +1113,11 @@ export default function DesignCanvas() {
         <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 overflow-y-auto shrink-0">
             {/* Upload Tool */}
             <div className="flex flex-col items-center gap-1 cursor-pointer group relative">
-                <label className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-black hover:text-white transition-colors cursor-pointer">
-                     <Upload className="w-5 h-5" />
-                     <input type="file" className="hidden" accept="image/*" onChange={handleUpload} />
+                <label className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isUploading ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
+                     {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-gray-500" /> : <Upload className="w-5 h-5" />}
+                     <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={isUploading} />
                 </label>
-                <span className="text-[10px] text-gray-500 font-medium">อัปโหลด</span>
+                <span className="text-[10px] text-gray-500 font-medium">{isUploading ? '...' : 'อัปโหลด'}</span>
             </div>
 
             {/* Image Library Tool */}
@@ -1125,10 +1151,10 @@ export default function DesignCanvas() {
                 </div>
                 
                 <div className="p-4 border-b bg-gray-50">
-                    <label className="w-full h-10 bg-black text-white rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors gap-2">
-                         <Upload className="w-4 h-4" />
-                         <span className="text-sm font-medium">อัปโหลดรูปใหม่</span>
-                         <input type="file" className="hidden" accept="image/*" onChange={handleUpload} />
+                    <label className={`w-full h-10 text-white rounded-md flex items-center justify-center cursor-pointer transition-colors gap-2 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'}`}>
+                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                         <span className="text-sm font-medium">{isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่'}</span>
+                         <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={isUploading} />
                     </label>
                 </div>
 
@@ -1150,7 +1176,7 @@ export default function DesignCanvas() {
                                    variant="destructive" 
                                    size="icon" 
                                    className="absolute top-1 right-1 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                   onClick={(e) => handleDeleteUpload(file.name, e)}
+                                   onClick={(e) => handleDeleteClick(file.name, e)}
                                >
                                    <Trash2 className="w-3 h-3" />
                                </Button>
@@ -1168,6 +1194,11 @@ export default function DesignCanvas() {
              */}
             <div className="relative shadow-2xl bg-white min-h-[500px] min-w-[500px]">
                 <canvas ref={canvasRef} />
+                {isUploading && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
+                        <Skeleton className="h-[200px] w-[200px] rounded-xl bg-gray-200/80 animate-pulse shadow-sm border border-gray-100" />
+                    </div>
+                )}
             </div>
 
             {/* CONTEXT FLOATING TOOLBAR (Below Header) */}
@@ -1411,6 +1442,21 @@ export default function DesignCanvas() {
 
         </main>
       </div>
+            {/* Delete Confirmation Dialog for Image Library */}
+            <AlertDialog open={!!deleteImageName} onOpenChange={(open) => !open && setDeleteImageName(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>ลบรูปภาพ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            คุณแน่ใจหรือไม่ที่จะลบรูปภาพนี้ออกจากคลัง? การกระทำนี้ไม่สามารถย้อนกลับได้
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteImage} className="bg-red-600 hover:bg-red-700">ลบรูปภาพ</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
     </div>
   );
 }
