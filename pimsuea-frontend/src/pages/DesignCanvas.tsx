@@ -31,6 +31,63 @@ export default function DesignCanvas() {
   const isDragging = useRef(false);
   const lastPosX = useRef(0);
   const lastPosY = useRef(0);
+  
+  // State Persistence
+  const savedDesigns = useRef<Record<string, object>>({});
+
+  // Constraints Helper
+  const applyConstraints = (canvas: fabric.Canvas) => {
+     canvas.on('object:moving', (e) => {
+         const obj = e.target;
+         if (!obj || !printZoneBoundsRef.current) return;
+         
+         // Ignore if static background
+         if (obj.name === 'static_bg') return;
+
+         const bounds = printZoneBoundsRef.current;
+         const objWidth = (obj.width || 0) * (obj.scaleX || 1);
+         const objHeight = (obj.height || 0) * (obj.scaleY || 1);
+
+         // Basic clamping logic - keep center within bounds (or edges, depending on preference)
+         // Strict: Keep the entire object inside
+         // Loose: Keep center inside
+         // Let's go with "Center must be inside" for better UX, or "Edges clamped"
+         // Implementing Edge Clamping:
+         let left = obj.left || 0;
+         let top = obj.top || 0;
+         
+         // Adjust based on origin (assuming center origin for simplicity in logic, but Fabric defaults vary)
+         // Fabric default origin is usually top/left unless changed.
+         // In addText/addImage we set originX/Y to 'center'.
+         
+         // If origin is center:
+         if (obj.originX === 'center') {
+             if (left < bounds.left) left = bounds.left;
+             if (left > bounds.left + bounds.width) left = bounds.left + bounds.width;
+         } else {
+             if (left < bounds.left) left = bounds.left;
+             if (left + objWidth > bounds.left + bounds.width) left = bounds.left + bounds.width - objWidth;
+         }
+         
+         if (obj.originY === 'center') {
+             if (top < bounds.top) top = bounds.top;
+             if (top > bounds.top + bounds.height) top = bounds.top + bounds.height;
+         } else {
+             if (top < bounds.top) top = bounds.top;
+             if (top + objHeight > bounds.top + bounds.height) top = bounds.top + bounds.height - objHeight;
+         }
+         
+         obj.set({ left, top });
+     });
+  };
+
+  const saveCurrentCanvas = () => {
+      if (fabricRef.current && currentTemplate) {
+          console.log("Saving design for:", currentTemplate.id);
+          // Include everything, including background
+          savedDesigns.current[currentTemplate.id] = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
+      }
+  };
 
 
   // ------------------------------------------------------------------
@@ -101,89 +158,106 @@ export default function DesignCanvas() {
 
 
 
-    // Load Image
+
+
     fabric.Image.fromURL(currentTemplate.image_url, (img) => {
       if (!img.width || !img.height || !fabricRef.current) return;
 
-      // 1. Calculate Scale to Fit Screen
-      // Only scale DOWN, don't scale up pixelated images, unless they are tiny
+      // 1. Calculate Scale
       const scaleX = TARGET_WIDTH / img.width;
       const scaleY = TARGET_HEIGHT / img.height;
-      const scaleFactor = Math.min(scaleX, scaleY, 1) * 0.95; // 95% of available space
+      const scaleFactor = Math.min(scaleX, scaleY, 1) * 0.95;
 
       const finalWidth = img.width * scaleFactor;
       const finalHeight = img.height * scaleFactor;
 
-      // 2. Resize Canvas to match the Scaled Image exactly
-      newCanvas.setWidth(finalWidth);
-      newCanvas.setHeight(finalHeight);
-
-      // 3. Add T-Shirt Image
-      img.set({
-        originX: 'left',
-        originY: 'top',
-        left: 0,
-        top: 0,
-        scaleX: scaleFactor,
-        scaleY: scaleFactor,
-        selectable: false, 
-        evented: false,
-        name: 'static_bg', // TAG: Locked Object
-        // Remove crossOrigin to allow loading from external non-CORS sources for display
-      });
-      newCanvas.add(img);
-      newCanvas.sendToBack(img);
-
-      // 4. Setup Print Zone & Clipping
+      // 2. Setup Bounds Ref (ALWAYS needed for constraints/tools)
       if (currentTemplate.print_area_config) {
         const { x, y, width: w, height: h } = currentTemplate.print_area_config;
-        
         const scaledLeft = x * scaleFactor;
         const scaledTop = y * scaleFactor;
         const scaledWidth = w * scaleFactor;
         const scaledHeight = h * scaleFactor;
 
-        // Store bounds for centering new objects later
         printZoneBoundsRef.current = { 
             left: scaledLeft, 
             top: scaledTop, 
             width: scaledWidth, 
             height: scaledHeight 
         };
-
-        // A. Visual Visual Guide (Red Box)
-        const visualZone = new fabric.Rect({
-          left: scaledLeft,
-          top: scaledTop,
-          width: scaledWidth,
-          height: scaledHeight,
-          fill: 'transparent',
-          stroke: '#ef4444', // Red-500
-          strokeWidth: 2,
-          strokeDashArray: [10, 5],
-          selectable: false,
-          evented: false,
-          name: 'static_bg', // TAG: Locked Object
-        });
-        newCanvas.add(visualZone);
-
-        // B. Clipping Path Object (Invisible, Absolute Position)
-        // We create a separate rect instance to use as the clipPath for objects
+        
+        // We also need the ClipRect REF for *new* objects
         const clipRect = new fabric.Rect({
             left: scaledLeft,
             top: scaledTop,
             width: scaledWidth,
             height: scaledHeight,
-            absolutePositioned: true, // Critical for clipping to work relative to canvas
+            absolutePositioned: true, 
         });
         clipPathRef.current = clipRect;
       }
+      
+      // 3. Execute Load Strategy
+      if (currentTemplate && savedDesigns.current[currentTemplate.id]) {
+           // PATH A: Restore
+           newCanvas.loadFromJSON(savedDesigns.current[currentTemplate.id], () => {
+               newCanvas.setWidth(finalWidth);
+               newCanvas.setHeight(finalHeight);
+               applyConstraints(newCanvas);
+               newCanvas.renderAll();
+           });
+      } else {
+           // PATH B: Fresh Load
+           newCanvas.setWidth(finalWidth);
+           newCanvas.setHeight(finalHeight);
+           
+           img.set({
+             originX: 'left',
+             originY: 'top',
+             left: 0,
+             top: 0,
+             scaleX: scaleFactor,
+             scaleY: scaleFactor,
+             selectable: false, 
+             evented: false,
+             name: 'static_bg', 
+           });
+           newCanvas.add(img);
+           newCanvas.sendToBack(img);
 
-      newCanvas.renderAll();
-      newCanvas.calcOffset(); 
-    }); // Removed options object with crossOrigin
+           if (printZoneBoundsRef.current) {
+                // Add Visual Zone
+                const visualZone = new fabric.Rect({
+                  left: printZoneBoundsRef.current.left,
+                  top: printZoneBoundsRef.current.top,
+                  width: printZoneBoundsRef.current.width,
+                  height: printZoneBoundsRef.current.height,
+                  fill: 'transparent',
+                  stroke: '#ef4444', 
+                  strokeWidth: 2,
+                  strokeDashArray: [10, 5],
+                  selectable: false,
+                  evented: false,
+                  name: 'static_bg', 
+                });
+                newCanvas.add(visualZone);
+                
+                // Note: clipping is applied to individual objects, so we don't add the clipRect to canvas
+           }
+           
+           applyConstraints(newCanvas);
+           newCanvas.renderAll();
+           newCanvas.calcOffset();
+      }
+
+    }); 
 
     return () => {
+      // Auto-save on unmount? Or just cleanup.
+      // User asked to save on *Switch*, not necessarily on unmount, but good practice maybe?
+      // But we can't easily save safely in cleanup if canvas is disposing.
+      // We rely on the Button Click handler for saving.
+      
       newCanvas.dispose();
       fabricRef.current = null;
     };
@@ -506,7 +580,10 @@ export default function DesignCanvas() {
                     return (
                         <button 
                             key={t.id}
-                            onClick={() => setCurrentTemplate(t)}
+                            onClick={() => {
+                                saveCurrentCanvas();
+                                setCurrentTemplate(t);
+                            }}
                             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                                 currentTemplate?.id === t.id ? 'bg-black text-white' : 'hover:bg-gray-100'
                             }`}
