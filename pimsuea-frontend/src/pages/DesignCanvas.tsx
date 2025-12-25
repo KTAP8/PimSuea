@@ -459,6 +459,7 @@ export default function DesignCanvas() {
         if (selectedObject.type === 'i-text') {
             (selectedObject as fabric.IText).set('fontFamily', fontFamily);
             fabricRef.current.requestRenderAll();
+            fabricRef.current.fire('object:modified', { target: selectedObject }); // Trigger History
             forceUpdate({}); // Trigger UI Update
         }
         return;
@@ -475,6 +476,7 @@ export default function DesignCanvas() {
                 if (selectedObject.type === 'i-text') {
                     (selectedObject as fabric.IText).set('fontFamily', fontFamily);
                     fabricRef.current.requestRenderAll();
+                    fabricRef.current.fire('object:modified', { target: selectedObject }); // Trigger History
                     forceUpdate({}); // Trigger UI Update
                 }
                 
@@ -494,6 +496,7 @@ export default function DesignCanvas() {
     const obj = selectedObject as fabric.IText;
     obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold');
     fabricRef.current.requestRenderAll();
+    fabricRef.current.fire('object:modified', { target: obj });
     forceUpdate({});
   };
 
@@ -502,6 +505,7 @@ export default function DesignCanvas() {
     const obj = selectedObject as fabric.IText;
     obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic');
     fabricRef.current.requestRenderAll();
+    fabricRef.current.fire('object:modified', { target: obj });
     forceUpdate({});
   };
 
@@ -510,6 +514,7 @@ export default function DesignCanvas() {
     const obj = selectedObject as fabric.IText;
     obj.set('underline', !obj.underline);
     fabricRef.current.requestRenderAll();
+    fabricRef.current.fire('object:modified', { target: obj });
     forceUpdate({});
   };
 
@@ -519,6 +524,7 @@ export default function DesignCanvas() {
       const currentSize = obj.fontSize || 30;
       obj.set('fontSize', Math.max(5, currentSize + delta));
       fabricRef.current.requestRenderAll();
+      fabricRef.current.fire('object:modified', { target: obj });
       forceUpdate({});
   };
 
@@ -526,6 +532,7 @@ export default function DesignCanvas() {
       if (!fabricRef.current || !selectedObject) return;
       selectedObject.set('fill', e.target.value);
       fabricRef.current.requestRenderAll();
+      fabricRef.current.fire('object:modified', { target: selectedObject });
       forceUpdate({});
   };
 
