@@ -6,7 +6,7 @@ import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2 } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown } from "lucide-react";
 
 export default function DesignCanvas() {
   const { id } = useParams();
@@ -42,6 +42,9 @@ export default function DesignCanvas() {
   const [history, setHistory] = useState<string[]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
   
+  // Layer State
+  const [layers, setLayers] = useState<fabric.Object[]>([]); // Top to Bottom list
+
   // Refs for reliable access inside Event Listeners (Stale Closure Fix)
   const historyStack = useRef<string[]>([]);
   const historyIndex = useRef(-1);
@@ -295,6 +298,15 @@ export default function DesignCanvas() {
          // Sync State (for UI)
          setHistory([...newHistory]);
          setHistoryStep(newHistory.length - 1);
+         updateLayers();
+      };
+      
+      const updateLayers = () => {
+          if (!newCanvas) return;
+          // Filter out static_bg, reference only
+          // We want Top -> Bottom for the UI list
+          const objs = newCanvas.getObjects().filter(o => o.name !== 'static_bg').reverse();
+          setLayers([...objs]);
       };
 
       // Defer attachment slightly to avoid initial triggers? 
@@ -309,6 +321,9 @@ export default function DesignCanvas() {
       newCanvas.on('object:added', onHistoryChange);
       newCanvas.on('object:modified', onHistoryChange);
       newCanvas.on('object:removed', onHistoryChange);
+      
+      // Initial Layer Set
+      updateLayers();
 
     }); 
 
@@ -581,6 +596,67 @@ export default function DesignCanvas() {
       }
   };
   
+
+  
+  // Layer Management
+  const moveLayerUp = (obj: fabric.Object, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!fabricRef.current) return;
+      fabricRef.current.bringForward(obj);
+      // Trigger update
+      fabricRef.current.fire('object:modified'); // Triggers history & layer update
+      // But history listener also calls updateLayers, so we are good? 
+      // Wait, explicit layer update might be faster for UI if history is locked?
+      // No, history listener calls updateLayers.
+      // BUT bringForward does NOT trigger 'object:modified' by default? 
+      // We need to verify. Usually it doesn't. 
+      // So we should manually update layers or trigger event.
+      // Let's manually trigger our loop
+      forceUpdate({}); 
+      // Actually, we need to re-fetch the list from canvas to get new order.
+      // updateLayers is defined inside useEffect, not accessible here.
+      // So we should duplicate the logic or extract it.
+      // Let's just setState here since we have ref access? No, we don't have the updateLayers function.
+      // Better: trigger a custom event or just manually set state.
+      
+      const canvas = fabricRef.current;
+      const objs = canvas.getObjects().filter(o => o.name !== 'static_bg').reverse();
+      setLayers([...objs]);
+      
+      // Also save history? Layer reordering IS a change.
+      // So yes, let's fire history manually.
+      // We can use the 'history' logic... but it is inside useEffect?
+      // No, we can just fire 'object:modified' via canvas.
+      canvas.fire('object:modified', { target: obj });
+  };
+
+  const moveLayerDown = (obj: fabric.Object, e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!fabricRef.current) return;
+      
+      // Prevent going behind background
+      // Objects list: [bg, obj1, obj2...]
+      // Index of obj must be > 1 to move down (index 0 is bg).
+      const canvas = fabricRef.current;
+      const allObjs = canvas.getObjects();
+      const index = allObjs.indexOf(obj);
+      
+      // Assuming static_bg is at index 0.
+      if (index <= 1) return; // Can't move below first object (if bg is 0, obj at 1 cannot go to 0)
+      
+      fabricRef.current.sendBackwards(obj);
+      
+      const objs = canvas.getObjects().filter(o => o.name !== 'static_bg').reverse();
+      setLayers([...objs]);
+      canvas.fire('object:modified', { target: obj });
+  };
+  
+  const selectLayer = (obj: fabric.Object) => {
+      if (!fabricRef.current) return;
+      fabricRef.current.setActiveObject(obj);
+      fabricRef.current.renderAll();
+  };
+
   // Add Text
   const addText = () => {
     // Check the REF, not the state
@@ -843,6 +919,67 @@ export default function DesignCanvas() {
                     );
                 })}
 
+            </div>
+
+            {/* LAYERS PANEL (Floating Right) */}
+            <div className="absolute top-20 right-6 w-48 bg-white p-3 rounded-lg shadow-xl border z-20 flex flex-col gap-3 max-h-[60vh]">
+                <div className="flex items-center gap-2 text-gray-700 pb-2 border-b">
+                     <Layers className="w-4 h-4" />
+                     <span className="text-sm font-bold">เลเยอร์ ({layers.length})</span>
+                </div>
+                
+                <div className="flex flex-col gap-2 overflow-y-auto pr-1 scrollbar-thin">
+                    {layers.length === 0 && (
+                        <div className="text-center text-xs text-gray-400 py-4">
+                            ยังไม่มีวัตถุ
+                        </div>
+                    )}
+                    {layers.map((obj, i) => (
+                        <div 
+                            key={i} 
+                            onClick={() => selectLayer(obj)}
+                            className={`flex items-center justify-between p-2 rounded-md border cursor-pointer text-xs group transition-colors ${
+                                selectedObject === obj ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-100 hover:border-gray-300'
+                            }`}
+                        >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                {obj.type === 'image' ? (
+                                    <img 
+                                        src={(obj as fabric.Image).getSrc()} 
+                                        alt="layer" 
+                                        className="w-8 h-8 rounded object-cover border bg-gray-100"
+                                    />
+                                ) : (
+                                    <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-500 border">
+                                        <Type className="w-4 h-4" />
+                                    </div>
+                                )}
+                                <span className="truncate max-w-[80px]">
+                                    {obj.type === 'i-text' ? (obj as fabric.IText).text : 'รูปภาพ'}
+                                </span>
+                            </div>
+                            
+                            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                    className="p-1 hover:bg-gray-200 rounded"
+                                    onClick={(e) => moveLayerUp(obj, e)}
+                                    title="Move Up"
+                                    disabled={i === 0} // Top of list (remember list is reversed)
+                                >
+                                    <ChevronUp className="w-3 h-3" />
+                                </button>
+                                <button 
+                                    className="p-1 hover:bg-gray-200 rounded"
+                                    onClick={(e) => moveLayerDown(obj, e)}
+                                    title="Move Down"
+                                    disabled={i === layers.length - 1} // Bottom of list
+                                >
+                                    <ChevronDown className="w-3 h-3" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Zoom & Pan Toolbar (Bottom Left - Horizontal) */}
