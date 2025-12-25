@@ -4,6 +4,8 @@ import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
+import { FontPicker } from "@/components/FontPicker";
+import WebFont from "webfontloader";
 import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw } from "lucide-react";
 
 export default function DesignCanvas() {
@@ -34,6 +36,7 @@ export default function DesignCanvas() {
   
   // State Persistence
   const savedDesigns = useRef<Record<string, object>>({});
+  const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['sans-serif']));
 
   // Constraints Helper
   const applyConstraints = (canvas: fabric.Canvas) => {
@@ -389,6 +392,42 @@ export default function DesignCanvas() {
   // ------------------------------------------------------------------
   // 4. Tools Logic
   // ------------------------------------------------------------------
+
+  // Handle Font Change
+  const handleFontChange = (fontFamily: string) => {
+    if (!fabricRef.current || !selectedObject) return;
+    
+    // 1. Check if already loaded
+    if (loadedFonts.has(fontFamily)) {
+        if (selectedObject.type === 'i-text') {
+            (selectedObject as fabric.IText).set('fontFamily', fontFamily);
+            fabricRef.current.requestRenderAll();
+        }
+        return;
+    }
+
+    // 2. Load Font via WebFontLoader
+    WebFont.load({
+        google: {
+            families: [fontFamily]
+        },
+        active: () => {
+            // Success
+            if (selectedObject && fabricRef.current) {
+                if (selectedObject.type === 'i-text') {
+                    (selectedObject as fabric.IText).set('fontFamily', fontFamily);
+                    fabricRef.current.requestRenderAll();
+                }
+                
+                // Add to loaded Set
+                setLoadedFonts(prev => new Set(prev).add(fontFamily));
+            }
+        },
+        inactive: () => {
+            console.error(`Could not load font: ${fontFamily}`);
+        }
+    });
+  };
   
   // Add Text
   const addText = () => {
@@ -497,9 +536,20 @@ export default function DesignCanvas() {
             {/* Context Aware Header Controls */}
             {selectedObject ? (
                  <div className="flex items-center gap-2 animate-in fade-in">
-                    <span className="text-sm font-bold text-blue-600">
+                    <span className="text-sm font-bold text-blue-600 mr-2">
                         กำลังแก้ไข: {selectedObject.type === 'i-text' ? 'ข้อความ' : 'รูปภาพ'}
                     </span>
+                    
+                    {/* Font Picker for Text Objects */}
+                    {selectedObject.type === 'i-text' && (
+                        <div className="mr-2">
+                            <FontPicker 
+                                currentFont={(selectedObject as fabric.IText).fontFamily || 'sans-serif'} 
+                                onFontSelect={handleFontChange} 
+                            />
+                        </div>
+                    )}
+
                     <Button variant="destructive" size="sm" onClick={deleteSelected}>
                         <Trash2 className="w-4 h-4 mr-2" /> ลบวัตถุ
                     </Button>
