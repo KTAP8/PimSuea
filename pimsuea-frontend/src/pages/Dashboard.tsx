@@ -7,6 +7,14 @@ import type { DashboardData } from "@/types/api";
 
 import { BackgroundCells } from "@/components/ui/background-ripple-effect";
 
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,9 +61,9 @@ export default function Dashboard() {
       <BackgroundCells className="h-[80vh] border-b">
         <div className="text-center px-4 max-w-4xl mx-auto">
           <h1 className="text-5xl md:text-7xl font-bold mb-6 text-slate-900 tracking-tight leading-tight">
-            ออกแบบ <br className="hidden md:block" />
+            บริการ Print On Demand <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#07636D] to-teal-600">
-              สินค้าในสไตล์คุณ
+              เพื่อคุณ โดยคุณ เราจัดการให้
             </span>
           </h1>
 
@@ -78,48 +86,60 @@ export default function Dashboard() {
                 <h2 className="text-3xl font-bold mb-6 flex items-center">
                 📢 ข่าวสารและโปรโมชั่น
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {data.news.map((item) => (
-                    <Link key={item.id} to={`/news/${item.id}`} className="group block h-full">
-                        <div className={`h-full bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col`}>
-                             {/* Image Header */}
-                            <div className={`h-48 ${item.color_class || 'bg-gray-100'} relative overflow-hidden`}>
-                                {item.image_url ? (
-                                    <img 
-                                        src={item.image_url} 
-                                        alt={item.title} 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-4xl">
-                                        📰
-                                    </div>
-                                )}
-                                {item.type && (
-                                    <span className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
-                                        {item.type}
-                                    </span>
-                                )}
+                <Carousel
+                  opts={{
+                    align: "start",
+                    loop: false,
+                  }}
+                  className="mx-8 md:mx-16"
+                >
+                  <CarouselContent className="-ml-4 py-4">
+                    {data.news.map((item) => (
+                      <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+                        <Link to={`/news/${item.id}`} className="group block h-full">
+                            <div className={`h-full bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col`}>
+                                 {/* Image Header */}
+                                <div className={`h-48 ${item.color_class || 'bg-gray-100'} relative overflow-hidden`}>
+                                    {item.image_url ? (
+                                        <img 
+                                            src={item.image_url} 
+                                            alt={item.title} 
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-4xl">
+                                            📰
+                                        </div>
+                                    )}
+                                    {item.type && (
+                                        <span className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">
+                                            {item.type}
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                {/* Content */}
+                                <div className="p-5 flex-1 flex flex-col">
+                                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                                        {item.title}
+                                    </h3>
+                                    <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
+                                        {item.description}
+                                    </p>
+                                    {item.published_at && (
+                                        <div className="text-xs text-gray-400 mt-auto">
+                                            {new Date(item.published_at).toLocaleDateString('th-TH')}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            
-                            {/* Content */}
-                            <div className="p-5 flex-1 flex flex-col">
-                                <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                                    {item.title}
-                                </h3>
-                                <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
-                                    {item.description}
-                                </p>
-                                {item.published_at && (
-                                    <div className="text-xs text-gray-400 mt-auto">
-                                        {new Date(item.published_at).toLocaleDateString('th-TH')}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </Link>
-                ))}
-                </div>
+                        </Link>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="-left-4 md:-left-12" />
+                  <CarouselNext className="-right-4 md:-right-12" />
+                </Carousel>
             </section>
         )}
 

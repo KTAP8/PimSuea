@@ -8,7 +8,7 @@ exports.getDashboardData = async (req, res) => {
       .from('articles')
       .select('*')
       .eq('is_published', true)
-      .limit(3);
+      .limit(10);
 
     if (newsError) throw newsError;
 

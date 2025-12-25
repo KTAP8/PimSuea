@@ -86,7 +86,7 @@ const Pattern = ({ className, cellClassName }: PatternProps) => {
           key={`matrix-row-${rowIdx}`}
           className="flex flex-col relative z-20 border-b"
         >
-          {row.map((column, colIdx) => {
+          {row.map((_, colIdx) => {
             const controls = useAnimation();
 
             useEffect(() => {
