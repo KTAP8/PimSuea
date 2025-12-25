@@ -4,9 +4,10 @@ import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
@@ -45,7 +46,22 @@ export default function DesignCanvas() {
   // Image Library State
   const [showImageLibrary, setShowImageLibrary] = useState(false);
   const [userUploads, setUserUploads] = useState<{name: string, url: string}[]>([]);
+
   const [loadingUploads, setLoadingUploads] = useState(false);
+  
+  // Custom Notification State
+  const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
+  
+  // Track current preview URL for cleanup
+  const [currentPreviewUrl, setCurrentPreviewUrl] = useState<string | null>(null);
+
+  // Auto-dismiss notification
+  useEffect(() => {
+    if (notification) {
+        const timer = setTimeout(() => setNotification(null), 3000);
+        return () => clearTimeout(timer);
+    }
+  }, [notification]);
   
   // Panning Refs
   const isDragging = useRef(false);
@@ -143,6 +159,9 @@ export default function DesignCanvas() {
                 savedDesigns.current = design.canvas_data;
                 // Set Design Name
                 if (design.design_name) setDesignName(design.design_name);
+                // Set Preview URL
+                if (design.preview_image_url) setCurrentPreviewUrl(design.preview_image_url);
+                
                 console.log("Loaded Canvas Data:", Object.keys(savedDesigns.current));
             }
         }
@@ -727,7 +746,7 @@ export default function DesignCanvas() {
       setLoadingUploads(true);
       try {
           const { data, error } = await supabase.storage
-              .from('design-previews')
+              .from('design-assets')
               .list(`uploads/${user.id}`, {
                   limit: 50,
                   offset: 0,
@@ -736,13 +755,16 @@ export default function DesignCanvas() {
               
           if (error) throw error;
           
+          console.log("Fetched Uploads Raw Data:", data);
+
           if (data) {
               const uploads = data.map(file => {
                   const { data: { publicUrl } } = supabase.storage
-                      .from('design-previews')
+                      .from('design-assets')
                       .getPublicUrl(`uploads/${user.id}/${file.name}`);
                   return { name: file.name, url: publicUrl };
               });
+              console.log("Processed Uploads:", uploads);
               setUserUploads(uploads);
           }
       } catch (error) {
@@ -757,6 +779,38 @@ export default function DesignCanvas() {
           fetchUserUploads();
       }
   }, [showImageLibrary, user]);
+
+  const handleDeleteUpload = async (fileName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('คุณต้องการลบรูปภาพนี้ใช่หรือไม่?')) return;
+    
+    if (!user) return;
+
+    try {
+        const { error } = await supabase.storage
+            .from('design-assets')
+            .remove([`uploads/${user.id}/${fileName}`]);
+
+        if (error) throw error;
+
+        // Optimistic Remove
+        setUserUploads(prev => prev.filter(f => f.name !== fileName));
+        
+        setNotification({
+             type: 'success', 
+             title: 'ลบรูปภาพสำเร็จ', 
+             message: 'ลบรูปภาพออกจากคลังเรียบร้อยแล้ว' 
+        });
+
+    } catch (err: any) {
+        console.error("Delete failed:", err);
+        setNotification({
+             type: 'error', 
+             title: 'ลบไม่สำเร็จ', 
+             message: err.message || 'เกิดข้อผิดพลาดในการลบ' 
+        });
+    }
+  };
 
   // Handle Image Upload with Persistent Storage
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -776,14 +830,16 @@ export default function DesignCanvas() {
         const fileName = `uploads/${user.id}/${timestamp}_${file.name.replace(/\s+/g, '_')}`;
         
         const { error: uploadError } = await supabase.storage
-            .from('design-previews') 
+            .from('design-assets') 
             .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage
-            .from('design-previews')
+            .from('design-assets')
             .getPublicUrl(fileName);
+
+        console.log("Uploaded Public URL:", publicUrl);
 
         // Add to canvas
         addImageToCanvas(publicUrl);
@@ -793,7 +849,11 @@ export default function DesignCanvas() {
 
     } catch (err: any) {
         console.error("Upload failed:", err);
-        alert(`อัพโหลดรูปภาพไม่สำเร็จ: ${err.message}`);
+        setNotification({
+            type: 'error',
+            title: 'อัพโหลดล้มเหลว',
+            message: err.message || 'ไม่สามารถอัพโหลดรูปภาพได้'
+        });
     }
   };
 
@@ -872,15 +932,19 @@ export default function DesignCanvas() {
           // 3. Upload to Supabase Storage
           const timestamp = Date.now();
           const fileName = `uid_${user.id}/${timestamp}_${currentTemplate.side}.png`;
-          const { error: uploadError } = await supabase.storage
-              .from('design-previews')
-              .upload(fileName, blob);
-              
-          if (uploadError) throw uploadError;
-          
-          const { data: { publicUrl } } = supabase.storage
-              .from('design-previews')
-              .getPublicUrl(fileName);
+          const { data, error } = await supabase.storage
+            .from('design-previews')
+            .upload(fileName, blob, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (error) throw error;
+        
+        // Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('design-previews')
+            .getPublicUrl(fileName);
               
           // 4. Send to Backend API
           // Ensure we have the full synced data
@@ -894,7 +958,39 @@ export default function DesignCanvas() {
                  canvas_data: canvasDataFull,
                  preview_image_url: publicUrl,
               });
-              alert('บันทึกการแก้ไขเรียบร้อยแล้ว');
+              
+              setNotification({
+                  type: 'success',
+                  title: 'บันทึกสำเร็จ',
+                  message: 'บันทึกการแก้ไขเรียบร้อยแล้ว'
+              });
+
+              // Cleanup Old Preview
+              if (currentPreviewUrl && currentPreviewUrl !== publicUrl) {
+                  try {
+                      // Attempt to identify bucket from URL or default to design-previews
+                      // URL Format: .../storage/v1/object/public/BUCKET/PATH
+                      let bucket = 'design-previews';
+                      let path = '';
+
+                      if (currentPreviewUrl.includes('/design-previews/')) {
+                          bucket = 'design-previews';
+                          path = currentPreviewUrl.split('/design-previews/')[1];
+                      } else if (currentPreviewUrl.includes('/design-assets/')) {
+                          bucket = 'design-assets'; // Handle the interim ones
+                          path = currentPreviewUrl.split('/design-assets/')[1];
+                      }
+
+                      if (path) {
+                          await supabase.storage.from(bucket).remove([path]);
+                      }
+                  } catch (cleanupErr) {
+                      console.error("Failed to clean up old preview:", cleanupErr);
+                  }
+              }
+              // Update state
+              setCurrentPreviewUrl(publicUrl);
+
           } else {
               // CREATE (POST)
               await api.post('/designs', {
@@ -903,13 +999,27 @@ export default function DesignCanvas() {
                  canvas_data: canvasDataFull,
                  preview_image_url: publicUrl,
               });
-              alert('บันทึกงานออกแบบเรียบร้อยแล้ว');
+              setNotification({
+                  type: 'success',
+                  title: 'บันทึกสำเร็จ',
+                  message: 'บันทึกงานออกแบบเรียบร้อยแล้ว'
+              });
+              
+              // Note: We don't have the new designId here easily unless api.post returns it. 
+              // If we wanted to switch context to "Edit" mode immediately, we'd need that ID.
+              // For now, next save will still be "Create" unless we navigate or update location.
+              // But setting currentPreviewUrl helps if we stay on page and logic changes.
+              setCurrentPreviewUrl(publicUrl);
           }
           
       } catch (error: any) {
           console.error("Save failed:", error);
           const msg = error.response?.data?.error || error.message || 'บันทึกไม่สำเร็จ';
-          alert(`เกิดข้อผิดพลาด: ${msg}`);
+          setNotification({
+              type: 'error',
+              title: 'บันทึกไม่สำเร็จ',
+              message: msg
+          });
       } finally {
           setSaving(false);
       }
@@ -918,7 +1028,20 @@ export default function DesignCanvas() {
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden relative">
+      {/* Notification Toast */}
+      {notification && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[150] w-96 animate-in slide-in-from-top-5 fade-in duration-300">
+            <Alert variant={notification.type === 'error' ? "destructive" : "default"} className={notification.type === 'success' ? "border-green-500 bg-green-50 text-green-900" : ""}>
+                {notification.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
+                <AlertTitle>{notification.title}</AlertTitle>
+                <AlertDescription>
+                    {notification.message}
+                </AlertDescription>
+            </Alert>
+          </div>
+      )}
+
       {/* HEADER */}
       <div className="h-16 bg-white border-b flex items-center justify-between px-4 z-10 w-full shrink-0">
         <div className="flex items-center gap-4">
@@ -1023,6 +1146,14 @@ export default function DesignCanvas() {
                            <div key={i} className="aspect-square border rounded-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-black relative group" onClick={() => addImageToCanvas(file.url)}>
                                <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                               <Button 
+                                   variant="destructive" 
+                                   size="icon" 
+                                   className="absolute top-1 right-1 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                   onClick={(e) => handleDeleteUpload(file.name, e)}
+                               >
+                                   <Trash2 className="w-3 h-3" />
+                               </Button>
                            </div>
                         ))
                     )}
