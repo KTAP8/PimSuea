@@ -4,7 +4,7 @@ import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Upload, Type, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw } from "lucide-react";
 
 export default function DesignCanvas() {
   const { id } = useParams();
@@ -24,6 +24,14 @@ export default function DesignCanvas() {
   // Tools State
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  
+  // Panning Refs
+  const isDragging = useRef(false);
+  const lastPosX = useRef(0);
+  const lastPosY = useRef(0);
+
 
   // ------------------------------------------------------------------
   // 1. Fetch Templates
@@ -74,6 +82,25 @@ export default function DesignCanvas() {
     newCanvas.on('selection:updated', (e) => setSelectedObject(e.selected?.[0] || null));
     newCanvas.on('selection:cleared', () => setSelectedObject(null));
 
+    // ZOOM & PAN Event Listeners
+    newCanvas.on('mouse:wheel', (opt) => {
+        const delta = opt.e.deltaY;
+        let zoom = newCanvas.getZoom();
+        zoom *= 0.999 ** delta;
+        if (zoom > 5) zoom = 5;
+        if (zoom < 0.1) zoom = 0.1;
+        
+        // Zoom to point
+        newCanvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+        setZoomLevel(zoom);
+        
+        opt.e.preventDefault();
+        opt.e.stopPropagation();
+    });
+
+
+
+
     // Load Image
     fabric.Image.fromURL(currentTemplate.image_url, (img) => {
       if (!img.width || !img.height || !fabricRef.current) return;
@@ -101,6 +128,7 @@ export default function DesignCanvas() {
         scaleY: scaleFactor,
         selectable: false, 
         evented: false,
+        name: 'static_bg', // TAG: Locked Object
         // Remove crossOrigin to allow loading from external non-CORS sources for display
       });
       newCanvas.add(img);
@@ -135,6 +163,7 @@ export default function DesignCanvas() {
           strokeDashArray: [10, 5],
           selectable: false,
           evented: false,
+          name: 'static_bg', // TAG: Locked Object
         });
         newCanvas.add(visualZone);
 
@@ -160,6 +189,127 @@ export default function DesignCanvas() {
     };
 
   }, [currentTemplate]);
+
+  // ------------------------------------------------------------------
+  // 3.5 Zoom & Pan Logic (Attached separately to avoid Canvas recreation)
+  // ------------------------------------------------------------------
+  useEffect(() => {
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      // Update Cursor
+      canvas.defaultCursor = isPanning ? 'grab' : 'default';
+      canvas.hoverCursor = isPanning ? 'grab' : 'move';
+      
+      // Toggle Selection
+      canvas.selection = !isPanning;
+      canvas.forEachObject((obj) => {
+          if (obj.name === 'static_bg') {
+              // Always keep background locked
+              obj.selectable = false;
+              obj.evented = false;
+          } else {
+              // Toggle others based on mode
+              obj.selectable = !isPanning;
+              obj.evented = !isPanning;
+          }
+      });
+      canvas.requestRenderAll();
+
+      // Handlers
+      const onMouseDown = (opt: fabric.IEvent) => {
+          if (isPanning) {
+              const evt = opt.e as MouseEvent;
+              isDragging.current = true;
+              canvas.selection = false;
+              lastPosX.current = evt.clientX;
+              lastPosY.current = evt.clientY;
+              canvas.defaultCursor = 'grabbing';
+              canvas.requestRenderAll();
+          }
+      };
+
+      const onMouseMove = (opt: fabric.IEvent) => {
+          if (isPanning && isDragging.current) {
+              const evt = opt.e as MouseEvent;
+              const vpt = canvas.viewportTransform;
+              if (!vpt) return;
+              
+              vpt[4] += evt.clientX - lastPosX.current;
+              vpt[5] += evt.clientY - lastPosY.current;
+              
+              canvas.requestRenderAll();
+              lastPosX.current = evt.clientX;
+              lastPosY.current = evt.clientY;
+          }
+      };
+
+      const onMouseUp = () => {
+          if (isPanning) {
+              canvas.setViewportTransform(canvas.viewportTransform!); // commit
+              isDragging.current = false;
+              canvas.defaultCursor = 'grab';
+              canvas.requestRenderAll();
+          }
+      };
+
+      // Bind
+      canvas.on('mouse:down', onMouseDown);
+      canvas.on('mouse:move', onMouseMove);
+      canvas.on('mouse:up', onMouseUp);
+
+      return () => {
+          // Unbind
+          canvas.off('mouse:down', onMouseDown);
+          canvas.off('mouse:move', onMouseMove);
+          canvas.off('mouse:up', onMouseUp);
+          
+          // Reset Object Interactability when leaving pan mode
+          canvas.forEachObject((obj) => {
+             // Only unlock objects that are NOT static backgrounds
+             if (obj.name !== 'static_bg') {
+                obj.selectable = true;
+                obj.evented = true;
+             }
+          });
+      };
+  }, [isPanning]);
+
+  const handleZoom = (factor: number) => {
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      let zoom = canvas.getZoom();
+      zoom *= factor; // Multiply for smooth steps
+      if (zoom > 5) zoom = 5;
+      if (zoom < 0.1) zoom = 0.1;
+
+      // Zoom to center
+      const center = canvas.getCenter();
+      canvas.zoomToPoint({ x: center.left, y: center.top }, zoom);
+      setZoomLevel(zoom);
+  };
+
+  const resetView = () => {
+       const canvas = fabricRef.current;
+       if (!canvas) return;
+       
+       canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); // Reset to identity
+       setZoomLevel(1);
+       
+       // Optionally re-center content if needed, but identity usually puts 0,0 at top-left
+       // If we want to "Fit to Screen" like initial load:
+       // We might need to store the initial scale/pan calculated in the first useEffect.
+       // For now, identity is a good "True Reset". 
+       // Better user experience: Reset to the "Fit" state.
+       // To do that, we'd need to re-run the "Fit" logic or store those values.
+       // Let's stick to Identity + Zoom 1 for "True Reset" or logic to re-center image.
+       
+       // Let's try to just re-center the main image
+       // Simple approach: setZoom(1) and pan to center (0,0) implied by identity.
+  };
+
+
 
 
   // ------------------------------------------------------------------
@@ -365,7 +515,50 @@ export default function DesignCanvas() {
                         </button>
                     );
                 })}
+
             </div>
+
+            {/* Zoom & Pan Toolbar */}
+            <div className="absolute bottom-6 right-6 bg-white p-2 rounded-lg shadow-lg flex flex-col gap-2 border z-20">
+                <div 
+                    onClick={() => setIsPanning(!isPanning)}
+                    className={`p-2 rounded-md cursor-pointer transition-colors ${isPanning ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-700'}`}
+                    title={isPanning ? "Switch to Select Mode" : "Switch to Pan Mode"}
+                >
+                    {isPanning ? <Hand className="w-5 h-5" /> : <MousePointer2 className="w-5 h-5" />}
+                </div>
+                
+                <div className="h-px bg-gray-200" />
+                
+                <button 
+                    onClick={() => handleZoom(1.1)}
+                    className="p-2 hover:bg-gray-100 rounded-md text-gray-700"
+                    title="Zoom In"
+                >
+                    <ZoomIn className="w-5 h-5" />
+                </button>
+                <div className="text-center text-[10px] text-gray-400 font-mono">
+                    {Math.round(zoomLevel * 100)}%
+                </div>
+                <button 
+                    onClick={() => handleZoom(0.9)}
+                    className="p-2 hover:bg-gray-100 rounded-md text-gray-700"
+                    title="Zoom Out"
+                >
+                    <ZoomOut className="w-5 h-5" />
+                </button>
+                
+                <div className="h-px bg-gray-200" />
+                
+                <button 
+                    onClick={resetView}
+                    className="p-2 hover:bg-gray-100 rounded-md text-gray-700"
+                    title="Reset View"
+                >
+                    <RotateCcw className="w-5 h-5" />
+                </button>
+            </div>
+
         </main>
       </div>
     </div>
