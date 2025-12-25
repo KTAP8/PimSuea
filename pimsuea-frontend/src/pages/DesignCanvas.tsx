@@ -129,8 +129,6 @@ export default function DesignCanvas() {
       try {
         const data = await getProductTemplates(id);
         setTemplates(data);
-        if (data.length > 0) setCurrentTemplate(data[0]);
-
         // If Edit Mode: Fetch design data
         if (designId) {
             console.log("Loading Saved Design:", designId);
@@ -143,6 +141,9 @@ export default function DesignCanvas() {
                 console.log("Loaded Canvas Data:", Object.keys(savedDesigns.current));
             }
         }
+        
+        // NOW set the template, ensuring savedDesigns is populated first
+        if (data.length > 0) setCurrentTemplate(data[0]);
 
       } catch (err) {
         console.error("Failed to load templates or design:", err);
