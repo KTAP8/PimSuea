@@ -6,7 +6,7 @@ import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus } from "lucide-react";
 
 export default function DesignCanvas() {
   const { id } = useParams();
@@ -37,6 +37,7 @@ export default function DesignCanvas() {
   // State Persistence
   const savedDesigns = useRef<Record<string, object>>({});
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['sans-serif']));
+  const [, forceUpdate] = useState({}); // Function to trigger re-render
 
   // Constraints Helper
   const applyConstraints = (canvas: fabric.Canvas) => {
@@ -402,6 +403,7 @@ export default function DesignCanvas() {
         if (selectedObject.type === 'i-text') {
             (selectedObject as fabric.IText).set('fontFamily', fontFamily);
             fabricRef.current.requestRenderAll();
+            forceUpdate({}); // Trigger UI Update
         }
         return;
     }
@@ -417,6 +419,7 @@ export default function DesignCanvas() {
                 if (selectedObject.type === 'i-text') {
                     (selectedObject as fabric.IText).set('fontFamily', fontFamily);
                     fabricRef.current.requestRenderAll();
+                    forceUpdate({}); // Trigger UI Update
                 }
                 
                 // Add to loaded Set
@@ -427,6 +430,47 @@ export default function DesignCanvas() {
             console.error(`Could not load font: ${fontFamily}`);
         }
     });
+  };
+
+  // Text Formatting Helpers
+  const toggleBold = () => {
+    if (!fabricRef.current || !selectedObject || selectedObject.type !== 'i-text') return;
+    const obj = selectedObject as fabric.IText;
+    obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold');
+    fabricRef.current.requestRenderAll();
+    forceUpdate({});
+  };
+
+  const toggleItalic = () => {
+    if (!fabricRef.current || !selectedObject || selectedObject.type !== 'i-text') return;
+    const obj = selectedObject as fabric.IText;
+    obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic');
+    fabricRef.current.requestRenderAll();
+    forceUpdate({});
+  };
+
+  const toggleUnderline = () => {
+    if (!fabricRef.current || !selectedObject || selectedObject.type !== 'i-text') return;
+    const obj = selectedObject as fabric.IText;
+    obj.set('underline', !obj.underline);
+    fabricRef.current.requestRenderAll();
+    forceUpdate({});
+  };
+
+  const changeFontSize = (delta: number) => {
+      if (!fabricRef.current || !selectedObject || selectedObject.type !== 'i-text') return;
+      const obj = selectedObject as fabric.IText;
+      const currentSize = obj.fontSize || 30;
+      obj.set('fontSize', Math.max(5, currentSize + delta));
+      fabricRef.current.requestRenderAll();
+      forceUpdate({});
+  };
+
+  const changeColor = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!fabricRef.current || !selectedObject) return;
+      selectedObject.set('fill', e.target.value);
+      fabricRef.current.requestRenderAll();
+      forceUpdate({});
   };
   
   // Add Text
@@ -533,37 +577,14 @@ export default function DesignCanvas() {
             <h1 className="font-bold text-lg hidden md:block">ห้องออกแบบสินค้า</h1>
             <div className="h-6 w-px bg-gray-200 mx-2 hidden md:block"></div>
             
-            {/* Context Aware Header Controls */}
-            {selectedObject ? (
-                 <div className="flex items-center gap-2 animate-in fade-in">
-                    <span className="text-sm font-bold text-blue-600 mr-2">
-                        กำลังแก้ไข: {selectedObject.type === 'i-text' ? 'ข้อความ' : 'รูปภาพ'}
-                    </span>
-                    
-                    {/* Font Picker for Text Objects */}
-                    {selectedObject.type === 'i-text' && (
-                        <div className="mr-2">
-                            <FontPicker 
-                                currentFont={(selectedObject as fabric.IText).fontFamily || 'sans-serif'} 
-                                onFontSelect={handleFontChange} 
-                            />
-                        </div>
-                    )}
-
-                    <Button variant="destructive" size="sm" onClick={deleteSelected}>
-                        <Trash2 className="w-4 h-4 mr-2" /> ลบวัตถุ
-                    </Button>
-                 </div>
-            ) : (
-                currentTemplate && (
-                    <span className="text-sm font-medium text-gray-900">
+            {currentTemplate && (
+                    <span className="text-sm font-medium text-gray-900 border px-3 py-1 rounded-full bg-gray-50">
                         มุมมอง: {
                             currentTemplate.side.toLowerCase().includes('front') ? 'ด้านหน้า' :
                             currentTemplate.side.toLowerCase().includes('back') ? 'ด้านหลัง' :
                             currentTemplate.side
                         }
                     </span>
-                )
             )}
         </div>
         <div className="flex items-center gap-2">
@@ -613,6 +634,90 @@ export default function DesignCanvas() {
             <div className="relative shadow-2xl bg-white min-h-[500px] min-w-[500px]">
                 <canvas ref={canvasRef} />
             </div>
+
+            {/* CONTEXT FLOATING TOOLBAR (Below Header) */}
+            {selectedObject && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-white p-2 rounded-xl shadow-xl flex items-center gap-2 border z-30 animate-in slide-in-from-top-2">
+                    
+                    {/* Font Picker for Text Objects */}
+                    {selectedObject.type === 'i-text' && (
+                        <>
+                            <FontPicker 
+                                currentFont={(selectedObject as fabric.IText).fontFamily || 'sans-serif'} 
+                                onFontSelect={handleFontChange} 
+                            />
+                            
+                            <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                            {/* Size */}
+                            <div className="flex items-center bg-gray-100 rounded-md">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => changeFontSize(-1)}>
+                                    <Minus className="w-3 h-3" />
+                                </Button>
+                                <span className="text-xs font-medium w-6 text-center">
+                                    {(selectedObject as fabric.IText).fontSize}
+                                </span>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => changeFontSize(1)}>
+                                    <Plus className="w-3 h-3" />
+                                </Button>
+                            </div>
+                            
+                            <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                            {/* Color */}
+                           <div className="relative group">
+                                <div className="w-8 h-8 rounded-full border shadow-sm cursor-pointer overflow-hidden relative">
+                                    <input 
+                                        type="color" 
+                                        className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer opacity-0" 
+                                        value={(selectedObject.fill as string) || '#000000'}
+                                        onChange={changeColor}
+                                    />
+                                    <div 
+                                        className="w-full h-full" 
+                                        style={{ backgroundColor: (selectedObject.fill as string) || '#000000' }} 
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                            {/* Formatting Toggles */}
+                            <Button 
+                                variant={(selectedObject as fabric.IText).fontWeight === 'bold' ? 'default' : 'ghost'} 
+                                size="icon" 
+                                className="h-8 w-8" 
+                                onClick={toggleBold}
+                            >
+                                <Bold className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                                variant={(selectedObject as fabric.IText).fontStyle === 'italic' ? 'default' : 'ghost'} 
+                                size="icon" 
+                                className="h-8 w-8" 
+                                onClick={toggleItalic}
+                            >
+                                <Italic className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                                variant={(selectedObject as fabric.IText).underline ? 'default' : 'ghost'} 
+                                size="icon" 
+                                className="h-8 w-8" 
+                                onClick={toggleUnderline}
+                            >
+                                <Underline className="w-4 h-4" />
+                            </Button>
+                            
+                            <div className="w-px h-6 bg-gray-200 mx-1" />
+                        </>
+                    )}
+
+                    {/* Delete Object (Icon Only) */}
+                    <Button variant="destructive" size="icon" onClick={deleteSelected} title="ลบวัตถุ">
+                        <Trash2 className="w-5 h-5" />
+                    </Button>
+                </div>
+            )}
 
             {/* View Switcher */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white p-2 rounded-full shadow-lg flex gap-2 border z-20">

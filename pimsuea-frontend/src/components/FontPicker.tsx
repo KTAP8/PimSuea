@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Loader2, Check, ChevronDown } from 'lucide-react';
+import WebFont from 'webfontloader';
 import { fetchGoogleFonts } from '@/services/googleFonts';
 import type { GoogleFont } from '@/types/font';
 import { Button } from './ui/button';
@@ -21,6 +22,7 @@ export function FontPicker({ currentFont, onFontSelect }: FontPickerProps) {
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const loadedPreviewFonts = useRef<Set<string>>(new Set(['sans-serif']));
 
   // 1. Fetch Fonts
   useEffect(() => {
@@ -69,6 +71,35 @@ export function FontPicker({ currentFont, onFontSelect }: FontPickerProps) {
   };
 
   const visibleFonts = filteredFonts.slice(0, visibleCount);
+
+  // 5. Load Previews for Visible Fonts
+  useEffect(() => {
+      if (!isOpen || visibleFonts.length === 0) return;
+
+      const fontsToLoad = visibleFonts
+          .map(f => f.family)
+          .filter(f => !loadedPreviewFonts.current.has(f));
+
+      if (fontsToLoad.length > 0) {
+          // Batch load them
+          // Note: Google Fonts API supports up to ~multiple families in one request, 
+          // loading 20 at a time is acceptable.
+          WebFont.load({
+              google: {
+                  families: fontsToLoad
+              },
+              active: () => {
+                 // Mark as loaded effectively (React re-render not strictly needed if we rely on browser CSS engine)
+                 // But we have a Ref tracking it.
+              },
+              // Allow silent failures for obscure fonts
+          });
+
+          // Update cache immediately to prevent spamming
+          fontsToLoad.forEach(f => loadedPreviewFonts.current.add(f));
+      }
+
+  }, [isOpen, visibleFonts]);
 
   return (
     <div className="relative" ref={dropdownRef}>
