@@ -6,7 +6,7 @@ import type { ProductTemplate } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
@@ -41,6 +41,11 @@ export default function DesignCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [saving, setSaving] = useState(false);
+  
+  // Image Library State
+  const [showImageLibrary, setShowImageLibrary] = useState(false);
+  const [userUploads, setUserUploads] = useState<{name: string, url: string}[]>([]);
+  const [loadingUploads, setLoadingUploads] = useState(false);
   
   // Panning Refs
   const isDragging = useRef(false);
@@ -714,6 +719,45 @@ export default function DesignCanvas() {
     fabricRef.current.renderAll(); // Always manually render when using Refs
   };
 
+
+
+  // Fetch User Uploads
+  const fetchUserUploads = async () => {
+      if (!user) return;
+      setLoadingUploads(true);
+      try {
+          const { data, error } = await supabase.storage
+              .from('design-previews')
+              .list(`uploads/${user.id}`, {
+                  limit: 50,
+                  offset: 0,
+                  sortBy: { column: 'created_at', order: 'desc' },
+              });
+              
+          if (error) throw error;
+          
+          if (data) {
+              const uploads = data.map(file => {
+                  const { data: { publicUrl } } = supabase.storage
+                      .from('design-previews')
+                      .getPublicUrl(`uploads/${user.id}/${file.name}`);
+                  return { name: file.name, url: publicUrl };
+              });
+              setUserUploads(uploads);
+          }
+      } catch (error) {
+          console.error("Error fetching uploads:", error);
+      } finally {
+          setLoadingUploads(false);
+      }
+  };
+
+  useEffect(() => {
+      if (showImageLibrary && user) {
+          fetchUserUploads();
+      }
+  }, [showImageLibrary, user]);
+
   // Handle Image Upload with Persistent Storage
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !fabricRef.current) return;
@@ -724,13 +768,15 @@ export default function DesignCanvas() {
     
     const file = e.target.files[0];
     
+    // Optimistic UI? Or just wait.
+    
     try {
         // Upload to 'design-assets' bucket
         const timestamp = Date.now();
         const fileName = `uploads/${user.id}/${timestamp}_${file.name.replace(/\s+/g, '_')}`;
         
         const { error: uploadError } = await supabase.storage
-            .from('design-previews') // Reuse 'design-previews' or 'design-assets' if created. Using 'design-previews/uploads' for now to check permissions easily.
+            .from('design-previews') 
             .upload(fileName, file);
 
         if (uploadError) throw uploadError;
@@ -739,7 +785,11 @@ export default function DesignCanvas() {
             .from('design-previews')
             .getPublicUrl(fileName);
 
+        // Add to canvas
         addImageToCanvas(publicUrl);
+        
+        // Refresh Library if open
+        if (showImageLibrary) fetchUserUploads();
 
     } catch (err: any) {
         console.error("Upload failed:", err);
@@ -885,7 +935,7 @@ export default function DesignCanvas() {
                 className="text-lg font-bold border-none focus:ring-0 p-0 h-auto bg-transparent w-full outline-none placeholder-gray-400"
                 placeholder="ตั้งชื่อผลงาน..."
             />
-            <p className="text-xs text-muted-foreground">บันทึกอัตโนมัติล่าสุดเมื่อสักครู่</p>
+
           </div>
         </div>
         
@@ -909,7 +959,7 @@ export default function DesignCanvas() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* LEFT TOOLBAR */}
         <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 overflow-y-auto shrink-0">
             {/* Upload Tool */}
@@ -921,6 +971,17 @@ export default function DesignCanvas() {
                 <span className="text-[10px] text-gray-500 font-medium">อัปโหลด</span>
             </div>
 
+            {/* Image Library Tool */}
+            <div 
+                className={`flex flex-col items-center gap-1 cursor-pointer group ${showImageLibrary ? 'bg-slate-100 w-full border-r-4 border-black' : ''}`}
+                onClick={() => setShowImageLibrary(!showImageLibrary)}
+            >
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${showImageLibrary ? 'bg-black text-white' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
+                     <ImageIcon className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] text-gray-500 font-medium">คลังข้อมูล</span>
+            </div>
+
             {/* Text Tool */}
             <div className="flex flex-col items-center gap-1 cursor-pointer group" onClick={addText}>
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-black hover:text-white transition-colors">
@@ -929,6 +990,45 @@ export default function DesignCanvas() {
                 <span className="text-xs text-gray-500 font-medium">ข้อความ</span>
             </div>
         </aside>
+
+        {/* Image Library Panel */}
+        {showImageLibrary && (
+            <div className="w-72 bg-white border-r flex flex-col z-[100] shadow-2xl animate-in slide-in-from-left-5 absolute left-0 top-0 bottom-0">
+                <div className="p-4 border-b flex items-center justify-between">
+                    <h3 className="font-bold">คลังรูปภาพ</h3>
+                    <Button variant="ghost" size="icon" onClick={() => setShowImageLibrary(false)}>
+                        <X className="w-4 h-4" />
+                    </Button>
+                </div>
+                
+                <div className="p-4 border-b bg-gray-50">
+                    <label className="w-full h-10 bg-black text-white rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-800 transition-colors gap-2">
+                         <Upload className="w-4 h-4" />
+                         <span className="text-sm font-medium">อัปโหลดรูปใหม่</span>
+                         <input type="file" className="hidden" accept="image/*" onChange={handleUpload} />
+                    </label>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-2 content-start">
+                    {loadingUploads ? (
+                        <div className="col-span-2 flex justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                        </div>
+                    ) : userUploads.length === 0 ? (
+                        <div className="col-span-2 text-center text-sm text-gray-400 py-8">
+                            ไม่มีรูปภาพ
+                        </div>
+                    ) : (
+                        userUploads.map((file, i) => (
+                           <div key={i} className="aspect-square border rounded-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-black relative group" onClick={() => addImageToCanvas(file.url)}>
+                               <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
+                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                           </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        )}
 
         {/* CENTER WORKSPACE */}
         <main className="flex-1 bg-gray-100 relative flex items-center justify-center overflow-auto p-8" ref={containerRef}>

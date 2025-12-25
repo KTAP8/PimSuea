@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Home, ShoppingBag, Palette, Package, Wallet, Menu, LogOut, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -92,6 +92,14 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false); // Mobile Sheet state
   const [isCollapsed, setIsCollapsed] = useState(false); // Desktop Collapsed state
+  const location = useLocation();
+
+  // Auto-collapse on Design Page
+  useEffect(() => {
+    if (location.pathname.startsWith('/design')) {
+        setIsCollapsed(true);
+    }
+  }, [location.pathname]);
 
   return (
     <>
