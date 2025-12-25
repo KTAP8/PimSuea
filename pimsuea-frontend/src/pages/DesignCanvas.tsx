@@ -845,8 +845,8 @@ export default function DesignCanvas() {
 
             </div>
 
-            {/* Zoom & Pan Toolbar */}
-            <div className="absolute bottom-6 right-6 bg-white p-2 rounded-lg shadow-lg flex flex-col gap-2 border z-20">
+            {/* Zoom & Pan Toolbar (Bottom Left - Horizontal) */}
+            <div className="absolute bottom-6 left-6 bg-white p-2 rounded-lg shadow-lg flex items-center gap-2 border z-20">
                 <div 
                     onClick={() => setIsPanning(!isPanning)}
                     className={`p-2 rounded-md cursor-pointer transition-colors ${isPanning ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100 text-gray-700'}`}
@@ -855,7 +855,7 @@ export default function DesignCanvas() {
                     {isPanning ? <Hand className="w-5 h-5" /> : <MousePointer2 className="w-5 h-5" />}
                 </div>
                 
-                <div className="h-px bg-gray-200" />
+                <div className="w-px h-6 bg-gray-200" />
                 
                 <button 
                     onClick={() => handleZoom(1.1)}
@@ -864,7 +864,7 @@ export default function DesignCanvas() {
                 >
                     <ZoomIn className="w-5 h-5" />
                 </button>
-                <div className="text-center text-[10px] text-gray-400 font-mono">
+                <div className="text-center text-[10px] text-gray-400 font-mono w-8">
                     {Math.round(zoomLevel * 100)}%
                 </div>
                 <button 
@@ -875,7 +875,7 @@ export default function DesignCanvas() {
                     <ZoomOut className="w-5 h-5" />
                 </button>
                 
-                <div className="h-px bg-gray-200" />
+                <div className="w-px h-6 bg-gray-200" />
                 
                 <button 
                     onClick={resetView}
@@ -886,8 +886,8 @@ export default function DesignCanvas() {
                 </button>
             </div>
 
-            {/* Undo / Redo Toolbar (Bottom Left) */}
-            <div className="absolute bottom-6 left-6 bg-white p-2 rounded-lg shadow-lg flex items-center gap-1 border z-20">
+            {/* Undo / Redo Toolbar (Top Left) */}
+            <div className="absolute top-6 left-6 bg-white p-2 rounded-lg shadow-lg flex items-center gap-1 border z-20">
                  <Button 
                     variant="ghost" 
                     size="icon" 
