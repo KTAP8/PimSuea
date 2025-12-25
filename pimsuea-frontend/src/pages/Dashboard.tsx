@@ -4,7 +4,6 @@ import { ArrowRight, Star, Loader2, AlertCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDashboard } from "@/services/api";
 import type { DashboardData } from "@/types/api";
-import { motion } from "framer-motion";
 
 import { BackgroundCells } from "@/components/ui/background-ripple-effect";
 

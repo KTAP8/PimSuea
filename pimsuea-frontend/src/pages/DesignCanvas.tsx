@@ -958,7 +958,7 @@ export default function DesignCanvas() {
           // 3. Upload to Supabase Storage
           const timestamp = Date.now();
           const fileName = `uid_${user.id}/${timestamp}_${currentTemplate.side}.png`;
-          const { data, error } = await supabase.storage
+          const { error } = await supabase.storage
             .from('design-previews')
             .upload(fileName, blob, {
                 cacheControl: '3600',
