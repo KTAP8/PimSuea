@@ -24,7 +24,6 @@ export default function DesignCanvas() {
   const [loading, setLoading] = useState(true);
   
   // Tools State
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -508,7 +507,6 @@ export default function DesignCanvas() {
     
     const file = e.target.files[0];
     const url = URL.createObjectURL(file);
-    setUploadedImages((prev) => [...prev, url]);
 
     addImageToCanvas(url);
   };
@@ -610,20 +608,8 @@ export default function DesignCanvas() {
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-black hover:text-white transition-colors">
                      <Type className="w-5 h-5" />
                 </div>
-                <span className="text-[10px] text-gray-500 font-medium">ข้อความ</span>
+                <span className="text-xs text-gray-500 font-medium">ข้อความ</span>
             </div>
-            
-            <hr className="w-10 border-gray-200" />
-
-            {/* Uploaded Thumbnails */}
-            {uploadedImages.map((url, i) => (
-                <img 
-                  key={i} 
-                  src={url} 
-                  className="w-12 h-12 object-cover rounded border hover:border-black cursor-pointer"
-                  onClick={() => addImageToCanvas(url)}
-                />
-            ))}
         </aside>
 
         {/* CENTER WORKSPACE */}
