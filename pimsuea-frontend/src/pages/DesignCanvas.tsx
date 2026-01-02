@@ -63,6 +63,17 @@ export default function DesignCanvas() {
         const defaultTemplate = templates.find(t => t.is_default) || templates[0];
         if (defaultTemplate?.color?.id) {
             setSelectedColorId(defaultTemplate.color.id);
+            
+            // Also set initial template to Front view of this color if possible
+            const frontTemplate = templates.find(t => 
+                t.color?.id === defaultTemplate.color?.id && 
+                t.side.toLowerCase() === 'front'
+            );
+            if (frontTemplate) {
+                setCurrentTemplate(frontTemplate);
+            } else {
+                setCurrentTemplate(defaultTemplate);
+            }
         }
     }
   }, [templates]);
@@ -87,12 +98,7 @@ export default function DesignCanvas() {
       }
   };
 
-  const handleTemplateChange = (template: ProductTemplate) => {
-    setCurrentTemplate(template);
-    if (template.color?.id && template.color.id !== selectedColorId) {
-        setSelectedColorId(template.color.id);
-    }
-  };
+
   
   const { user } = useAuth();
   
@@ -1159,24 +1165,7 @@ export default function DesignCanvas() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* LEFT TOOLBAR */}
         <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 overflow-y-auto shrink-0 no-scrollbar">
-            {/* Template Side Selector */}
-            <div className="flex flex-col gap-2 w-full px-2">
-                <span className="text-[10px] uppercase text-gray-400 font-bold text-center">มุมมอง</span>
-                {currentTemplates.map(t => (
-                    <Button
-                        key={t.id}
-                        variant={currentTemplate?.id === t.id ? "default" : "ghost"}
-                        size="icon"
-                        onClick={() => handleTemplateChange(t)}
-                        className={`w-full h-12 rounded-lg transition-all ${
-                            currentTemplate?.id === t.id ? 'shadow-md ring-2 ring-primary ring-offset-2' : 'hover:bg-gray-100'
-                        }`}
-                        title={t.side}
-                    >
-                         <div className="text-xs font-bold uppercase">{t.side.slice(0, 2)}</div>
-                    </Button>
-                ))}
-            </div>
+            {/* Template Side Selector Removed */}
 
             {/* Removed Color Selector from here */}
 
@@ -1356,7 +1345,7 @@ export default function DesignCanvas() {
 
             {/* View Switcher */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white p-2 rounded-full shadow-lg flex gap-2 border z-20">
-                {templates.map(t => {
+                {currentTemplates.map(t => {
                     // Simple translation helper
                     const getThaiSide = (name: string) => {
                         const lower = name.toLowerCase();
