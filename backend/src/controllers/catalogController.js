@@ -157,7 +157,7 @@ exports.getProductTemplates = async (req, res) => {
   try {
     const { data: templates, error } = await supabase
       .from('product_templates')
-      .select('*')
+      .select('*, color:colors(id, name, hex_code)')
       .eq('product_id', id);
 
     if (error) throw error;

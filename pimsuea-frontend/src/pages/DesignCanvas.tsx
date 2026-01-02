@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
-import type { ProductTemplate } from "@/types/api";
+import type { ProductTemplate, Color } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +45,54 @@ export default function DesignCanvas() {
   const [templates, setTemplates] = useState<ProductTemplate[]>([]);
   const [currentTemplate, setCurrentTemplate] = useState<ProductTemplate | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // ------------------------------------------------------------------
+  // Color & Template Logic
+  // ------------------------------------------------------------------
+  // Compute available colors and organize templates
+  const colors = Array.from(new Set(templates.map(t => t.color?.id))).filter(Boolean) as string[];
+  const uniqueColors = colors.map(id => templates.find(t => t.color?.id === id)?.color).filter((c): c is Color => !!c);
+  
+  // State for current color
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+
+  // Initialize Color on Template Load
+  useEffect(() => {
+    if (templates.length > 0 && !selectedColorId) {
+        // Prefer default template's color, or first one
+        const defaultTemplate = templates.find(t => t.is_default) || templates[0];
+        if (defaultTemplate?.color?.id) {
+            setSelectedColorId(defaultTemplate.color.id);
+        }
+    }
+  }, [templates]);
+
+  // Filter templates for current color
+  const currentTemplates = templates.filter(t => t.color?.id === selectedColorId);
+
+  // Switch Color Handler
+  const handleColorChange = (colorId: string) => {
+      setSelectedColorId(colorId);
+      
+      // Try to find the same side in the new color
+      const currentSide = currentTemplate?.side;
+      const newTemplate = templates.find(t => t.color?.id === colorId && t.side === currentSide);
+      
+      // If found, switch to it. If not, switch to first available for that color.
+      if (newTemplate) {
+          setCurrentTemplate(newTemplate);
+      } else {
+          const firstForColor = templates.find(t => t.color?.id === colorId);
+          if (firstForColor) setCurrentTemplate(firstForColor);
+      }
+  };
+
+  const handleTemplateChange = (template: ProductTemplate) => {
+    setCurrentTemplate(template);
+    if (template.color?.id && template.color.id !== selectedColorId) {
+        setSelectedColorId(template.color.id);
+    }
+  };
   
   const { user } = useAuth();
   
@@ -1110,7 +1158,28 @@ export default function DesignCanvas() {
 
       <div className="flex-1 flex overflow-hidden relative">
         {/* LEFT TOOLBAR */}
-        <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 overflow-y-auto shrink-0">
+        <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 overflow-y-auto shrink-0 no-scrollbar">
+            {/* Template Side Selector */}
+            <div className="flex flex-col gap-2 w-full px-2">
+                <span className="text-[10px] uppercase text-gray-400 font-bold text-center">มุมมอง</span>
+                {currentTemplates.map(t => (
+                    <Button
+                        key={t.id}
+                        variant={currentTemplate?.id === t.id ? "default" : "ghost"}
+                        size="icon"
+                        onClick={() => handleTemplateChange(t)}
+                        className={`w-full h-12 rounded-lg transition-all ${
+                            currentTemplate?.id === t.id ? 'shadow-md ring-2 ring-primary ring-offset-2' : 'hover:bg-gray-100'
+                        }`}
+                        title={t.side}
+                    >
+                         <div className="text-xs font-bold uppercase">{t.side.slice(0, 2)}</div>
+                    </Button>
+                ))}
+            </div>
+
+            {/* Removed Color Selector from here */}
+
             {/* Upload Tool */}
             <div className="flex flex-col items-center gap-1 cursor-pointer group relative">
                 <label className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isUploading ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
@@ -1316,12 +1385,33 @@ export default function DesignCanvas() {
 
             </div>
 
-            {/* LAYERS PANEL (Floating Right) */}
-            <div className="absolute top-20 right-6 w-48 bg-white p-3 rounded-lg shadow-xl border z-20 flex flex-col gap-3 max-h-[60vh]">
-                <div className="flex items-center gap-2 text-gray-700 pb-2 border-b">
-                     <Layers className="w-4 h-4" />
-                     <span className="text-sm font-bold">เลเยอร์ ({layers.length})</span>
-                </div>
+            {/* RIGHT PANEL: Colors & Layers */}
+            <div className="absolute top-20 right-6 z-20 flex flex-col gap-4 items-end">
+                
+                {/* Color Selector (Moved from Sidebar) */}
+                {uniqueColors.length > 0 && (
+                    <div className="bg-white p-3 rounded-xl shadow-xl border flex flex-col gap-3 items-center w-12">
+                        <span className="text-[10px] uppercase text-gray-400 font-bold text-center">สี</span>
+                        {uniqueColors.map(c => (
+                            <button
+                                key={c.id}
+                                className={`w-6 h-6 rounded-full border shadow-sm transition-all hover:scale-110 ${
+                                    selectedColorId === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'border-white'
+                                }`}
+                                style={{ backgroundColor: c.hex_code }}
+                                onClick={() => handleColorChange(c.id)}
+                                title={c.name}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {/* LAYERS PANEL */}
+                <div className="w-48 bg-white p-3 rounded-lg shadow-xl border flex flex-col gap-3 max-h-[60vh]">
+                    <div className="flex items-center gap-2 text-gray-700 pb-2 border-b">
+                         <Layers className="w-4 h-4" />
+                         <span className="text-sm font-bold">เลเยอร์ ({layers.length})</span>
+                    </div>
                 
                 <div className="flex flex-col gap-2 overflow-y-auto pr-1 scrollbar-thin">
                     {layers.length === 0 && (
@@ -1376,6 +1466,7 @@ export default function DesignCanvas() {
                     ))}
                 </div>
             </div>
+        </div>
 
             {/* Zoom & Pan Toolbar (Bottom Left - Horizontal) */}
             <div className="absolute bottom-6 left-6 bg-white p-2 rounded-lg shadow-lg flex items-center gap-2 border z-20">

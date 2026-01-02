@@ -10,6 +10,12 @@ export interface Category {
     icon: string;
 }
 
+export interface Color {
+    id: string;
+    name: string;
+    hex_code: string;
+}
+
 export interface ProductTemplate {
     id: string;
     product_id: string; // uuid
@@ -21,6 +27,9 @@ export interface ProductTemplate {
         width: number;
         height: number;
     };
+    color_id?: string;
+    is_default?: boolean;
+    color?: Color;
 }
 
 export interface PrintPricingTier {
