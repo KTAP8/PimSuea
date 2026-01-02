@@ -1,10 +1,12 @@
-const { supabase } = require('../config/supabaseClient');
+const { supabase, getAuthenticatedSupabase } = require('../config/supabaseClient');
 
 exports.getUserOrders = async (req, res) => {
   const userId = req.user.id;
+  // Use authenticated client to respect RLS
+  const client = getAuthenticatedSupabase(req.headers.authorization);
 
   try {
-    const { data: orders, error } = await supabase
+    const { data: orders, error } = await client
       .from('orders')
       .select(`
         *,
@@ -45,9 +47,10 @@ exports.getUserOrders = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
+  const client = getAuthenticatedSupabase(req.headers.authorization);
 
   try {
-    const { data: order, error } = await supabase
+    const { data: order, error } = await client
       .from('orders')
       .select(`
         *,
@@ -88,5 +91,61 @@ exports.getOrderDetails = async (req, res) => {
   } catch (error) {
     console.error('Error fetching order details:', error);
     res.status(500).json({ error: 'Failed to fetch order details' });
+  }
+};
+
+exports.createOrder = async (req, res) => {
+  const userId = req.user.id;
+  const { items, shipping, total } = req.body;
+
+  if (!items || items.length === 0) {
+    return res.status(400).json({ error: 'Cart is empty' });
+  }
+
+  // Use Authenticated Client to respect RLS but allow insert if policy permits
+  const client = getAuthenticatedSupabase(req.headers.authorization);
+
+  try {
+    // 1. Create Order
+    const { data: order, error: orderError } = await client
+      .from('orders')
+      .insert({
+        user_id: userId,
+        total_amount: total,
+        status: 'pending_payment',
+        shipping_address: shipping,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    // 2. Create Order Items
+    const orderItems = items.map(item => ({
+      order_id: order.id,
+      user_design_id: item.designId, // Ensure this matches frontend
+      size: item.size,
+      color: item.color,
+      quantity: item.quantity,
+      unit_price: item.price
+    }));
+
+    const { error: itemsError } = await client
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) {
+      // Rollback: try to delete the order if items fail
+      await client.from('orders').delete().eq('id', order.id);
+      throw itemsError;
+    }
+
+    res.status(201).json({ message: 'Order created successfully', orderId: order.id });
+
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
   }
 };

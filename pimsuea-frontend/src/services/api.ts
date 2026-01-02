@@ -102,4 +102,9 @@ export const getWallet = async (): Promise<Transaction[]> => {
     return response.data;
 };
 
+export const createOrder = async (orderData: any): Promise<any> => {
+    const response = await api.post('/orders', orderData);
+    return response.data;
+};
+
 export default api;

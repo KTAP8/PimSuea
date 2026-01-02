@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import api, { getDesignById, getProductById } from "@/services/api";
+import api, { getDesignById, getProductById, createOrder } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -266,15 +266,26 @@ export default function Order() {
       setCartItems(prev => prev.filter(i => i.id !== id));
   };
 
-  const handleSubmit = () => {
-      const orderPayload = {
-          items: cartItems,
-          shipping: shippingInfo,
-          total: totalPrice
-      };
-      console.log("ORDER SUBMITTED:", orderPayload);
-      alert("สั่งซื้อสำเร็จ! (Check Console)");
-      navigate('/my-orders');
+  const handleSubmit = async () => {
+      setLoading(true);
+      try {
+        const orderPayload = {
+            items: cartItems,
+            shipping: shippingInfo,
+            total: totalPrice
+        };
+        console.log("SUBMITTING ORDER:", orderPayload);
+        
+        await createOrder(orderPayload);
+        
+        alert("สั่งซื้อสำเร็จ! ระบบบันทึกคำสั่งซื้อเรียบร้อยแล้ว");
+        navigate('/my-orders'); // Assuming this route exists, or redirect home
+      } catch (error) {
+          console.error("Order submission failed:", error);
+          alert("เกิดข้อผิดพลาดในการสั่งซื้อ กรุณาลองใหม่อีกครั้ง");
+      } finally {
+          setLoading(false);
+      }
   };
 
   if (loading && cartItems.length === 0) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;

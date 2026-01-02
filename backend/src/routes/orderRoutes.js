@@ -7,4 +7,7 @@ const requireAuth = require('../middleware/requireAuth');
 router.get('/', requireAuth, orderController.getUserOrders);
 router.get('/:id', requireAuth, orderController.getOrderDetails);
 
+// Create Order (Protected)
+router.post('/', requireAuth, orderController.createOrder);
+
 module.exports = router;
