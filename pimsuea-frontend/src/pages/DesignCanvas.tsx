@@ -91,10 +91,23 @@ export default function DesignCanvas() {
 
   // Switch Color Handler
   const handleColorChange = (colorId: string) => {
+      // 1. Save current state first (as normal)
+      saveCurrentCanvas();
+      
+      // 2. Capture current design for persistence if side matches
+      const currentSide = currentTemplate?.side;
+      if (fabricRef.current && currentSide) {
+          const json = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
+          // Filter out background image since that will change
+          if (json.objects) {
+             json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
+          }
+           pendingDesignRef.current = { json, side: currentSide };
+      }
+
       setSelectedColorId(colorId);
       
       // Try to find the same side in the new color
-      const currentSide = currentTemplate?.side;
       const newTemplate = templates.find(t => t.color?.id === colorId && t.side === currentSide);
       
       // If found, switch to it. If not, switch to first available for that color.
@@ -112,6 +125,9 @@ export default function DesignCanvas() {
   
   // Tools State
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  
+  // Ref to track if we are switching colors to persist design
+  const pendingDesignRef = useRef<{ json: any, side: string } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -357,11 +373,63 @@ export default function DesignCanvas() {
       };
 
       // 3. Execute Load Strategy
-      if (currentTemplate && savedDesigns.current[currentTemplate.id]) {
-           // PATH A: Restore
-           newCanvas.loadFromJSON(savedDesigns.current[currentTemplate.id], () => {
+      
+      // Check for Pending Design (Color Switch)
+      let sourceFields = null;
+      if (pendingDesignRef.current && pendingDesignRef.current.side === currentTemplate.side) {
+           console.log("Applying persisted design from previous color");
+           sourceFields = pendingDesignRef.current.json;
+           pendingDesignRef.current = null; // Clear usage
+      } 
+      // Fallback to Saved Design
+      else if (savedDesigns.current[currentTemplate.id]) {
+           sourceFields = savedDesigns.current[currentTemplate.id];
+      }
+
+      if (sourceFields) {
+           // PATH A: Restore (from pending or saved)
+           newCanvas.loadFromJSON(sourceFields, () => {
+               // Ensure we remove unwanted bg constraints from JSON if any
+               newCanvas.getObjects().forEach(o => {
+                  if (o.name === 'static_bg') newCanvas.remove(o);
+               });
+               
                newCanvas.setWidth(finalWidth);
                newCanvas.setHeight(finalHeight);
+               
+               // Re-add Background Image (New Color)
+               img.set({
+                 originX: 'left',
+                 originY: 'top',
+                 left: 0,
+                 top: 0,
+                 scaleX: scaleFactor,
+                 scaleY: scaleFactor,
+                 selectable: false, 
+                 evented: false,
+                 name: 'static_bg', 
+               });
+               newCanvas.add(img);
+               newCanvas.sendToBack(img);
+
+               // Re-add Visual Zone (Dotted Line)
+               if (printZoneBoundsRef.current) {
+                    const visualZone = new fabric.Rect({
+                      left: printZoneBoundsRef.current.left,
+                      top: printZoneBoundsRef.current.top,
+                      width: printZoneBoundsRef.current.width,
+                      height: printZoneBoundsRef.current.height,
+                      fill: 'transparent',
+                      stroke: '#ef4444', 
+                      strokeWidth: 2,
+                      strokeDashArray: [10, 5],
+                      selectable: false,
+                      evented: false,
+                      name: 'print_zone' 
+                    });
+                    newCanvas.add(visualZone);
+               }
+
                applyConstraints(newCanvas);
                newCanvas.renderAll();
                initHistory();
