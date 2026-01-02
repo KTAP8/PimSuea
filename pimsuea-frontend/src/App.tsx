@@ -7,6 +7,7 @@ import DesignCanvas from './pages/DesignCanvas';
 import MyOrders from './pages/MyOrders';
 import MyProducts from './pages/MyProducts';
 import Wallet from './pages/Wallet';
+import Order from './pages/Order';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NewsDetails from './pages/NewsDetails';
@@ -40,6 +41,7 @@ function Layout() {
              <Route path="/orders" element={<MyOrders />} />
              <Route path="/my-products" element={<MyProducts />} />
              <Route path="/wallet" element={<Wallet />} />
+             <Route path="/order" element={<Order />} />
           </Route>
         </Routes>
       </main>

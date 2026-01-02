@@ -1,4 +1,4 @@
-import { Edit2, Trash2, Plus, Loader2 } from "lucide-react";
+import { Edit2, Trash2, Plus, Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -72,6 +72,9 @@ export default function MyProducts() {
                     className="h-full w-full object-contain" 
                 />
                 <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-2 transition-all">
+                    <Link to={`/order?initialDesignId=${design.id}`}>
+                        <Button size="icon" variant="default" className="bg-primary hover:bg-primary/90"><ShoppingCart className="w-4 h-4" /></Button>
+                    </Link>
                     <Link to={`/design/${design.base_product_id}?designId=${design.id}`}>
                          <Button size="icon" variant="secondary"><Edit2 className="w-4 h-4" /></Button>
                     </Link>

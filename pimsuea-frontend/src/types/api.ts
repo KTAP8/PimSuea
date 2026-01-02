@@ -58,6 +58,8 @@ export interface Product {
     rating?: number;    
     templates?: ProductTemplate[];
     print_methods?: PrintMethod[]; // New field
+    size_guide?: any;
+    print_pricing_tiers?: any[];
 }
 
 export interface News {
