@@ -235,8 +235,11 @@ export default function DesignCanvas() {
   const saveCurrentCanvas = () => {
       if (fabricRef.current && currentTemplate) {
           console.log("Saving design for:", currentTemplate.id);
-          // Include everything, including background
-          savedDesigns.current[currentTemplate.id] = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
+          const json = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
+          if (json.objects) {
+              json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
+          }
+          savedDesigns.current[currentTemplate.id] = json;
       }
   };
 
