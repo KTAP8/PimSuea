@@ -262,6 +262,10 @@ export default function DesignCanvas() {
                 if (design.design_name) setDesignName(design.design_name);
                 // Set Preview URL
                 if (design.preview_image_url) setCurrentPreviewUrl(design.preview_image_url);
+                // Restore Active Colors
+                if (design.available_colors && Array.isArray(design.available_colors)) {
+                     setActiveColorIds(new Set(design.available_colors));
+                }
                 
                 console.log("Loaded Canvas Data:", Object.keys(savedDesigns.current));
             }
@@ -1120,6 +1124,7 @@ export default function DesignCanvas() {
                  design_name: designName, // Use Editable Name
                  canvas_data: canvasDataFull,
                  preview_image_url: publicUrl,
+                 available_colors: Array.from(activeColorIds),
               });
               
               setNotification({
@@ -1155,13 +1160,14 @@ export default function DesignCanvas() {
               setCurrentPreviewUrl(publicUrl);
 
           } else {
-              // CREATE (POST)
-              await api.post('/designs', {
-                 base_product_id: currentTemplate.product_id,
-                 design_name: designName, // Use Editable Name
-                 canvas_data: canvasDataFull,
-                 preview_image_url: publicUrl,
-              });
+               // CREATE (POST)
+               await api.post('/designs', {
+                  base_product_id: currentTemplate.product_id,
+                  design_name: designName, // Use Editable Name
+                  canvas_data: canvasDataFull,
+                  preview_image_url: publicUrl,
+                  available_colors: Array.from(activeColorIds),
+               });
               setNotification({
                   type: 'success',
                   title: 'บันทึกสำเร็จ',
