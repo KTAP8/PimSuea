@@ -250,7 +250,6 @@ export default function DesignCanvas() {
       if (!id) return;
       try {
         const data = await getProductTemplates(id);
-        setTemplates(data);
         // If Edit Mode: Fetch design data
         if (designId) {
             console.log("Loading Saved Design:", designId);
@@ -263,15 +262,31 @@ export default function DesignCanvas() {
                 // Set Preview URL
                 if (design.preview_image_url) setCurrentPreviewUrl(design.preview_image_url);
                 // Restore Active Colors
-                if (design.available_colors && Array.isArray(design.available_colors)) {
+                if (design.available_colors && Array.isArray(design.available_colors) && design.available_colors.length > 0) {
                      setActiveColorIds(new Set(design.available_colors));
+                     
+                     // Set Initial Color & Template from Saved Data
+                     const firstColorId = design.available_colors[0];
+                     setSelectedColorId(firstColorId);
+                     
+                     const matchingTemplate = data.find((t: any) => 
+                        t.color?.id === firstColorId && t.side.toLowerCase() === 'front'
+                     ) || data.find((t: any) => t.color?.id === firstColorId);
+                     
+                     if (matchingTemplate) {
+                         setCurrentTemplate(matchingTemplate);
+                     }
                 }
                 
                 console.log("Loaded Canvas Data:", Object.keys(savedDesigns.current));
             }
         }
         
+        // Update Templates State LAST (trigers watchers)
+        setTemplates(data);
+        
         // Template initialization is handled by the useEffect hook watching 'templates'
+        // BUT if we set selectedColorId above, the watcher won't override it.
 
       } catch (err) {
         console.error("Failed to load templates or design:", err);
