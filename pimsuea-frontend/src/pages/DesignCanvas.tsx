@@ -78,8 +78,16 @@ export default function DesignCanvas() {
     }
   }, [templates]);
 
-  // Filter templates for current color
-  const currentTemplates = templates.filter(t => t.color?.id === selectedColorId);
+  // Filter templates for current color and sort (Front first)
+  const currentTemplates = templates
+    .filter(t => t.color?.id === selectedColorId)
+    .sort((a, b) => {
+        const sideA = a.side.toLowerCase();
+        const sideB = b.side.toLowerCase();
+        if (sideA === 'front') return -1;
+        if (sideB === 'front') return 1;
+        return 0;
+    });
 
   // Switch Color Handler
   const handleColorChange = (colorId: string) => {
@@ -237,8 +245,7 @@ export default function DesignCanvas() {
             }
         }
         
-        // NOW set the template, ensuring savedDesigns is populated first
-        if (data.length > 0) setCurrentTemplate(data[0]);
+        // Template initialization is handled by the useEffect hook watching 'templates'
 
       } catch (err) {
         console.error("Failed to load templates or design:", err);
