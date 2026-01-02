@@ -114,7 +114,11 @@ export default function Catalog() {
                             <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
                             {product.is_beginner_friendly && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 hover:bg-green-100 shrink-0 ml-2">มือใหม่</Badge>}
                         </div>
-                        <p className="text-primary font-bold text-xl mt-auto">฿{product.price.toLocaleString()}</p>
+                        <p className="text-primary font-bold text-xl mt-auto">
+    {product.starting_price 
+        ? `เริ่มต้น ฿${product.starting_price.toLocaleString()}` 
+        : `฿${product.price.toLocaleString()}`}
+</p>
                         <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button className="w-full">ออกแบบเลย</Button>
                         </div>

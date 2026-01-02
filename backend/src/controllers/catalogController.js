@@ -21,6 +21,7 @@ exports.getProducts = async (req, res) => {
   try {
     // Select columns and join images, filtering by is_active instead of is_published
     // Map DB columns to Frontend names: title->name, base_price->price, details->description
+    // Also fetch print_pricing_tiers to calculate starting price
     let query = supabase
       .from('products')
       .select(`
@@ -30,7 +31,8 @@ exports.getProducts = async (req, res) => {
         description:details,
         is_beginner_friendly,
         category_id,
-        product_images (image_url)
+        product_images (image_url),
+        print_pricing_tiers (unit_price)
       `)
       .eq('is_active', true);
 
@@ -46,10 +48,21 @@ exports.getProducts = async (req, res) => {
 
     if (error) throw error;
 
-    const formattedProducts = products.map(p => ({
-        ...p,
-        image_url: p.product_images && p.product_images.length > 0 ? p.product_images[0].image_url : null
-    }));
+    const formattedProducts = products.map(p => {
+        // Find lowest price from tiers
+        let startingPrice = null;
+        if (p.print_pricing_tiers && p.print_pricing_tiers.length > 0) {
+            startingPrice = Math.min(...p.print_pricing_tiers.map(t => t.unit_price));
+        }
+
+        return {
+            ...p,
+            image_url: p.product_images && p.product_images.length > 0 ? p.product_images[0].image_url : null,
+            starting_price: startingPrice,
+            // Keep price as fallback if needed, or if startingPrice is null
+            price: startingPrice || p.price
+        };
+    });
 
     res.json(formattedProducts);
   } catch (error) {
@@ -74,7 +87,19 @@ exports.getProductById = async (req, res) => {
         is_beginner_friendly,
         category_id,
         product_images (image_url),
-        category:categories(name)
+        category:categories(name),
+        product_print_methods (
+          print_method:print_methods (
+            id,
+            name,
+            description
+          )
+        ),
+        print_pricing_tiers (
+          print_method_id,
+          min_quantity,
+          unit_price
+        )
       `)
       .eq('id', id)
       .single();
@@ -86,11 +111,38 @@ exports.getProductById = async (req, res) => {
         throw error;
     }
 
+    // Process print methods and their associated pricing tiers
+    const printMethods = product.product_print_methods
+      ? product.product_print_methods.map(ppm => {
+          const method = ppm.print_method;
+          const tiers = product.print_pricing_tiers
+            ?.filter(tier => tier.print_method_id === method.id)
+            .sort((a, b) => a.min_quantity - b.min_quantity) || []; // Sort by quantity asc
+            
+          return {
+            ...method,
+            tiers
+          };
+      })
+      : [];
+
+    // Calculate starting price (lowest unit price across all methods/tiers)
+    let startingPrice = null;
+    if (product.print_pricing_tiers && product.print_pricing_tiers.length > 0) {
+        startingPrice = Math.min(...product.print_pricing_tiers.map(t => t.unit_price));
+    }
+
     const formattedProduct = {
         ...product,
         images: product.product_images ? product.product_images.map(img => img.image_url) : [],
-        image_url: product.product_images && product.product_images.length > 0 ? product.product_images[0].image_url : null
+        image_url: product.product_images && product.product_images.length > 0 ? product.product_images[0].image_url : null,
+        print_methods: printMethods,
+        starting_price: startingPrice
     };
+
+    // Remove raw join data to keep response clean
+    delete formattedProduct.product_print_methods;
+    delete formattedProduct.print_pricing_tiers;
 
     res.json(formattedProduct);
   } catch (error) {

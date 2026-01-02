@@ -23,17 +23,32 @@ export interface ProductTemplate {
     };
 }
 
+export interface PrintPricingTier {
+    print_method_id: string;
+    min_quantity: number;
+    unit_price: number;
+}
+
+export interface PrintMethod {
+    id: string; // e.g., 'dtg', 'dtf'
+    name: string;
+    description: string;
+    tiers?: PrintPricingTier[];
+}
+
 export interface Product {
     id: number;
     name: string;
     description: string;
     price: number;
+    starting_price?: number; // New calculated field
     image_url?: string;
     category_id: number;
     is_beginner_friendly: boolean;
-    sold_count?: number; // Optional as not all endpoints might return it
-    rating?: number;    // Optional
+    sold_count?: number; 
+    rating?: number;    
     templates?: ProductTemplate[];
+    print_methods?: PrintMethod[]; // New field
 }
 
 export interface News {
