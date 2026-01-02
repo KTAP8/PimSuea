@@ -1461,65 +1461,68 @@ export default function DesignCanvas() {
             <div className="absolute top-20 right-6 z-20 flex flex-col gap-4 items-end">
                 
                 {/* Color Selector (Moved from Sidebar) */}
+                {/* Color Selector (Horizontal) */}
                 {uniqueColors.length > 0 && (
-                    <div className="bg-white p-3 rounded-xl shadow-xl border flex flex-col gap-3 items-center w-12 z-50">
-                        <span className="text-[10px] uppercase text-gray-400 font-bold text-center">สี</span>
-                        {uniqueColors.filter(c => activeColorIds.has(c.id)).map(c => (
-                            <button
-                                key={c.id}
-                                className={`w-8 h-8 rounded-full border shadow-sm transition-all hover:scale-110 ${
-                                    selectedColorId === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'border-white'
-                                }`}
-                                style={{ backgroundColor: c.hex_code }}
-                                onClick={() => handleColorChange(c.id)}
-                                title={c.name}
-                            />
-                        ))}
-                        
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" size="icon" className="w-8 h-8 rounded-full border-dashed border-2 p-0 hover:bg-gray-50 shrink-0">
-                                    <Plus className="w-4 h-4 text-gray-500" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-3" side="left" align="start">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium text-sm leading-none mb-2">เลือกสีเพิ่มเติม</h4>
-                                    <ScrollArea className="h-[200px] pr-2">
-                                        <div className="space-y-3">
-                                            {uniqueColors.map(color => (
-                                                <div key={color.id} className="flex items-center space-x-2">
-                                                    <Checkbox 
-                                                        id={`c-${color.id}`} 
-                                                        checked={activeColorIds.has(color.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            const next = new Set(activeColorIds);
-                                                            if (checked) {
-                                                                next.add(color.id);
-                                                            } else {
-                                                                next.delete(color.id);
-                                                                // Prevent removing the currently selected color
-                                                                if (selectedColorId === color.id && activeColorIds.size > 1) {
-                                                                   // Switch to another available one
-                                                                   const remaining = Array.from(next);
-                                                                   if (remaining.length > 0) handleColorChange(remaining[0]);
+                    <div className="bg-white p-3 rounded-xl shadow-xl border flex flex-col gap-2 w-48 z-50">
+                        <span className="text-[10px] uppercase text-gray-400 font-bold">สี</span>
+                        <div className="flex flex-wrap gap-2">
+                            {uniqueColors.filter(c => activeColorIds.has(c.id)).map(c => (
+                                <button
+                                    key={c.id}
+                                    className={`w-8 h-8 rounded-full border shadow-sm transition-all hover:scale-110 ${
+                                        selectedColorId === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'border-white'
+                                    }`}
+                                    style={{ backgroundColor: c.hex_code }}
+                                    onClick={() => handleColorChange(c.id)}
+                                    title={c.name}
+                                />
+                            ))}
+                            
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="icon" className="w-8 h-8 rounded-full border-dashed border-2 p-0 hover:bg-gray-50 shrink-0">
+                                        <Plus className="w-4 h-4 text-gray-500" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64 p-3" side="left" align="start">
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium text-sm leading-none mb-2">เลือกสีเพิ่มเติม</h4>
+                                        <ScrollArea className="h-[200px] pr-2">
+                                            <div className="space-y-3">
+                                                {uniqueColors.map(color => (
+                                                    <div key={color.id} className="flex items-center space-x-2">
+                                                        <Checkbox 
+                                                            id={`c-${color.id}`} 
+                                                            checked={activeColorIds.has(color.id)}
+                                                            onCheckedChange={(checked) => {
+                                                                const next = new Set(activeColorIds);
+                                                                if (checked) {
+                                                                    next.add(color.id);
+                                                                } else {
+                                                                    next.delete(color.id);
+                                                                    // Prevent removing the currently selected color
+                                                                    if (selectedColorId === color.id && activeColorIds.size > 1) {
+                                                                       // Switch to another available one
+                                                                       const remaining = Array.from(next);
+                                                                       if (remaining.length > 0) handleColorChange(remaining[0]);
+                                                                    }
                                                                 }
-                                                            }
-                                                            // Ensure at least one color is active
-                                                            if (next.size > 0) setActiveColorIds(next);
-                                                        }}
-                                                    />
-                                                    <Label htmlFor={`c-${color.id}`} className="flex items-center gap-2 cursor-pointer w-full text-sm font-normal">
-                                                        <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: color.hex_code }} />
-                                                        {color.name}
-                                                    </Label>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                                                                // Ensure at least one color is active
+                                                                if (next.size > 0) setActiveColorIds(next);
+                                                            }}
+                                                        />
+                                                        <Label htmlFor={`c-${color.id}`} className="flex items-center gap-2 cursor-pointer w-full text-sm font-normal">
+                                                            <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: color.hex_code }} />
+                                                            {color.name}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                     </div>
                 )}
 
