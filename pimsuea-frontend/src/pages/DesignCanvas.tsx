@@ -4,6 +4,10 @@ import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate, Color } from "@/types/api";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FontPicker } from "@/components/FontPicker";
@@ -55,6 +59,7 @@ export default function DesignCanvas() {
   
   // State for current color
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [activeColorIds, setActiveColorIds] = useState<Set<string>>(new Set()); // User selected colors
 
   // Initialize Color on Template Load
   useEffect(() => {
@@ -63,6 +68,7 @@ export default function DesignCanvas() {
         const defaultTemplate = templates.find(t => t.is_default) || templates[0];
         if (defaultTemplate?.color?.id) {
             setSelectedColorId(defaultTemplate.color.id);
+            setActiveColorIds(new Set([defaultTemplate.color.id])); // Init with default color only
             
             // Also set initial template to Front view of this color if possible
             const frontTemplate = templates.find(t => 
@@ -502,9 +508,11 @@ export default function DesignCanvas() {
       
       const updateLayers = () => {
           if (!newCanvas) return;
-          // Filter out static_bg, reference only
+          // Filter out static_bg AND print_zone
           // We want Top -> Bottom for the UI list
-          const objs = newCanvas.getObjects().filter(o => o.name !== 'static_bg').reverse();
+          const objs = newCanvas.getObjects()
+            .filter(o => o.name !== 'static_bg' && o.name !== 'print_zone')
+            .reverse();
           setLayers([...objs]);
       };
 
@@ -1454,12 +1462,12 @@ export default function DesignCanvas() {
                 
                 {/* Color Selector (Moved from Sidebar) */}
                 {uniqueColors.length > 0 && (
-                    <div className="bg-white p-3 rounded-xl shadow-xl border flex flex-col gap-3 items-center w-12">
+                    <div className="bg-white p-3 rounded-xl shadow-xl border flex flex-col gap-3 items-center w-12 z-50">
                         <span className="text-[10px] uppercase text-gray-400 font-bold text-center">สี</span>
-                        {uniqueColors.map(c => (
+                        {uniqueColors.filter(c => activeColorIds.has(c.id)).map(c => (
                             <button
                                 key={c.id}
-                                className={`w-6 h-6 rounded-full border shadow-sm transition-all hover:scale-110 ${
+                                className={`w-8 h-8 rounded-full border shadow-sm transition-all hover:scale-110 ${
                                     selectedColorId === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'border-white'
                                 }`}
                                 style={{ backgroundColor: c.hex_code }}
@@ -1467,6 +1475,51 @@ export default function DesignCanvas() {
                                 title={c.name}
                             />
                         ))}
+                        
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="icon" className="w-8 h-8 rounded-full border-dashed border-2 p-0 hover:bg-gray-50 shrink-0">
+                                    <Plus className="w-4 h-4 text-gray-500" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-3" side="left" align="start">
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm leading-none mb-2">เลือกสีเพิ่มเติม</h4>
+                                    <ScrollArea className="h-[200px] pr-2">
+                                        <div className="space-y-3">
+                                            {uniqueColors.map(color => (
+                                                <div key={color.id} className="flex items-center space-x-2">
+                                                    <Checkbox 
+                                                        id={`c-${color.id}`} 
+                                                        checked={activeColorIds.has(color.id)}
+                                                        onCheckedChange={(checked) => {
+                                                            const next = new Set(activeColorIds);
+                                                            if (checked) {
+                                                                next.add(color.id);
+                                                            } else {
+                                                                next.delete(color.id);
+                                                                // Prevent removing the currently selected color
+                                                                if (selectedColorId === color.id && activeColorIds.size > 1) {
+                                                                   // Switch to another available one
+                                                                   const remaining = Array.from(next);
+                                                                   if (remaining.length > 0) handleColorChange(remaining[0]);
+                                                                }
+                                                            }
+                                                            // Ensure at least one color is active
+                                                            if (next.size > 0) setActiveColorIds(next);
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`c-${color.id}`} className="flex items-center gap-2 cursor-pointer w-full text-sm font-normal">
+                                                        <div className="w-4 h-4 rounded-full border shadow-sm" style={{ backgroundColor: color.hex_code }} />
+                                                        {color.name}
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 )}
 
