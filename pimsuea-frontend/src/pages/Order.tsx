@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import api, { getDesignById, getProductById, createOrder } from "@/services/api";
+import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -55,8 +55,8 @@ export default function Order() {
   useEffect(() => {
       if (isAddOpen && myDesigns.length === 0) {
           setLoadingDesigns(true);
-          api.get('/designs').then(res => {
-              setMyDesigns(res.data);
+          getMyDesigns().then(data => {
+              setMyDesigns(data);
           }).finally(() => setLoadingDesigns(false));
       }
   }, [isAddOpen]);
@@ -83,7 +83,7 @@ export default function Order() {
             // Fetch Product & Templates
             const [product, templates] = await Promise.all([
                 getProductById(design.base_product_id),
-                api.get(`/catalog/products/${design.base_product_id}/templates`).then(res => res.data).catch(() => [])
+                getProductTemplates(design.base_product_id).catch(() => [])
             ]);
             
             // Safe Parsing Size Guide
@@ -166,7 +166,7 @@ export default function Order() {
             // Fetch Product & Templates
             const [product, templates] = await Promise.all([
                 getProductById(design.base_product_id),
-                api.get(`/catalog/products/${design.base_product_id}/templates`).then(res => res.data).catch(() => [])
+                getProductTemplates(design.base_product_id).catch(() => [])
             ]);
             
             // Safe Parsing Size Guide
