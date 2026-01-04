@@ -98,6 +98,11 @@ export default function MyProducts() {
                  <span className={`text-xs font-medium px-2 py-1 rounded ${design.is_ordered ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-600'}`}>
                      {design.is_ordered ? 'Ordered' : 'Draft'}
                  </span>
+                 {design.printing_type && (
+                     <span className="text-xs font-medium px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                         {design.printing_type}
+                     </span>
+                 )}
               </div>
             </div>
           </div>
