@@ -149,3 +149,48 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ error: 'Failed to create order' });
   }
 };
+
+exports.updateOrder = async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+  const { shipping_address } = req.body;
+  const client = getAuthenticatedSupabase(req.headers.authorization);
+
+  try {
+    // 1. Fetch current order to check status
+    const { data: order, error: fetchError } = await client
+        .from('orders')
+        .select('status, user_id')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+
+    if (fetchError || !order) {
+        return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // 2. Validate Status
+    const editableStatuses = ['pending_payment', 'pending', 'processing'];
+    if (!editableStatuses.includes(order.status)) {
+        return res.status(400).json({ error: 'Order cannot be edited in its current status' });
+    }
+
+    // 3. Update Order
+    const { error: updateError } = await client
+        .from('orders')
+        .update({ 
+            shipping_address, 
+            updated_at: new Date().toISOString() 
+        })
+        .eq('id', id)
+        .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    res.json({ message: 'Order updated successfully' });
+
+  } catch (error) {
+    console.error('Error updating order:', error);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
+};

@@ -107,4 +107,9 @@ export const createOrder = async (orderData: any): Promise<any> => {
     return response.data;
 };
 
+export const updateOrder = async (id: number | string, data: any): Promise<any> => {
+    const response = await api.put(`/orders/${id}`, data);
+    return response.data;
+};
+
 export default api;

@@ -15,13 +15,25 @@ const statusMap: Record<string, { label: string; color: string }> = {
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-800" },
 };
 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { updateOrder } from "@/services/api";
+
+// ... existing statusMap ...
+
 export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  
+  // Edit State
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // ... existing fetchOrders ...
     const fetchOrders = async () => {
       try {
         setLoading(true);
@@ -38,6 +50,42 @@ export default function MyOrders() {
     fetchOrders();
   }, []);
 
+  const handleEditClick = () => {
+      if (selectedOrder?.shipping_address) {
+          setEditForm(selectedOrder.shipping_address);
+          setIsEditingAddress(true);
+      }
+  };
+
+  const handleSaveAddress = async () => {
+      if (!selectedOrder) return;
+      setSaving(true);
+      try {
+          await updateOrder(selectedOrder.id, { shipping_address: editForm });
+          
+          // Update local state
+          const updatedOrder = { ...selectedOrder, shipping_address: editForm };
+          setSelectedOrder(updatedOrder);
+          setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o));
+          
+          setIsEditingAddress(false);
+          alert("บันทึกที่อยู่เรียบร้อยแล้ว");
+      } catch (error) {
+          console.error("Failed to update address:", error);
+          alert("เกิดข้อผิดพลาดในการบันทึกที่อยู่");
+      } finally {
+          setSaving(false);
+      }
+  };
+  
+  const canEditAddress = (status: string) => {
+      return ['pending_payment', 'pending', 'processing'].includes(status);
+  };
+
+  // ... existing loading/error checks ...
+
+  // ... start return ...
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -57,6 +105,7 @@ export default function MyOrders() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* ... header and table ... */}
       <h1 className="text-3xl font-bold mb-8 flex items-center">
         <Package className="mr-3" /> ประวัติการสั่งซื้อ
       </h1>
@@ -102,7 +151,7 @@ export default function MyOrders() {
                             </Badge>
                         </td>
                          <td className="p-4 text-right">
-                             <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(order)}>
+                             <Button variant="ghost" size="sm" onClick={() => { setSelectedOrder(order); setIsEditingAddress(false); }}>
                                  <Eye className="w-4 h-4 mr-2" /> ดูรายละเอียด
                              </Button>
                         </td>
@@ -128,6 +177,7 @@ export default function MyOrders() {
               <div className="flex-1 overflow-y-auto px-8 py-4">
                   <div className="space-y-8 pb-8">
                     {/* Status Section */}
+                    {/* ... */}
                     <div className="bg-gray-50 p-6 rounded-xl border">
                         <div className="flex justify-between items-center mb-3">
                             <span className="text-gray-600 font-medium">สถานะคำสั่งซื้อ</span>
@@ -142,6 +192,7 @@ export default function MyOrders() {
                     </div>
 
                     {/* Items Section */}
+                    {/* ... */}
                     <div>
                         <h3 className="font-semibold mb-4 flex items-center text-lg"><ShoppingBag className="w-5 h-5 mr-3"/> รายการสินค้า</h3>
                         <div className="space-y-4">
@@ -174,19 +225,66 @@ export default function MyOrders() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Shipping Address */}
                         <div>
-                             <h3 className="font-semibold mb-4 flex items-center text-lg"><MapPin className="w-5 h-5 mr-3"/> ที่อยู่จัดส่ง</h3>
-                             {selectedOrder.shipping_address ? (
-                                 <div className="border p-6 rounded-xl text-sm space-y-2 h-full">
-                                     <p className="font-bold text-base">{selectedOrder.shipping_address.fullName}</p>
-                                     <p className="text-gray-600">โทร: {selectedOrder.shipping_address.phone}</p>
-                                     <hr className="my-2"/>
-                                     <p className="text-gray-700">{selectedOrder.shipping_address.addressLine1} {selectedOrder.shipping_address.addressLine2}</p>
-                                     <p className="text-gray-700">{selectedOrder.shipping_address.district} {selectedOrder.shipping_address.province} {selectedOrder.shipping_address.postalCode}</p>
+                             <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-semibold flex items-center text-lg"><MapPin className="w-5 h-5 mr-3"/> ที่อยู่จัดส่ง</h3>
+                                {canEditAddress(selectedOrder.status) && !isEditingAddress && (
+                                    <Button variant="outline" size="sm" onClick={handleEditClick}>
+                                        แก้ไข
+                                    </Button>
+                                )}
+                             </div>
+                             
+                             {isEditingAddress ? (
+                                 <div className="border p-6 rounded-xl space-y-4 bg-white">
+                                     <div className="grid grid-cols-1 gap-2">
+                                         <Label>ชื่อ-นามสกุล</Label>
+                                         <Input value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} />
+                                     </div>
+                                     <div className="grid grid-cols-1 gap-2">
+                                         <Label>เบอร์โทรศัพท์</Label>
+                                         <Input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                                     </div>
+                                      <div className="grid grid-cols-1 gap-2">
+                                         <Label>ที่อยู่</Label>
+                                         <Input value={editForm.addressLine1} onChange={e => setEditForm({...editForm, addressLine1: e.target.value})} />
+                                     </div>
+                                     <div className="grid grid-cols-2 gap-2">
+                                         <div>
+                                            <Label>แขวง/ตำบล</Label>
+                                            <Input value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} />
+                                         </div>
+                                         <div>
+                                            <Label>จังหวัด</Label>
+                                            <Input value={editForm.province} onChange={e => setEditForm({...editForm, province: e.target.value})} />
+                                         </div>
+                                     </div>
+                                      <div className="grid grid-cols-1 gap-2">
+                                         <Label>รหัสไปรษณีย์</Label>
+                                         <Input value={editForm.postalCode} onChange={e => setEditForm({...editForm, postalCode: e.target.value})} />
+                                     </div>
+                                     <div className="flex gap-2 pt-2">
+                                         <Button onClick={handleSaveAddress} disabled={saving} className="flex-1">
+                                             {saving ? <Loader2 className="animate-spin w-4 h-4"/> : "บันทึก"}
+                                         </Button>
+                                         <Button variant="ghost" onClick={() => setIsEditingAddress(false)} disabled={saving} className="flex-1">
+                                             ยกเลิก
+                                         </Button>
+                                     </div>
                                  </div>
                              ) : (
-                                 <div className="border p-6 rounded-xl text-sm text-gray-500 italic h-full bg-gray-50 flex items-center justify-center">
-                                     ไม่พบข้อมูลที่อยู่จัดส่ง
-                                 </div>
+                                selectedOrder.shipping_address ? (
+                                    <div className="border p-6 rounded-xl text-sm space-y-2 h-full">
+                                        <p className="font-bold text-base">{selectedOrder.shipping_address.fullName}</p>
+                                        <p className="text-gray-600">โทร: {selectedOrder.shipping_address.phone}</p>
+                                        <hr className="my-2"/>
+                                        <p className="text-gray-700">{selectedOrder.shipping_address.addressLine1} {selectedOrder.shipping_address.addressLine2}</p>
+                                        <p className="text-gray-700">{selectedOrder.shipping_address.district} {selectedOrder.shipping_address.province} {selectedOrder.shipping_address.postalCode}</p>
+                                    </div>
+                                ) : (
+                                    <div className="border p-6 rounded-xl text-sm text-gray-500 italic h-full bg-gray-50 flex items-center justify-center">
+                                        ไม่พบข้อมูลที่อยู่จัดส่ง
+                                    </div>
+                                )
                              )}
                         </div>
 

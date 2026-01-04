@@ -11,3 +11,5 @@ router.get('/:id', requireAuth, orderController.getOrderDetails);
 router.post('/', requireAuth, orderController.createOrder);
 
 module.exports = router;
+// Update Order (Protected)
+router.put('/:id', requireAuth, orderController.updateOrder);
