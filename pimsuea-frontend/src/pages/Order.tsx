@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates } from "@/services/api";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus } from "lucide-react";
+import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 // Interfaces
 interface CartItem {
@@ -50,9 +51,27 @@ export default function Order() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [myDesigns, setMyDesigns] = useState<any[]>([]);
   const [loadingDesigns, setLoadingDesigns] = useState(false);
+  
+  // Notification State
+  const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
+
+  // Auto-dismiss notification
+  useEffect(() => {
+    if (notification) {
+        const timer = setTimeout(() => {
+            setNotification(null);
+            // If success, navigate after dismiss
+            if (notification.type === 'success') {
+                 navigate('/orders');
+            }
+        }, 3000);
+        return () => clearTimeout(timer);
+    }
+  }, [notification, navigate]);
 
   // Fetch designs when modal opens
   useEffect(() => {
+      // ...
       if (isAddOpen && myDesigns.length === 0) {
           setLoadingDesigns(true);
           getMyDesigns().then(data => {
@@ -73,6 +92,7 @@ export default function Order() {
 
   // Phase 1: Initialize Cart
   useEffect(() => {
+    // ... no changes to initCart ...
     const initCart = async () => {
       if (initialDesignId && cartItems.length === 0) {
         setLoading(true);
@@ -160,6 +180,7 @@ export default function Order() {
 
 
   const addToCart = async (design: any) => {
+      // ... no changes to addToCart ...
       setLoading(true);
       setIsAddOpen(false); 
       try {
@@ -240,6 +261,7 @@ export default function Order() {
   };
 
   const updateItem = (id: string, field: keyof CartItem, value: any) => {
+      // ... same ...
       setCartItems(prev => prev.map(item => {
           if (item.id === id) {
               const updatedItem = { ...item, [field]: value };
@@ -268,6 +290,7 @@ export default function Order() {
 
   const handleSubmit = async () => {
       setLoading(true);
+      setNotification(null);
       try {
         const orderPayload = {
             items: cartItems,
@@ -278,11 +301,20 @@ export default function Order() {
         
         await createOrder(orderPayload);
         
-        alert("สั่งซื้อสำเร็จ! ระบบบันทึกคำสั่งซื้อเรียบร้อยแล้ว");
-        navigate('/my-orders'); // Assuming this route exists, or redirect home
+        setNotification({
+             type: 'success',
+             title: 'สั่งซื้อสำเร็จ',
+             message: 'ระบบบันทึกคำสั่งซื้อเรียบร้อยแล้ว'
+        });
+        
+        // Navigation handled in useEffect
       } catch (error) {
           console.error("Order submission failed:", error);
-          alert("เกิดข้อผิดพลาดในการสั่งซื้อ กรุณาลองใหม่อีกครั้ง");
+          setNotification({
+             type: 'error',
+             title: 'เกิดข้อผิดพลาด',
+             message: 'เกิดข้อผิดพลาดในการสั่งซื้อ กรุณาลองใหม่อีกครั้ง'
+          });
       } finally {
           setLoading(false);
       }
@@ -292,7 +324,21 @@ export default function Order() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
+      {/* Alert Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-2">
+            <Alert variant={notification.type === 'error' ? 'destructive' : 'default'} className={`shadow-lg ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white'}`}>
+                {notification.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
+                <AlertTitle className="font-semibold">{notification.title}</AlertTitle>
+                <AlertDescription>
+                    {notification.message}
+                </AlertDescription>
+            </Alert>
+        </div>
+      )}
+
       {/* Steps Indicator */}
+      {/* ... same ... */}
       <div className="flex items-center justify-center mb-8">
           <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current">1</div>

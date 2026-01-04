@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Package, Loader2, AlertCircle, Eye, MapPin, CreditCard, ShoppingBag } from "lucide-react";
+import { Package, Loader2, Eye, MapPin, CreditCard, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getMyOrders } from "@/services/api";
 import type { Order } from "@/types/api";
@@ -18,8 +18,10 @@ const statusMap: Record<string, { label: string; color: string }> = {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateOrder } from "@/services/api";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
-// ... existing statusMap ...
+
 
 export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -31,6 +33,17 @@ export default function MyOrders() {
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  
+  // Notification State
+  const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
+
+  // Auto-dismiss notification
+  useEffect(() => {
+    if (notification) {
+        const timer = setTimeout(() => setNotification(null), 3000);
+        return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   useEffect(() => {
     // ... existing fetchOrders ...
@@ -60,6 +73,7 @@ export default function MyOrders() {
   const handleSaveAddress = async () => {
       if (!selectedOrder) return;
       setSaving(true);
+      setNotification(null); // Clear previous
       try {
           await updateOrder(selectedOrder.id, { shipping_address: editForm });
           
@@ -69,10 +83,18 @@ export default function MyOrders() {
           setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o));
           
           setIsEditingAddress(false);
-          alert("บันทึกที่อยู่เรียบร้อยแล้ว");
+          setNotification({
+              type: 'success',
+              title: 'สำเร็จ',
+              message: 'บันทึกที่อยู่เรียบร้อยแล้ว'
+          });
       } catch (error) {
           console.error("Failed to update address:", error);
-          alert("เกิดข้อผิดพลาดในการบันทึกที่อยู่");
+          setNotification({
+              type: 'error',
+              title: 'เกิดข้อผิดพลาด',
+              message: 'ไม่สามารถบันทึกที่อยู่ได้ กรุณาลองใหม่อีกครั้ง'
+          });
       } finally {
           setSaving(false);
       }
@@ -81,7 +103,7 @@ export default function MyOrders() {
   const canEditAddress = (status: string) => {
       return ['pending_payment', 'pending', 'processing'].includes(status);
   };
-
+  
   // ... existing loading/error checks ...
 
   // ... start return ...
@@ -151,7 +173,7 @@ export default function MyOrders() {
                             </Badge>
                         </td>
                          <td className="p-4 text-right">
-                             <Button variant="ghost" size="sm" onClick={() => { setSelectedOrder(order); setIsEditingAddress(false); }}>
+                             <Button variant="ghost" size="sm" onClick={() => { setSelectedOrder(order); setIsEditingAddress(false); setNotification(null); }}>
                                  <Eye className="w-4 h-4 mr-2" /> ดูรายละเอียด
                              </Button>
                         </td>
@@ -176,8 +198,9 @@ export default function MyOrders() {
           {selectedOrder && (
               <div className="flex-1 overflow-y-auto px-8 py-4">
                   <div className="space-y-8 pb-8">
-                    {/* Status Section */}
-                    {/* ... */}
+
+
+
                     <div className="bg-gray-50 p-6 rounded-xl border">
                         <div className="flex justify-between items-center mb-3">
                             <span className="text-gray-600 font-medium">สถานะคำสั่งซื้อ</span>
@@ -311,6 +334,19 @@ export default function MyOrders() {
           )}
         </DialogContent>
       </Dialog>
+      
+      {/* Floating Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-2">
+            <Alert variant={notification.type === 'error' ? 'destructive' : 'default'} className={`shadow-lg ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white'}`}>
+                {notification.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
+                <AlertTitle className="font-semibold">{notification.title}</AlertTitle>
+                <AlertDescription>
+                    {notification.message}
+                </AlertDescription>
+            </Alert>
+        </div>
+      )}
     </div>
   );
 }
