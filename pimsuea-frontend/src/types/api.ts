@@ -74,13 +74,25 @@ export interface News {
     created_at?: string;
 }
 
+export interface ShippingInfo {
+    fullName: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2?: string;
+    province: string;
+    district: string;
+    postalCode: string;
+}
+
 export interface Order {
     id: number;
     user_id: string;
     total_amount: number;
-    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+    status: string; // 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'pending_payment'
     created_at: string;
     items?: OrderItem[];
+    shipping_address?: ShippingInfo;
+    payment_method?: string;
 }
 
 export interface OrderItem {
@@ -88,6 +100,7 @@ export interface OrderItem {
     product_name: string;
     quantity: number;
     price: number;
+    image?: string;
 }
 
 export interface Transaction {

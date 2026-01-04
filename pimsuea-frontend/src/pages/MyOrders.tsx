@@ -1,13 +1,16 @@
 import { Badge } from "@/components/ui/badge";
-import { Package, Loader2, AlertCircle } from "lucide-react";
+import { Package, Loader2, AlertCircle, Eye, MapPin, CreditCard, ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getMyOrders } from "@/services/api";
 import type { Order } from "@/types/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const statusMap: Record<string, { label: string; color: string }> = {
-  pending: { label: "รอดำเนินการ", color: "bg-yellow-100 text-yellow-800" },
+  pending_payment: { label: "รอชำระเงิน", color: "bg-yellow-100 text-yellow-800" },
+  pending: { label: "รอดำเนินการ", color: "bg-blue-50 text-blue-800" },
   processing: { label: "กำลังผลิต", color: "bg-blue-100 text-blue-800" },
-  shipped: { label: "จัดส่งแล้ว", color: "bg-green-100 text-green-800" },
+  shipped: { label: "จัดส่งแล้ว", color: "bg-purple-100 text-purple-800" },
   delivered: { label: "ส่งถึงปลายทาง", color: "bg-green-100 text-green-800" },
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-800" },
 };
@@ -16,6 +19,7 @@ export default function MyOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -62,11 +66,11 @@ export default function MyOrders() {
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="p-4 font-semibold text-gray-600">หมายเลขคำสั่งซื้อ</th>
+                <th className="p-4 font-semibold text-gray-600">คำสั่งซื้อ</th>
                 <th className="p-4 font-semibold text-gray-600">วันที่</th>
-                <th className="p-4 font-semibold text-gray-600">รายการ</th>
                 <th className="p-4 font-semibold text-gray-600">ยอดรวม</th>
                 <th className="p-4 font-semibold text-gray-600">สถานะ</th>
+                <th className="p-4 font-semibold text-gray-600 text-right">รายละเอียด</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -83,16 +87,24 @@ export default function MyOrders() {
                         <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                         <td className="p-4 font-medium">#{order.id}</td>
                         <td className="p-4 text-gray-500">
-                            {new Date(order.created_at).toLocaleDateString('th-TH')}
-                        </td>
-                        <td className="p-4">
-                            {order.items?.map(i => `${i.product_name} (x${i.quantity})`).join(', ') || 'สินค้าสั่งทำ'}
+                            {new Date(order.created_at).toLocaleString('th-TH', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
                         </td>
                         <td className="p-4 font-bold">฿{order.total_amount.toLocaleString()}</td>
                         <td className="p-4">
                             <Badge variant="outline" className={`border-0 ${statusInfo.color}`}>
                             {statusInfo.label}
                             </Badge>
+                        </td>
+                         <td className="p-4 text-right">
+                             <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(order)}>
+                                 <Eye className="w-4 h-4 mr-2" /> ดูรายละเอียด
+                             </Button>
                         </td>
                         </tr>
                     );
@@ -102,6 +114,105 @@ export default function MyOrders() {
           </table>
         </div>
       </div>
+
+       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-8 pb-4">
+            <DialogTitle className="text-2xl">รายละเอียดคำสั่งซื้อ</DialogTitle>
+            <DialogDescription className="text-base">
+                หมายเลขคำสั่งซื้อ #{selectedOrder?.id}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedOrder && (
+              <div className="flex-1 overflow-y-auto px-8 py-4">
+                  <div className="space-y-8 pb-8">
+                    {/* Status Section */}
+                    <div className="bg-gray-50 p-6 rounded-xl border">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-gray-600 font-medium">สถานะคำสั่งซื้อ</span>
+                            <Badge className={statusMap[selectedOrder.status]?.color || "bg-gray-100"}>
+                                {statusMap[selectedOrder.status]?.label || selectedOrder.status}
+                            </Badge>
+                        </div>
+                         <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">วันที่สั่งซื้อ</span>
+                            <span>{new Date(selectedOrder.created_at).toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}</span>
+                        </div>
+                    </div>
+
+                    {/* Items Section */}
+                    <div>
+                        <h3 className="font-semibold mb-4 flex items-center text-lg"><ShoppingBag className="w-5 h-5 mr-3"/> รายการสินค้า</h3>
+                        <div className="space-y-4">
+                            {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                                selectedOrder.items.map((item) => (
+                                    <div key={item.id} className="flex gap-6 border p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                                        <img 
+                                            src={item.image || "https://via.placeholder.com/100"} 
+                                            alt={item.product_name} 
+                                            className="w-20 h-20 object-cover rounded-lg bg-gray-100 border"
+                                        />
+                                        <div className="flex-1 flex flex-col justify-between">
+                                            <div>
+                                                <p className="font-semibold text-lg line-clamp-1">{item.product_name}</p>
+                                                <p className="text-sm text-gray-500 mt-1">รหัสสินค้า: {item.id}</p>
+                                            </div>
+                                            <div className="flex justify-between mt-2 text-base">
+                                                <span className="text-gray-600">จำนวน: {item.quantity} ชิ้น</span>
+                                                <span className="font-bold">฿{item.price.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-gray-500 italic p-4 text-center border rounded-xl">ไม่พบรายการสินค้า</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Shipping Address */}
+                        <div>
+                             <h3 className="font-semibold mb-4 flex items-center text-lg"><MapPin className="w-5 h-5 mr-3"/> ที่อยู่จัดส่ง</h3>
+                             {selectedOrder.shipping_address ? (
+                                 <div className="border p-6 rounded-xl text-sm space-y-2 h-full">
+                                     <p className="font-bold text-base">{selectedOrder.shipping_address.fullName}</p>
+                                     <p className="text-gray-600">โทร: {selectedOrder.shipping_address.phone}</p>
+                                     <hr className="my-2"/>
+                                     <p className="text-gray-700">{selectedOrder.shipping_address.addressLine1} {selectedOrder.shipping_address.addressLine2}</p>
+                                     <p className="text-gray-700">{selectedOrder.shipping_address.district} {selectedOrder.shipping_address.province} {selectedOrder.shipping_address.postalCode}</p>
+                                 </div>
+                             ) : (
+                                 <div className="border p-6 rounded-xl text-sm text-gray-500 italic h-full bg-gray-50 flex items-center justify-center">
+                                     ไม่พบข้อมูลที่อยู่จัดส่ง
+                                 </div>
+                             )}
+                        </div>
+
+                         {/* Payment/Transaction info */}
+                        <div>
+                             <h3 className="font-semibold mb-4 flex items-center text-lg"><CreditCard className="w-5 h-5 mr-3"/> การชำระเงิน</h3>
+                             <div className="border p-6 rounded-xl h-full">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-gray-600">ประเภทธุรกรรม</span>
+                                    <span className="font-medium text-right">{selectedOrder.payment_method || "โอนเงินผ่านธนาคาร"}</span>
+                                </div>
+                                <div className="pt-4 border-t mt-auto">
+                                    <div className="flex justify-between items-center text-xl font-bold">
+                                        <span>ยอดรวมสุทธิ</span>
+                                        <span className="text-primary">฿{selectedOrder.total_amount.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                  </div>
+              </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
