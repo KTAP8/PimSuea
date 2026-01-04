@@ -51,7 +51,9 @@ exports.saveDesign = async (req, res) => {
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
           is_ordered: false,
-          available_colors: req.body.available_colors || []
+          is_ordered: false,
+          available_colors: req.body.available_colors || [],
+          printing_type: req.body.printing_type || null
       }])
       .select()
       .single();
@@ -115,6 +117,7 @@ exports.updateDesign = async (req, res) => {
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
           available_colors: req.body.available_colors || [],
+          printing_type: req.body.printing_type || undefined,
           updated_at: new Date() // Ensure your DB has this column or trigger? Usually Supabase handles it or we pass it
       })
       .eq('id', id)

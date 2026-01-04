@@ -133,8 +133,10 @@ export default function Order() {
                  if (availableColors.length === 0) availableColors = allProductColors;
             }
 
-            // Pricing Tiers (use print_methods[0] for simplified logic if top-level missing)
-            const pricingTiers = product.print_pricing_tiers || (product.print_methods?.[0]?.tiers) || [];
+            // Pricing Tiers: Use the design's printing_type
+            const printMethod = product.print_methods?.find((m: any) => m.id === design.printing_type) 
+                || product.print_methods?.[0];
+            const pricingTiers = printMethod?.tiers || [];
 
             // Initial Price Logic
             const quantity = 1;
@@ -214,8 +216,10 @@ export default function Order() {
                  if (availableColors.length === 0) availableColors = allProductColors;
             }
 
-            // Pricing
-            const pricingTiers = product.print_pricing_tiers || (product.print_methods?.[0]?.tiers) || [];
+            // Pricing: Use the design's printing_type
+            const printMethod = product.print_methods?.find((m: any) => m.id === design.printing_type) 
+                || product.print_methods?.[0];
+            const pricingTiers = printMethod?.tiers || [];
             
             const quantity = 1;
             let initialPrice = product.starting_price || product.price || 500;

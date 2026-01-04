@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate, Color } from "@/types/api";
@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FontPicker } from "@/components/FontPicker";
 import WebFont from "webfontloader";
-import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle, ShoppingCart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
@@ -34,6 +34,10 @@ export default function DesignCanvas() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const designId = searchParams.get('designId');
+  // Support both cases
+  const printingType = searchParams.get('printingType') || searchParams.get('printing_type'); 
+  console.log("Captured Printing Type:", printingType); // DEBUG
+  const navigate = useNavigate();
   
   // Design Name State
   const [designName, setDesignName] = useState('Untitled Design');
@@ -1093,124 +1097,156 @@ export default function DesignCanvas() {
      fabricRef.current.renderAll();
   };
 
-  const saveDesign = async () => {
-      if (!currentTemplate || !fabricRef.current) return;
-      if (!user) {
-          alert('กรุณาเข้าสู่ระบบเพื่อบันทึกงานออกแบบ');
-          return;
-      }
-      
-      setSaving(true);
-      try {
-          // 1. Prepare Data: Update current view
-          saveCurrentCanvas();
-          
-          // 2. Generate Preview
-          const previewDataUrl = fabricRef.current.toDataURL({
-              format: 'png',
-              multiplier: 0.5,
-          });
-          
-          const res = await fetch(previewDataUrl);
-          const blob = await res.blob();
-          
-          // 3. Upload to Supabase Storage
-          const timestamp = Date.now();
-          const fileName = `uid_${user.id}/${timestamp}_${currentTemplate.side}.png`;
-          const { error } = await supabase.storage
-            .from('design-previews')
-            .upload(fileName, blob, {
-                cacheControl: '3600',
-                upsert: false
-            });
-
-        if (error) throw error;
+const saveDesign = async (silent = false): Promise<string | null> => {
+    if (!currentTemplate || !fabricRef.current) return null;
+    if (!user) {
+        alert('กรุณาเข้าสู่ระบบเพื่อบันทึกงานออกแบบ');
+        return null;
+    }
+    
+    setSaving(true);
+    try {
+        // 1. Prepare Data: Update current view
+        saveCurrentCanvas();
         
-        // Get Public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('design-previews')
-            .getPublicUrl(fileName);
-              
-          // 4. Send to Backend API
-          // Ensure we have the full synced data
-          const canvasDataFull = savedDesigns.current;
-          
-          if (designId) {
-              // UPDATE (PUT)
-              await updateDesign(designId, {
-                 base_product_id: currentTemplate.product_id,
-                 design_name: designName, // Use Editable Name
-                 canvas_data: canvasDataFull,
-                 preview_image_url: publicUrl,
-                 available_colors: Array.from(activeColorIds),
-              });
-              
-              setNotification({
-                  type: 'success',
-                  title: 'บันทึกสำเร็จ',
-                  message: 'บันทึกการแก้ไขเรียบร้อยแล้ว'
-              });
-
-              // Cleanup Old Preview
-              if (currentPreviewUrl && currentPreviewUrl !== publicUrl) {
-                  try {
-                      // Attempt to identify bucket from URL or default to design-previews
-                      // URL Format: .../storage/v1/object/public/BUCKET/PATH
-                      let bucket = 'design-previews';
-                      let path = '';
-
-                      if (currentPreviewUrl.includes('/design-previews/')) {
-                          bucket = 'design-previews';
-                          path = currentPreviewUrl.split('/design-previews/')[1];
-                      } else if (currentPreviewUrl.includes('/design-assets/')) {
-                          bucket = 'design-assets'; // Handle the interim ones
-                          path = currentPreviewUrl.split('/design-assets/')[1];
-                      }
-
-                      if (path) {
-                          await supabase.storage.from(bucket).remove([path]);
-                      }
-                  } catch (cleanupErr) {
-                      console.error("Failed to clean up old preview:", cleanupErr);
-                  }
-              }
-              // Update state
-              setCurrentPreviewUrl(publicUrl);
-
-          } else {
-               // CREATE (POST)
-               await api.post('/designs', {
-                  base_product_id: currentTemplate.product_id,
-                  design_name: designName, // Use Editable Name
-                  canvas_data: canvasDataFull,
-                  preview_image_url: publicUrl,
-                  available_colors: Array.from(activeColorIds),
-               });
-              setNotification({
-                  type: 'success',
-                  title: 'บันทึกสำเร็จ',
-                  message: 'บันทึกงานออกแบบเรียบร้อยแล้ว'
-              });
-              
-              // Note: We don't have the new designId here easily unless api.post returns it. 
-              // If we wanted to switch context to "Edit" mode immediately, we'd need that ID.
-              // For now, next save will still be "Create" unless we navigate or update location.
-              // But setting currentPreviewUrl helps if we stay on page and logic changes.
-              setCurrentPreviewUrl(publicUrl);
-          }
-          
-      } catch (error: any) {
-          console.error("Save failed:", error);
-          const msg = error.response?.data?.error || error.message || 'บันทึกไม่สำเร็จ';
-          setNotification({
-              type: 'error',
-              title: 'บันทึกไม่สำเร็จ',
-              message: msg
+        // 2. Generate Preview
+        const previewDataUrl = fabricRef.current.toDataURL({
+            format: 'png',
+            multiplier: 0.5,
+        });
+        
+        const res = await fetch(previewDataUrl);
+        const blob = await res.blob();
+        
+        // 3. Upload to Supabase Storage
+        const timestamp = Date.now();
+        const fileName = `uid_${user.id}/${timestamp}_${currentTemplate.side}.png`;
+        const { error } = await supabase.storage
+          .from('design-previews')
+          .upload(fileName, blob, {
+              cacheControl: '3600',
+              upsert: false
           });
-      } finally {
-          setSaving(false);
-      }
-  };
+
+      if (error) throw error;
+      
+      // Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+          .from('design-previews')
+          .getPublicUrl(fileName);
+            
+        // 4. Send to Backend API
+        // Ensure we have the full synced data
+        const canvasDataFull = savedDesigns.current;
+        
+        let targetId = designId;
+
+        if (designId) {
+            const updatePayload = {
+               base_product_id: currentTemplate.product_id,
+               design_name: designName, // Use Editable Name
+               canvas_data: canvasDataFull,
+               preview_image_url: publicUrl,
+               available_colors: Array.from(activeColorIds),
+               printing_type: printingType,
+            };
+            console.log("Saving Update Payload:", updatePayload); // DEBUG
+
+            // UPDATE (PUT)
+            await updateDesign(designId, updatePayload);
+            
+            if (!silent) {
+                setNotification({
+                    type: 'success',
+                    title: 'บันทึกสำเร็จ',
+                    message: 'บันทึกการแก้ไขเรียบร้อยแล้ว'
+                });
+            }
+
+            // Cleanup Old Preview
+            if (currentPreviewUrl && currentPreviewUrl !== publicUrl) {
+                try {
+                    // Attempt to identify bucket from URL or default to design-previews
+                    // URL Format: .../storage/v1/object/public/BUCKET/PATH
+                    let bucket = 'design-previews';
+                    let path = '';
+
+                    if (currentPreviewUrl.includes('/design-previews/')) {
+                        bucket = 'design-previews';
+                        path = currentPreviewUrl.split('/design-previews/')[1];
+                    } else if (currentPreviewUrl.includes('/design-assets/')) {
+                        bucket = 'design-assets'; // Handle the interim ones
+                        path = currentPreviewUrl.split('/design-assets/')[1];
+                    }
+
+                    if (path) {
+                        await supabase.storage.from(bucket).remove([path]);
+                    }
+                } catch (cleanupErr) {
+                    console.error("Failed to clean up old preview:", cleanupErr);
+                }
+            }
+            // Update state
+            setCurrentPreviewUrl(publicUrl);
+
+        } else {
+             // CREATE (POST)
+             const createPayload = {
+                base_product_id: currentTemplate.product_id,
+                design_name: designName,
+                canvas_data: canvasDataFull,
+                preview_image_url: publicUrl,
+                available_colors: Array.from(activeColorIds),
+                printing_type: printingType, // Save initial printing type
+             };
+             console.log("Saving Create Payload:", createPayload); // DEBUG
+
+             const response = await api.post('/designs', createPayload);
+             
+             if (response.data?.design?.id) {
+                 targetId = response.data.design.id;
+             } else if (response.data?.id) {
+                 // Fallback if structure is flat
+                 targetId = response.data.id;
+             }
+
+            if (!silent) {
+                setNotification({
+                    type: 'success',
+                    title: 'บันทึกสำเร็จ',
+                    message: 'บันทึกงานออกแบบเรียบร้อยแล้ว'
+                });
+            }
+            
+            // Note: We don't have the new designId here easily unless api.post returns it. 
+            // If we wanted to switch context to "Edit" mode immediately, we'd need that ID.
+            // For now, next save will still be "Create" unless we navigate or update location.
+            // But setting currentPreviewUrl helps if we stay on page and logic changes.
+            setCurrentPreviewUrl(publicUrl);
+        }
+        
+        return targetId || null;
+
+    } catch (error: any) {
+        console.error("Save failed:", error);
+        const msg = error.response?.data?.error || error.message || 'บันทึกไม่สำเร็จ';
+        setNotification({
+            type: 'error',
+            title: 'บันทึกไม่สำเร็จ',
+            message: msg
+        });
+        return null;
+    } finally {
+        setSaving(false);
+    }
+};
+
+const handleOrderNow = async () => {
+    const savedId = await saveDesign(true); // Silent save
+    if (savedId) {
+        navigate(`/order?initialDesignId=${savedId}`);
+    }
+};
 
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
@@ -1253,7 +1289,7 @@ export default function DesignCanvas() {
             <Button variant="outline" size="sm" onClick={() => {}} disabled={true}>
                  ตัวอย่าง
             </Button>
-            <Button size="sm" onClick={saveDesign} disabled={saving}>
+            <Button size="sm" variant="outline" onClick={() => saveDesign(false)} disabled={saving}>
                 {saving ? (
                     <>
                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1265,6 +1301,10 @@ export default function DesignCanvas() {
                        บันทึก{designId ? 'การแก้ไข' : ''}
                     </>
                 )}
+            </Button>
+            <Button size="sm" onClick={handleOrderNow} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                สั่งซื้อทันที
             </Button>
         </div>
       </div>
