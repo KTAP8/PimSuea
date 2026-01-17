@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates } from "@/services/api";
+import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ interface CartItem {
   availableColors: any[]; // { id, name, hex_code }
   sizeGuide: any;
   pricingTiers: any[];
+  print_file_url?: string; // Add high-res URL
 }
 
 interface ShippingInfo {
@@ -81,6 +83,7 @@ export default function Order() {
   }, [isAddOpen]);
 
   // Data State
+  const { cartItems: contextCartItems, clearCart } = useCart();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     fullName: '', phone: '', addressLine1: '', addressLine2: '', province: '', district: '', postalCode: ''
@@ -179,6 +182,90 @@ export default function Order() {
     
     initCart();
   }, [initialDesignId]);
+
+  // Phase 1.5: Hydrate from Context if NOT "Buy Now" flow
+  useEffect(() => {
+     const hydrateCart = async () => {
+         // Only hydrate if NOT buying single design directly AND we have context items but no local items yet
+         if (!initialDesignId && contextCartItems.length > 0 && cartItems.length === 0) {
+             console.log("Hydrating Cart from Context:", contextCartItems);
+             setLoading(true);
+             try {
+                 const richItems = await Promise.all(contextCartItems.map(async (cItem) => {
+                     // Fetch Product Logic (Duplicate of above but for each item)
+                     const product = await getProductById(cItem.product_id as string);
+                     const templates = await getProductTemplates(cItem.product_id as string).catch(() => []);
+                     
+                     // Size Guide
+                     let sizeGuide = {};
+                     if (typeof product.size_guide === 'string') {
+                          try { sizeGuide = JSON.parse(product.size_guide) } catch(e) {}
+                     } else {
+                          sizeGuide = product.size_guide || {};
+                     }
+                     
+                     // Available Sizes & Colors
+                     const availableSizes = Object.keys(sizeGuide).length > 0 ? Object.keys(sizeGuide) : ['S', 'M', 'L', 'XL'];
+                     
+                     let allProductColors = Array.from(new Map(
+                         templates.map((t: any) => [t.color?.id, t.color])
+                     ).values()).filter(Boolean);
+                     
+                     // Check if cItem has color constraint? 
+                     // The CartItem in Context has 'color_id'.
+                     // For Order UI, we want to show available colors. 
+                     // Assuming all colors are available unless restricted by design (which we don't strictly have here unless we fetch the original design too).
+                     // But wait, cItem.design_json is generic.
+                     // The Design object might not be readily available if it's a "New" composition?
+                     // Actually, cItem is created from a Template.
+                     // Let's assume all product colors are available.
+                     
+                     const availableColors = allProductColors;
+
+                     // Pricing
+                     // We don't know the printing type from Context Item directly unless we save it.
+                     // We should probably save 'printing_type' in CartContext Item.
+                     // For now, assume default method or first method.
+                     const printMethod = product.print_methods?.[0]; // Fallback
+                     const pricingTiers = printMethod?.tiers || [];
+                     
+                     let price = cItem.price || product.starting_price || 500;
+                     if (pricingTiers.length > 0) {
+                         const tier = pricingTiers
+                            .filter((t: any) => cItem.quantity >= t.min_quantity)
+                            .sort((a: any, b: any) => b.min_quantity - a.min_quantity)[0];
+                         if (tier) price = tier.unit_price;
+                     }
+
+                     return {
+                         id: cItem.id,
+                         designId: "custom", // Placeholder or from context
+                         designName: cItem.design_name || "Custom Design",
+                         designImage: cItem.preview_url || "https://via.placeholder.com/150", 
+                         productId: String(product.id),
+                         productName: product.name,
+                         size: cItem.size,
+                         color: availableColors.find((c: any) => c.id === cItem.color_id)?.name || cItem.color_id,
+                         quantity: cItem.quantity,
+                         price: price,
+                         availableSizes,
+                         availableColors,
+                         sizeGuide,
+                         pricingTiers,
+                         print_file_url: cItem.print_file_url
+                     };
+                 }));
+                 
+                 setCartItems(richItems);
+             } catch (e) {
+                 console.error("Failed to hydrate cart:", e);
+             } finally {
+                 setLoading(false);
+             }
+         }
+     };
+     hydrateCart();
+  }, [contextCartItems, initialDesignId]); // Run when context changes or id changes
 
 
   const addToCart = async (design: any) => {
@@ -310,6 +397,8 @@ export default function Order() {
              title: 'สั่งซื้อสำเร็จ',
              message: 'ระบบบันทึกคำสั่งซื้อเรียบร้อยแล้ว'
         });
+        
+        clearCart();
         
         // Navigation handled in useEffect
       } catch (error) {

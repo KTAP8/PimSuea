@@ -125,11 +125,14 @@ exports.createOrder = async (req, res) => {
     // 2. Create Order Items
     const orderItems = items.map(item => ({
       order_id: order.id,
-      user_design_id: item.designId, // Ensure this matches frontend
+      // Map 'custom' or missing IDs to null to avoid UUID syntax errors
+      user_design_id: (item.designId && item.designId !== 'custom') ? item.designId : null,
       size: item.size,
       color: item.color,
       quantity: item.quantity,
-      unit_price: item.price
+      quantity: item.quantity,
+      unit_price: item.price,
+      print_file_url: item.print_file_url // Map from frontend payload
     }));
 
     const { error: itemsError } = await client

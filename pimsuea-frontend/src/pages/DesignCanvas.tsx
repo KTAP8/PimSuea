@@ -16,6 +16,8 @@ import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MouseP
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/services/api";
+import { exportDesignForProduction } from "@/utils/canvasExporter";
+import { useCart } from "@/contexts/CartContext";
 
 import { getDesignById, updateDesign } from "@/services/api";
 import {
@@ -132,6 +134,7 @@ export default function DesignCanvas() {
 
   
   const { user } = useAuth();
+  const { addToCart } = useCart();
   
   // Tools State
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
@@ -141,6 +144,11 @@ export default function DesignCanvas() {
   const [isPanning, setIsPanning] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Cart State (Defaults for now)
+  const [selectedSize, setSelectedSize] = useState('M');
+  const [quantity, setQuantity] = useState(1);
   
   // Image Library State
   const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -174,7 +182,8 @@ export default function DesignCanvas() {
   const lastPosY = useRef(0);
   
   // State Persistence
-  const savedDesigns = useRef<Record<string, object>>({});
+  // Stores { json: ..., bounds: ... } keyed by templateId
+  const savedDesigns = useRef<Record<string, any>>({});
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set(['sans-serif']));
   const [, forceUpdate] = useState({}); // Function to trigger re-render
   
@@ -243,7 +252,11 @@ export default function DesignCanvas() {
           if (json.objects) {
               json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
           }
-          savedDesigns.current[currentTemplate.id] = json;
+          // Store JSON AND Bounds for export later
+          savedDesigns.current[currentTemplate.id] = { 
+              json, 
+              bounds: printZoneBoundsRef.current 
+          };
       }
   };
 
@@ -415,7 +428,9 @@ export default function DesignCanvas() {
       } 
       // Fallback to Saved Design
       else if (savedDesigns.current[currentTemplate.id]) {
-           sourceFields = savedDesigns.current[currentTemplate.id];
+           // Handle legacy (just json) vs new (object with json)
+           const saved = savedDesigns.current[currentTemplate.id];
+           sourceFields = saved.json || saved; 
       }
 
       if (sourceFields) {
@@ -1241,6 +1256,143 @@ const saveDesign = async (silent = false): Promise<string | null> => {
     }
 };
 
+const handleAddToCart = async () => {
+    if (!fabricRef.current || !currentTemplate || !user) {
+         if (!user) {
+             setNotification({
+                 type: 'error',
+                 title: 'กรุณาเข้าสู่ระบบ',
+                 message: 'ต้องเข้าสู่ระบบก่อนเพิ่มสินค้าลงตระกร้า'
+             });
+         }
+         return;
+    }
+
+    setIsGenerating(true);
+    try {
+        const printFiles: Record<string, string> = {};
+
+        // 1. Export Current Side (Online)
+        // Ensure we preserve the current state in savedDesigns for consistency (optional but good)
+        // saveCurrentCanvas(); // Avoid, allows "cancel" logic to work if we don't save
+        
+        const currentUrl = await exportDesignForProduction(
+            fabricRef.current, 
+            user.id, 
+            { crop: printZoneBoundsRef.current || undefined }
+        );
+        if (currentUrl) {
+            printFiles[currentTemplate.side.toLowerCase()] = currentUrl;
+        }
+
+        // 2. Export Other Sides (Offline)
+        // Find other templates for this color
+        const otherTemplates = templates.filter(t => 
+            t.color?.id === selectedColorId && t.id !== currentTemplate.id
+        );
+
+        for (const tmpl of otherTemplates) {
+            const saved = savedDesigns.current[tmpl.id];
+            // Support both new { json, bounds } and legacy json structure
+            const json = saved?.json || saved; 
+            
+            if (json) {
+                // Create Offline Canvas
+                // Use same dimensions as current canvas
+                const width = fabricRef.current.getWidth();
+                const height = fabricRef.current.getHeight();
+                const staticCanvas = new fabric.StaticCanvas(null, { width, height });
+                
+                await new Promise<void>(resolve => staticCanvas.loadFromJSON(json, () => resolve()));
+                
+                // Determine Bounds
+                let bounds = saved?.bounds;
+                
+                // If bounds missing (e.g. loaded from DB), calculate them
+                if (!bounds && tmpl.print_area_config) {
+                     // We need to load image to get dimensions for scale factor
+                     // This mimics the useEffect logic
+                     try {
+                         const img = await new Promise<any>((resolve, reject) => {
+                             fabric.Image.fromURL(tmpl.image_url, (img) => {
+                                 if (!img) reject("Failed to load image");
+                                 else resolve(img);
+                             }, { crossOrigin: 'anonymous' });
+                         });
+
+                         if (img.width && img.height) {
+                             const containerWidth = containerRef.current?.clientWidth || 800;
+                             const containerHeight = containerRef.current?.clientHeight || 800;
+                             const TARGET_WIDTH = containerWidth - 60; 
+                             const TARGET_HEIGHT = containerHeight - 60;
+                             
+                             const scaleX = TARGET_WIDTH / img.width;
+                             const scaleY = TARGET_HEIGHT / img.height;
+                             const scaleFactor = Math.min(scaleX, scaleY, 1) * 0.95;
+                             
+                             const { x, y, width: w, height: h } = tmpl.print_area_config;
+                             bounds = {
+                                 left: x * scaleFactor,
+                                 top: y * scaleFactor,
+                                 width: w * scaleFactor,
+                                 height: h * scaleFactor
+                             };
+                         }
+                     } catch (e) {
+                         console.warn(`Could not calculate bounds for ${tmpl.side}`, e);
+                     }
+                }
+
+                // Export
+                const url = await exportDesignForProduction(staticCanvas, user.id, { crop: bounds });
+                if (url) {
+                    printFiles[tmpl.side.toLowerCase()] = url;
+                }
+                
+                // Cleanup
+                staticCanvas.dispose();
+            }
+        }
+
+        if (Object.keys(printFiles).length === 0) {
+            throw new Error("No print files generated");
+        }
+
+        // 3. Construct Cart Item
+        const designJson = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
+        
+        // Use JSON.stringify for print_file_url column to store multiple files
+        // Backend text column can hold JSON string
+        const printFilePayload = JSON.stringify(printFiles);
+
+        const cartItem = {
+           product_id: currentTemplate.product_id,
+           color_id: selectedColorId || '',
+           size: selectedSize,
+           quantity: quantity,
+           print_file_url: printFilePayload,
+           design_json: designJson,
+           preview_url: currentPreviewUrl || Object.values(printFiles)[0]
+        };
+
+        // 4. Save to Cart Context
+        addToCart(cartItem);
+
+        // 5. Redirect to Order Wizard
+        navigate('/order');
+
+    } catch (error) {
+        console.error("Add to cart error:", error);
+        setNotification({
+            type: 'error',
+            title: 'เกิดข้อผิดพลาด',
+            message: 'ไม่สามารถเพิ่มลงตระกร้าได้ กรุณาลองใหม่อีกครั้ง'
+        });
+    } finally {
+        setIsGenerating(false);
+    }
+};
+
 const handleOrderNow = async () => {
     const savedId = await saveDesign(true); // Silent save
     if (savedId) {
@@ -1302,10 +1454,31 @@ const handleOrderNow = async () => {
                     </>
                 )}
             </Button>
+            <Button 
+                size="sm" 
+                variant="secondary"
+                onClick={handleAddToCart} 
+                disabled={saving || isGenerating}
+                className="min-w-[140px]"
+            >
+                {isGenerating ? (
+                    <>
+                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                       Preparing...
+                    </>
+                ) : (
+                    <>
+                       <ShoppingCart className="w-4 h-4 mr-2" />
+                       เพิ่มลงตระกร้า
+                    </>
+                )}
+            </Button>
+            {/* 
             <Button size="sm" onClick={handleOrderNow} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 สั่งซื้อทันที
             </Button>
+            */}
         </div>
       </div>
 
