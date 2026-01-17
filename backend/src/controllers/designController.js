@@ -123,62 +123,8 @@ exports.updateDesign = async (req, res) => {
     }
 
     // 2. Cleanup old print files if a new one is provided
-    if (print_file_url && oldDesign.print_file_url && print_file_url !== oldDesign.print_file_url) {
-        try {
-            // Parse OLD URLs
-            let oldUrls = [];
-            try {
-                const parsed = JSON.parse(oldDesign.print_file_url);
-                if (typeof parsed === 'object' && parsed !== null) {
-                    oldUrls = Object.values(parsed);
-                } else {
-                    oldUrls = [oldDesign.print_file_url];
-                }
-            } catch (e) {
-                oldUrls = [oldDesign.print_file_url];
-            }
-
-            // Parse NEW URLs to avoid deleting reused files
-            let newUrls = [];
-            try {
-                const parsedNew = JSON.parse(print_file_url);
-                if (typeof parsedNew === 'object' && parsedNew !== null) {
-                    newUrls = Object.values(parsedNew);
-                } else {
-                    newUrls = [print_file_url];
-                }
-            } catch (e) {
-                newUrls = [print_file_url];
-            }
-
-            // Find URLs that are in Old but NOT in New
-            const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
-
-            if (urlsToDelete.length > 0) {
-                // Extract paths from URLs
-                const paths = urlsToDelete.map(url => {
-                    const parts = url.split('/print-files/');
-                    return parts.length > 1 ? parts[1] : null;
-                }).filter(Boolean);
-
-                if (paths.length > 0) {
-                     console.log("Deleting old print files:", paths);
-                     // Use admin client if available for reliable deletion, fallback to standard client
-                     const storageClient = supabaseAdmin || supabase;
-                     
-                     const { error: deleteError } = await storageClient.storage
-                        .from('print-files')
-                        .remove(paths);
-                        
-                     if (deleteError) console.error("Storage delete error:", deleteError);
-                }
-            }
-
-        } catch (cleanupErr) {
-            console.error("Failed to cleanup old print files:", cleanupErr);
-            // Non-blocking error
-        }
-    }
+    // 2. Cleanup old print files: DISABLED by user request.
+    // Old files will remain in storage indefinitely.
     
     // 3. Update Record
     const { data, error } = await db
