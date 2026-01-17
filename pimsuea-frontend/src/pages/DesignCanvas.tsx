@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { MD5 } from 'crypto-js';
 import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
 import type { ProductTemplate, Color } from "@/types/api";
@@ -1155,77 +1156,108 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
       let targetId = designId;
 
         // -------------------------------------------------------------------
-        // 2. Generate Print Files (High Res, Multi-side, Cropped)
+        // 2. Generate Print Files (Optimized with Hashing)
         // -------------------------------------------------------------------
-        const printFiles: Record<string, string> = {};
-
-        // A. Export Current Side (Online)
-        const currentPrintUrl = await exportDesignForProduction(
-            fabricRef.current, 
-            user.id,
-            { crop: printZoneBoundsRef.current || undefined }
-        );
-        if (currentPrintUrl) {
-            printFiles[currentTemplate.side.toLowerCase()] = currentPrintUrl;
-        }
-
-        // B. Export Other Sides (Offline)
-        const otherTemplates = templates.filter(t => 
-            t.color?.id === selectedColorId && t.id !== currentTemplate.id
-        );
-
-        for (const tmpl of otherTemplates) {
-            const saved = savedDesigns.current[tmpl.id];
-            // Support both new { json, bounds } and legacy json structure
-            const json = saved?.json || saved; 
-            
-            if (json) {
-                const width = fabricRef.current.getWidth();
-                const height = fabricRef.current.getHeight();
-                const staticCanvas = new fabric.StaticCanvas(null, { width, height });
-                
-                await new Promise<void>(resolve => staticCanvas.loadFromJSON(json, () => resolve()));
-                
-                // Determine Bounds
-                let bounds = saved?.bounds;
-                if (!bounds && tmpl.print_area_config) {
-                     // Recalculate if missing (same logic as before)
-                     try {
-                         const img = await new Promise<any>((resolve, reject) => {
-                             fabric.Image.fromURL(tmpl.image_url, (img) => {
-                                 if (!img) reject("Failed to load image");
-                                 else resolve(img);
-                             }, { crossOrigin: 'anonymous' });
-                         });
-
-                         if (img.width && img.height) {
-                             const containerWidth = containerRef.current?.clientWidth || 800;
-                             const containerHeight = containerRef.current?.clientHeight || 800;
-                             const TARGET_WIDTH = containerWidth - 60; 
-                             const TARGET_HEIGHT = containerHeight - 60;
-                             const scaleX = TARGET_WIDTH / img.width;
-                             const scaleY = TARGET_HEIGHT / img.height;
-                             const scaleFactor = Math.min(scaleX, scaleY, 1) * 0.95;
-                             const { x, y, width: w, height: h } = tmpl.print_area_config;
-                             bounds = {
-                                 left: x * scaleFactor,
-                                 top: y * scaleFactor,
-                                 width: w * scaleFactor,
-                                 height: h * scaleFactor
-                             };
-                         }
-                     } catch (e) { console.warn("Bounds calc fail", e); }
-                }
-
-                const url = await exportDesignForProduction(staticCanvas, user.id, { crop: bounds });
-                if (url) {
-                    printFiles[tmpl.side.toLowerCase()] = url;
-                }
-                staticCanvas.dispose();
-            }
-        }
         
-        const printFilePayload = JSON.stringify(printFiles);
+        // Ensure state is up to date
+        saveCurrentCanvas();
+        const fullCanvasData = JSON.stringify(savedDesigns.current);
+        const currentHash = MD5(fullCanvasData).toString();
+        let printFilePayload = "";
+        let shouldGenerate = true;
+        let printFiles: Record<string, string> = {};
+
+        if (targetId) {
+             console.log("Checking hash for optimization...");
+             try {
+                const { data: dbDesign } = await supabase
+                    .from('user_designs')
+                    .select('design_hash, print_file_url')
+                    .eq('id', targetId)
+                    .single();
+                    
+                // Use strict check: Hash match AND existing file
+                if (dbDesign && dbDesign.design_hash === currentHash && dbDesign.print_file_url) {
+                    console.log("Optimization: Hash matches, skipping generation.");
+                    printFilePayload = dbDesign.print_file_url;
+                    shouldGenerate = false;
+                }
+             } catch(e) {
+                 console.warn("Failed to check hash optimization", e);
+             }
+        }
+
+        if (shouldGenerate) {
+            console.log("Generating new print files...");
+            
+            // A. Export Current Side (Online)
+            const currentPrintUrl = await exportDesignForProduction(
+                fabricRef.current, 
+                user.id,
+                { crop: printZoneBoundsRef.current || undefined }
+            );
+            if (currentPrintUrl) {
+                printFiles[currentTemplate.side.toLowerCase()] = currentPrintUrl;
+            }
+
+            // B. Export Other Sides (Offline)
+            const otherTemplates = templates.filter(t => 
+                t.color?.id === selectedColorId && t.id !== currentTemplate.id
+            );
+
+            for (const tmpl of otherTemplates) {
+                const saved = savedDesigns.current[tmpl.id];
+                // Support both new { json, bounds } and legacy json structure
+                const json = saved?.json || saved; 
+                
+                if (json) {
+                    const width = fabricRef.current.getWidth();
+                    const height = fabricRef.current.getHeight();
+                    const staticCanvas = new fabric.StaticCanvas(null, { width, height });
+                    
+                    await new Promise<void>(resolve => staticCanvas.loadFromJSON(json, () => resolve()));
+                    
+                    // Determine Bounds
+                    let bounds = saved?.bounds;
+                    if (!bounds && tmpl.print_area_config) {
+                         // Recalculate if missing (same logic as before)
+                         try {
+                             const img = await new Promise<any>((resolve, reject) => {
+                                 fabric.Image.fromURL(tmpl.image_url, (img) => {
+                                     if (!img) reject("Failed to load image");
+                                     else resolve(img);
+                                 }, { crossOrigin: 'anonymous' });
+                             });
+
+                             if (img.width && img.height) {
+                                 const containerWidth = containerRef.current?.clientWidth || 800;
+                                 const containerHeight = containerRef.current?.clientHeight || 800;
+                                 const TARGET_WIDTH = containerWidth - 60; 
+                                 const TARGET_HEIGHT = containerHeight - 60;
+                                 const scaleX = TARGET_WIDTH / img.width;
+                                 const scaleY = TARGET_HEIGHT / img.height;
+                                 const scaleFactor = Math.min(scaleX, scaleY, 1) * 0.95;
+                                 const { x, y, width: w, height: h } = tmpl.print_area_config;
+                                 bounds = {
+                                     left: x * scaleFactor,
+                                     top: y * scaleFactor,
+                                     width: w * scaleFactor,
+                                     height: h * scaleFactor
+                                 };
+                             }
+                         } catch (e) { console.warn("Bounds calc fail", e); }
+                    }
+
+                    const url = await exportDesignForProduction(staticCanvas, user.id, { crop: bounds });
+                    if (url) {
+                        printFiles[tmpl.side.toLowerCase()] = url;
+                    }
+                    staticCanvas.dispose();
+                }
+            }
+            
+            printFilePayload = JSON.stringify(printFiles);
+        }
 
         // -------------------------------------------------------------------
         // 3. Save to Backend
@@ -1242,7 +1274,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 preview_image_url: previewUrl,
                 available_colors: Array.from(activeColorIds),
                 printing_type: printingType,
-                print_file_url: printFilePayload // Pass the high-res URLs
+                print_file_url: printFilePayload, // Pass the high-res URLs
+                design_hash: currentHash
             });
             // Cleanup old preview if URL changed (optional optimization)
         } else {
@@ -1254,7 +1287,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 preview_image_url: previewUrl,
                 available_colors: Array.from(activeColorIds),
                 printing_type: printingType, 
-                print_file_url: printFilePayload // Pass the high-res URLs
+                print_file_url: printFilePayload, // Pass the high-res URLs
+                design_hash: currentHash
              };
 
              const response = await api.post('/designs', createPayload);

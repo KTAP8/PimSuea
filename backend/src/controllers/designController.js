@@ -80,6 +80,7 @@ exports.saveDesign = async (req, res) => {
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
           print_file_url: print_file_url || null, // Save print file URL(s)
+          design_hash: req.body.design_hash || null, // SAVE HASH
           is_ordered: false,
           available_colors: req.body.available_colors || [],
           printing_type: printingType
@@ -113,7 +114,7 @@ exports.updateDesign = async (req, res) => {
     // 1. Fetch current design to handle file cleanup
     const { data: oldDesign, error: fetchError } = await db
         .from('user_designs')
-        .select('print_file_url')
+        .select('print_file_url, design_hash')
         .eq('id', id)
         .eq('user_id', userId)
         .single();
@@ -134,6 +135,7 @@ exports.updateDesign = async (req, res) => {
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
           print_file_url: print_file_url || oldDesign.print_file_url, // Update if new provided
+          design_hash: req.body.design_hash || oldDesign.design_hash, // UPDATE HASH
           available_colors: req.body.available_colors || [],
           printing_type: req.body.printing_type || undefined,
           updated_at: new Date()
