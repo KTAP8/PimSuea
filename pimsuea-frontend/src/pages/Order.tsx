@@ -167,7 +167,8 @@ export default function Order() {
                 availableSizes,
                 availableColors,
                 sizeGuide,
-                pricingTiers
+                pricingTiers,
+                print_file_url: design.print_file_url
             };
 
             setCartItems([newItem]);
@@ -239,7 +240,7 @@ export default function Order() {
 
                      return {
                          id: cItem.id,
-                         designId: "custom", // Placeholder or from context
+                         designId: cItem.design_id || "custom", 
                          designName: cItem.design_name || "Custom Design",
                          designImage: cItem.preview_url || "https://via.placeholder.com/150", 
                          productId: String(product.id),
@@ -331,7 +332,8 @@ export default function Order() {
                 availableSizes,
                 availableColors,
                 sizeGuide,
-                pricingTiers
+                pricingTiers,
+                print_file_url: design.print_file_url
             };
 
             setCartItems(prev => [...prev, newItem]);

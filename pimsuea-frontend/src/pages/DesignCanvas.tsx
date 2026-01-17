@@ -1308,7 +1308,7 @@ const handleAddToCart = async () => {
            color_id: selectedColorId || '',
            size: selectedSize,
            quantity: quantity,
-           design_id: targetId, // Link to the saved design!
+           design_id: targetId || undefined, // Link to the saved design!
            print_file_url: printFilePayload, // Use the one we just generated/saved
            design_json: designJson,
            preview_url: currentPreviewUrl || ''

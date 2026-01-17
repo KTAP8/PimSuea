@@ -7,6 +7,7 @@ export interface CartItem {
     color_id: string;
     size: string;
     quantity: number;
+    design_id?: string; // Link to saved design
     print_file_url: string; // High-Res URL
     design_json: object; // Editable design
     preview_url?: string; // For UI display
