@@ -1375,6 +1375,15 @@ const handleOrderNow = async () => {
     }
 };
 
+const handleManualSave = async () => {
+    const result = await saveDesign(false);
+    if (result?.targetId && result.targetId !== designId) {
+        // We just created a new design, navigate to its edit page
+        // Format: /design/:productId?designId=:newDesignId
+        navigate(`/design/${id}?designId=${result.targetId}`, { replace: true });
+    }
+};
+
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
@@ -1416,7 +1425,7 @@ const handleOrderNow = async () => {
             <Button variant="outline" size="sm" onClick={() => {}} disabled={true}>
                  ตัวอย่าง
             </Button>
-            <Button size="sm" variant="outline" onClick={() => saveDesign(false)} disabled={saving}>
+            <Button size="sm" variant="outline" onClick={handleManualSave} disabled={saving}>
                 {saving ? (
                     <>
                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
