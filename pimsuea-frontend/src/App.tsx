@@ -12,6 +12,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import NewsDetails from './pages/NewsDetails';
 import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
@@ -52,9 +53,11 @@ function Layout() {
 function App() {
   return (
     <AuthProvider>
+      <CartProvider>
        <Router>
          <Layout />
        </Router>
+      </CartProvider>
     </AuthProvider>
   );
 }

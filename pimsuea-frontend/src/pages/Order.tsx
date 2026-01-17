@@ -83,7 +83,7 @@ export default function Order() {
   }, [isAddOpen]);
 
   // Data State
-  const { cartItems: contextCartItems, clearCart } = useCart();
+  const { cartItems: contextCartItems, clearCart, removeFromCart, updateCartItem } = useCart();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     fullName: '', phone: '', addressLine1: '', addressLine2: '', province: '', district: '', postalCode: ''
@@ -354,7 +354,41 @@ export default function Order() {
   };
 
   const updateItem = (id: string, field: keyof CartItem, value: any) => {
-      // ... same ...
+      // Update Context
+      if (contextCartItems.some(i => i.id === id)) {
+           // We only update specific fields in context that match (size, color, qty)
+           // Context Item is simpler, but let's try to update relevant keys.
+           if (field === 'quantity' || field === 'size' || field === 'color') {
+               // Map 'color' name back to ID? 
+               // Wait, context stores 'color_id'. 'value' here is likely name?
+               // Line 489: `e.target.value` (name).
+               
+               // This is tricky. CartContext expects IDs?
+               // CartItem interface in Context has `color_id`.
+               // CartItem in Order has `color` (name).
+               
+               // If we change color, we need the ID.
+               // We need to find the ID from `availableColors`.
+               // Let's implement that lookup.
+               
+               let updates: any = {};
+               if (field === 'quantity') updates.quantity = value;
+               if (field === 'size') updates.size = value;
+               if (field === 'color') {
+                   // Find ID
+                   const currentItem = cartItems.find(i => i.id === id);
+                   if (currentItem) {
+                       const colorObj = currentItem.availableColors.find((c: any) => c.name === value);
+                       if (colorObj) updates.color_id = colorObj.id;
+                   }
+               }
+               
+               if (Object.keys(updates).length > 0) {
+                   updateCartItem(id, updates);
+               }
+           }
+      }
+
       setCartItems(prev => prev.map(item => {
           if (item.id === id) {
               const updatedItem = { ...item, [field]: value };
@@ -379,6 +413,7 @@ export default function Order() {
 
   const removeItem = (id: string) => {
       setCartItems(prev => prev.filter(i => i.id !== id));
+      removeFromCart(id); // Sync context
   };
 
   const handleSubmit = async () => {
