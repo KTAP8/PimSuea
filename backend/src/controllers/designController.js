@@ -1,5 +1,5 @@
 
-const { supabase, getAuthenticatedSupabase } = require('../config/supabaseClient');
+const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 
 exports.getUserDesigns = async (req, res) => {
   const userId = req.user.id; // From requireAuth
@@ -26,11 +26,38 @@ exports.getUserDesigns = async (req, res) => {
   }
 };
 
+
+exports.getDesignById = async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  try {
+    const db = getAuthenticatedSupabase(req.headers.authorization);
+    
+    const { data, error } = await db
+      .from('user_designs')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+        if (error.code === 'PGRST116') {
+             return res.status(404).json({ error: 'Design not found' });
+        }
+        throw error;
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching design:', error);
+    res.status(500).json({ error: 'Failed to fetch design' });
+  }
+};
+
 exports.saveDesign = async (req, res) => {
   const userId = req.user.id;
-  // Note: 'canvas_json' coming from frontend might be named 'canvas_data' in request body
-  // based on our frontend change: { canvas_data, preview_image_url, base_product_id, design_name }
-  const { canvas_data, preview_image_url, design_name, base_product_id } = req.body;
+  const { canvas_data, preview_image_url, design_name, base_product_id, print_file_url } = req.body;
 
   if (!canvas_data || !preview_image_url || !base_product_id) {
        return res.status(400).json({ error: 'Missing required fields' });
@@ -39,9 +66,11 @@ exports.saveDesign = async (req, res) => {
   try {
     console.log(`Saving design for user ${userId}: ${design_name}`);
     
-    // Insert into user_designs using Authenticated client to respect RLS
     const db = getAuthenticatedSupabase(req.headers.authorization);
     
+    // Check if printing_type is provided
+    const printingType = req.body.printing_type || null;
+
     const { data, error } = await db
       .from('user_designs')
       .insert([{ 
@@ -50,10 +79,10 @@ exports.saveDesign = async (req, res) => {
           design_name: design_name || 'Untitled Design',
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
-          is_ordered: false,
+          print_file_url: print_file_url || null, // Save print file URL(s)
           is_ordered: false,
           available_colors: req.body.available_colors || [],
-          printing_type: req.body.printing_type || null
+          printing_type: printingType
       }])
       .select()
       .single();
@@ -67,66 +96,108 @@ exports.saveDesign = async (req, res) => {
   }
 };
 
-exports.getDesignById = async (req, res) => {
-  const userId = req.user.id;
-  const { id } = req.params;
-
-  try {
-    const db = getAuthenticatedSupabase(req.headers.authorization);
-    
-    // Check if ID is a valid UUID to avoid syntax errors if frontend passes non-UUID
-    // Actually, RLS/DB will throw if invalid UUID, but let's just let DB handle it.
-    
-    const { data, error } = await db
-      .from('user_designs')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId) 
-      .single();
-
-    if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Design not found' });
-
-    res.json(data);
-  } catch (error) {
-    console.error('Error fetching design:', error);
-    res.status(500).json({ error: 'Failed to fetch design' });
-  }
-};
-
 exports.updateDesign = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
-  const { canvas_data, preview_image_url, design_name } = req.body;
+  const { canvas_data, preview_image_url, design_name, print_file_url } = req.body;
 
   if (!canvas_data || !preview_image_url) {
        return res.status(400).json({ error: 'Missing required fields' });
   }
 
   try {
-    console.log("Updating design " + id + " for user " + userId + ": " + design_name);
+    console.log("Updating design " + id + " for user " + userId);
     
-    // Use Authenticated client
     const db = getAuthenticatedSupabase(req.headers.authorization);
     
-    // Update - RLS ensures user can only update their own
+    // 1. Fetch current design to handle file cleanup
+    const { data: oldDesign, error: fetchError } = await db
+        .from('user_designs')
+        .select('print_file_url')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+        
+    if (fetchError || !oldDesign) {
+        return res.status(404).json({ error: 'Design not found' });
+    }
+
+    // 2. Cleanup old print files if a new one is provided
+    if (print_file_url && oldDesign.print_file_url && print_file_url !== oldDesign.print_file_url) {
+        try {
+            // Parse OLD URLs
+            let oldUrls = [];
+            try {
+                const parsed = JSON.parse(oldDesign.print_file_url);
+                if (typeof parsed === 'object' && parsed !== null) {
+                    oldUrls = Object.values(parsed);
+                } else {
+                    oldUrls = [oldDesign.print_file_url];
+                }
+            } catch (e) {
+                oldUrls = [oldDesign.print_file_url];
+            }
+
+            // Parse NEW URLs to avoid deleting reused files
+            let newUrls = [];
+            try {
+                const parsedNew = JSON.parse(print_file_url);
+                if (typeof parsedNew === 'object' && parsedNew !== null) {
+                    newUrls = Object.values(parsedNew);
+                } else {
+                    newUrls = [print_file_url];
+                }
+            } catch (e) {
+                newUrls = [print_file_url];
+            }
+
+            // Find URLs that are in Old but NOT in New
+            const urlsToDelete = oldUrls.filter(url => !newUrls.includes(url));
+
+            if (urlsToDelete.length > 0) {
+                // Extract paths from URLs
+                const paths = urlsToDelete.map(url => {
+                    const parts = url.split('/print-files/');
+                    return parts.length > 1 ? parts[1] : null;
+                }).filter(Boolean);
+
+                if (paths.length > 0) {
+                     console.log("Deleting old print files:", paths);
+                     // Use admin client if available for reliable deletion, fallback to standard client
+                     const storageClient = supabaseAdmin || supabase;
+                     
+                     const { error: deleteError } = await storageClient.storage
+                        .from('print-files')
+                        .remove(paths);
+                        
+                     if (deleteError) console.error("Storage delete error:", deleteError);
+                }
+            }
+
+        } catch (cleanupErr) {
+            console.error("Failed to cleanup old print files:", cleanupErr);
+            // Non-blocking error
+        }
+    }
+    
+    // 3. Update Record
     const { data, error } = await db
       .from('user_designs')
       .update({ 
           design_name: design_name || 'Untitled Design',
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
+          print_file_url: print_file_url || oldDesign.print_file_url, // Update if new provided
           available_colors: req.body.available_colors || [],
           printing_type: req.body.printing_type || undefined,
-          updated_at: new Date() // Ensure your DB has this column or trigger? Usually Supabase handles it or we pass it
+          updated_at: new Date()
       })
       .eq('id', id)
-      .eq('user_id', userId) // Extra safety
+      .eq('user_id', userId)
       .select()
       .single();
 
     if (error) throw error;
-    if (!data) return res.status(404).json({ error: 'Design not found or update failed' });
 
     res.json({ message: 'Design updated successfully', design: data });
   } catch (error) {

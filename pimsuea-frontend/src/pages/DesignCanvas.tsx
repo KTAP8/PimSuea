@@ -66,6 +66,7 @@ export default function DesignCanvas() {
   // State for current color
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [activeColorIds, setActiveColorIds] = useState<Set<string>>(new Set()); // User selected colors
+  const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
 
   // Initialize Color on Template Load
   useEffect(() => {
@@ -137,13 +138,12 @@ export default function DesignCanvas() {
   const { addToCart } = useCart();
   
   // Tools State
-  const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
-  
   // Ref to track if we are switching colors to persist design
   const pendingDesignRef = useRef<{ json: any, side: string } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [saving, setSaving] = useState(false);
+  // isGenerating no longer needed for Add to Cart, but we use 'saving' for both now
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Cart State (Defaults for now)
@@ -1112,7 +1112,7 @@ export default function DesignCanvas() {
      fabricRef.current.renderAll();
   };
 
-const saveDesign = async (silent = false): Promise<string | null> => {
+const saveDesign = async (silent = false): Promise<{ targetId: string | null, printFilePayload: string } | null> => {
     if (!currentTemplate || !fabricRef.current) return null;
     if (!user) {
         alert('กรุณาเข้าสู่ระบบเพื่อบันทึกงานออกแบบ');
@@ -1147,146 +1147,29 @@ const saveDesign = async (silent = false): Promise<string | null> => {
       
       // Get Public URL
       const { data: { publicUrl } } = supabase.storage
-          .from('design-previews')
-          .getPublicUrl(fileName);
-            
-        // 4. Send to Backend API
-        // Ensure we have the full synced data
-        const canvasDataFull = savedDesigns.current;
+        .from('design-previews')
+        .getPublicUrl(fileName);
         
-        let targetId = designId;
+      const previewUrl = publicUrl;
+      
+      let targetId = designId;
 
-        if (designId) {
-            const updatePayload = {
-               base_product_id: currentTemplate.product_id,
-               design_name: designName, // Use Editable Name
-               canvas_data: canvasDataFull,
-               preview_image_url: publicUrl,
-               available_colors: Array.from(activeColorIds),
-               printing_type: printingType,
-            };
-            console.log("Saving Update Payload:", updatePayload); // DEBUG
-
-            // UPDATE (PUT)
-            await updateDesign(designId, updatePayload);
-            
-            if (!silent) {
-                setNotification({
-                    type: 'success',
-                    title: 'บันทึกสำเร็จ',
-                    message: 'บันทึกการแก้ไขเรียบร้อยแล้ว'
-                });
-            }
-
-            // Cleanup Old Preview
-            if (currentPreviewUrl && currentPreviewUrl !== publicUrl) {
-                try {
-                    // Attempt to identify bucket from URL or default to design-previews
-                    // URL Format: .../storage/v1/object/public/BUCKET/PATH
-                    let bucket = 'design-previews';
-                    let path = '';
-
-                    if (currentPreviewUrl.includes('/design-previews/')) {
-                        bucket = 'design-previews';
-                        path = currentPreviewUrl.split('/design-previews/')[1];
-                    } else if (currentPreviewUrl.includes('/design-assets/')) {
-                        bucket = 'design-assets'; // Handle the interim ones
-                        path = currentPreviewUrl.split('/design-assets/')[1];
-                    }
-
-                    if (path) {
-                        await supabase.storage.from(bucket).remove([path]);
-                    }
-                } catch (cleanupErr) {
-                    console.error("Failed to clean up old preview:", cleanupErr);
-                }
-            }
-            // Update state
-            setCurrentPreviewUrl(publicUrl);
-
-        } else {
-             // CREATE (POST)
-             const createPayload = {
-                base_product_id: currentTemplate.product_id,
-                design_name: designName,
-                canvas_data: canvasDataFull,
-                preview_image_url: publicUrl,
-                available_colors: Array.from(activeColorIds),
-                printing_type: printingType, // Save initial printing type
-             };
-             console.log("Saving Create Payload:", createPayload); // DEBUG
-
-             const response = await api.post('/designs', createPayload);
-             
-             if (response.data?.design?.id) {
-                 targetId = response.data.design.id;
-             } else if (response.data?.id) {
-                 // Fallback if structure is flat
-                 targetId = response.data.id;
-             }
-
-            if (!silent) {
-                setNotification({
-                    type: 'success',
-                    title: 'บันทึกสำเร็จ',
-                    message: 'บันทึกงานออกแบบเรียบร้อยแล้ว'
-                });
-            }
-            
-            // Note: We don't have the new designId here easily unless api.post returns it. 
-            // If we wanted to switch context to "Edit" mode immediately, we'd need that ID.
-            // For now, next save will still be "Create" unless we navigate or update location.
-            // But setting currentPreviewUrl helps if we stay on page and logic changes.
-            setCurrentPreviewUrl(publicUrl);
-        }
-        
-        return targetId || null;
-
-    } catch (error: any) {
-        console.error("Save failed:", error);
-        const msg = error.response?.data?.error || error.message || 'บันทึกไม่สำเร็จ';
-        setNotification({
-            type: 'error',
-            title: 'บันทึกไม่สำเร็จ',
-            message: msg
-        });
-        return null;
-    } finally {
-        setSaving(false);
-    }
-};
-
-const handleAddToCart = async () => {
-    if (!fabricRef.current || !currentTemplate || !user) {
-         if (!user) {
-             setNotification({
-                 type: 'error',
-                 title: 'กรุณาเข้าสู่ระบบ',
-                 message: 'ต้องเข้าสู่ระบบก่อนเพิ่มสินค้าลงตระกร้า'
-             });
-         }
-         return;
-    }
-
-    setIsGenerating(true);
-    try {
+        // -------------------------------------------------------------------
+        // 2. Generate Print Files (High Res, Multi-side, Cropped)
+        // -------------------------------------------------------------------
         const printFiles: Record<string, string> = {};
 
-        // 1. Export Current Side (Online)
-        // Ensure we preserve the current state in savedDesigns for consistency (optional but good)
-        // saveCurrentCanvas(); // Avoid, allows "cancel" logic to work if we don't save
-        
-        const currentUrl = await exportDesignForProduction(
+        // A. Export Current Side (Online)
+        const currentPrintUrl = await exportDesignForProduction(
             fabricRef.current, 
-            user.id, 
+            user.id,
             { crop: printZoneBoundsRef.current || undefined }
         );
-        if (currentUrl) {
-            printFiles[currentTemplate.side.toLowerCase()] = currentUrl;
+        if (currentPrintUrl) {
+            printFiles[currentTemplate.side.toLowerCase()] = currentPrintUrl;
         }
 
-        // 2. Export Other Sides (Offline)
-        // Find other templates for this color
+        // B. Export Other Sides (Offline)
         const otherTemplates = templates.filter(t => 
             t.color?.id === selectedColorId && t.id !== currentTemplate.id
         );
@@ -1297,8 +1180,6 @@ const handleAddToCart = async () => {
             const json = saved?.json || saved; 
             
             if (json) {
-                // Create Offline Canvas
-                // Use same dimensions as current canvas
                 const width = fabricRef.current.getWidth();
                 const height = fabricRef.current.getHeight();
                 const staticCanvas = new fabric.StaticCanvas(null, { width, height });
@@ -1307,11 +1188,8 @@ const handleAddToCart = async () => {
                 
                 // Determine Bounds
                 let bounds = saved?.bounds;
-                
-                // If bounds missing (e.g. loaded from DB), calculate them
                 if (!bounds && tmpl.print_area_config) {
-                     // We need to load image to get dimensions for scale factor
-                     // This mimics the useEffect logic
+                     // Recalculate if missing (same logic as before)
                      try {
                          const img = await new Promise<any>((resolve, reject) => {
                              fabric.Image.fromURL(tmpl.image_url, (img) => {
@@ -1325,11 +1203,9 @@ const handleAddToCart = async () => {
                              const containerHeight = containerRef.current?.clientHeight || 800;
                              const TARGET_WIDTH = containerWidth - 60; 
                              const TARGET_HEIGHT = containerHeight - 60;
-                             
                              const scaleX = TARGET_WIDTH / img.width;
                              const scaleY = TARGET_HEIGHT / img.height;
                              const scaleFactor = Math.min(scaleX, scaleY, 1) * 0.95;
-                             
                              const { x, y, width: w, height: h } = tmpl.print_area_config;
                              bounds = {
                                  left: x * scaleFactor,
@@ -1338,47 +1214,112 @@ const handleAddToCart = async () => {
                                  height: h * scaleFactor
                              };
                          }
-                     } catch (e) {
-                         console.warn(`Could not calculate bounds for ${tmpl.side}`, e);
-                     }
+                     } catch (e) { console.warn("Bounds calc fail", e); }
                 }
 
-                // Export
                 const url = await exportDesignForProduction(staticCanvas, user.id, { crop: bounds });
                 if (url) {
                     printFiles[tmpl.side.toLowerCase()] = url;
                 }
-                
-                // Cleanup
                 staticCanvas.dispose();
             }
         }
-
-        if (Object.keys(printFiles).length === 0) {
-            throw new Error("No print files generated");
-        }
-
-        // 3. Construct Cart Item
-        const designJson = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
         
-        // Use JSON.stringify for print_file_url column to store multiple files
-        // Backend text column can hold JSON string
         const printFilePayload = JSON.stringify(printFiles);
 
+        // -------------------------------------------------------------------
+        // 3. Save to Backend
+        // -------------------------------------------------------------------
+        // Capture current canvas JSON
+        saveCurrentCanvas(); // Update ref
+        const canvasDataFull = savedDesigns.current; 
+
+        if (designId) {
+            // UPDATE
+            await api.put(`/designs/${designId}`, {
+                design_name: designName,
+                canvas_data: canvasDataFull,
+                preview_image_url: previewUrl,
+                available_colors: Array.from(activeColorIds),
+                printing_type: printingType,
+                print_file_url: printFilePayload // Pass the high-res URLs
+            });
+            // Cleanup old preview if URL changed (optional optimization)
+        } else {
+             // CREATE
+             const createPayload = {
+                base_product_id: currentTemplate.product_id,
+                design_name: designName,
+                canvas_data: canvasDataFull,
+                preview_image_url: previewUrl,
+                available_colors: Array.from(activeColorIds),
+                printing_type: printingType, 
+                print_file_url: printFilePayload // Pass the high-res URLs
+             };
+
+             const response = await api.post('/designs', createPayload);
+             if (response.data?.design?.id) {
+                 targetId = response.data.design.id;
+             }
+        }
+        
+        // Success Actions
+        setCurrentPreviewUrl(previewUrl); 
+        
+        if (!silent) {
+            setNotification({ type: 'success', title: 'บันทึกสำเร็จ', message: 'บันทึกงานออกแบบเรียบร้อยแล้ว' });
+        }
+        
+        return { targetId, printFilePayload }; // Return useful data
+
+    } catch (error: any) {
+        console.error("Save failed:", error);
+        if (!silent) {
+            setNotification({ type: 'error', title: 'บันทึกไม่สำเร็จ', message: 'กรุณาลองใหม่อีกครั้ง' });
+        }
+        return null;
+    } finally {
+        setSaving(false);
+    }
+};
+
+const handleAddToCart = async () => {
+    if (!fabricRef.current || !currentTemplate || !user) {
+         if (!user) {
+             setNotification({ type: 'error', title: 'กรุณาเข้าสู่ระบบ', message: 'ต้องเข้าสู่ระบบก่อนเพิ่มสินค้าลงตระกร้า' });
+         }
+         return;
+    }
+
+    setIsGenerating(true);
+    try {
+        // 1. Force Save First to get High-Res files and persist state
+        const result = await saveDesign(true); // Silent save
+        if (!result) throw new Error("Auto-save failed");
+        
+        const { targetId, printFilePayload } = result;
+        
+        // 2. Construct Cart Item
+        // We can now use the ID of the saved design and the generated payload
+        const designJson = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
+        
         const cartItem = {
            product_id: currentTemplate.product_id,
            color_id: selectedColorId || '',
            size: selectedSize,
            quantity: quantity,
-           print_file_url: printFilePayload,
+           design_id: targetId, // Link to the saved design!
+           print_file_url: printFilePayload, // Use the one we just generated/saved
            design_json: designJson,
-           preview_url: currentPreviewUrl || Object.values(printFiles)[0]
+           preview_url: currentPreviewUrl || ''
         };
 
-        // 4. Save to Cart Context
+        // 3. Save to Cart Context
         addToCart(cartItem);
 
-        // 5. Redirect to Order Wizard
+        // 4. Redirect
+        // If it was a new design, we might want to navigate to '?designId=XX' or just go to order.
+        // Since we are going to Order page, it's fine.
         navigate('/order');
 
     } catch (error) {
@@ -1386,7 +1327,7 @@ const handleAddToCart = async () => {
         setNotification({
             type: 'error',
             title: 'เกิดข้อผิดพลาด',
-            message: 'ไม่สามารถเพิ่มลงตระกร้าได้ กรุณาลองใหม่อีกครั้ง'
+            message: 'ไม่สามารถเพิ่มลงตระกร้าได้'
         });
     } finally {
         setIsGenerating(false);
@@ -1394,9 +1335,9 @@ const handleAddToCart = async () => {
 };
 
 const handleOrderNow = async () => {
-    const savedId = await saveDesign(true); // Silent save
-    if (savedId) {
-        navigate(`/order?initialDesignId=${savedId}`);
+    const result = await saveDesign(true); // Silent save
+    if (result?.targetId) {
+        navigate(`/order?initialDesignId=${result.targetId}`);
     }
 };
 
