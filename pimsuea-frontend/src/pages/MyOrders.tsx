@@ -70,6 +70,34 @@ export default function MyOrders() {
       }
   };
 
+  const handleStatusUpdate = async (status: string) => {
+      if (!selectedOrder) return;
+      setSaving(true);
+      try {
+          await updateOrder(selectedOrder.id, { status });
+          
+          // Update local state
+          const updatedOrder = { ...selectedOrder, status };
+          setSelectedOrder(updatedOrder);
+          setOrders(prev => prev.map(o => o.id === selectedOrder.id ? updatedOrder : o));
+          
+          setNotification({
+              type: 'success',
+              title: 'สำเร็จ',
+              message: `อัปเดตสถานะเป็น ${status} เรียบร้อยแล้ว`
+          });
+      } catch (error) {
+          console.error("Failed to update status:", error);
+          setNotification({
+              type: 'error',
+              title: 'เกิดข้อผิดพลาด',
+              message: 'ไม่สามารถอัปเดตสถานะได้'
+          });
+      } finally {
+          setSaving(false);
+      }
+  };
+
   const handleSaveAddress = async () => {
       if (!selectedOrder) return;
       setSaving(true);
@@ -208,10 +236,33 @@ export default function MyOrders() {
                                 {statusMap[selectedOrder.status]?.label || selectedOrder.status}
                             </Badge>
                         </div>
-                         <div className="flex justify-between items-center">
+                         <div className="flex justify-between items-center mb-4">
                             <span className="text-gray-600 font-medium">วันที่สั่งซื้อ</span>
                             <span>{new Date(selectedOrder.created_at).toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}</span>
                         </div>
+
+                         {/* Admin Test Controls */}
+                         <div className="pt-4 border-t flex flex-wrap gap-2">
+                             <p className="w-full text-xs text-gray-400 font-mono mb-1">Developer Controls (Test Cleanup)</p>
+                             <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="bg-white hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                                onClick={() => handleStatusUpdate('delivered')}
+                                disabled={saving || selectedOrder.status === 'delivered'}
+                             >
+                                 Mark Delivered
+                             </Button>
+                             <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                                onClick={() => handleStatusUpdate('cancelled')}
+                                disabled={saving || selectedOrder.status === 'cancelled'}
+                             >
+                                 Cancel Order
+                             </Button>
+                         </div>
                     </div>
 
                     {/* Items Section */}

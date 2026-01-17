@@ -1,4 +1,4 @@
-const { supabase, getAuthenticatedSupabase } = require('../config/supabaseClient');
+const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 
 exports.getUserOrders = async (req, res) => {
   const userId = req.user.id;
@@ -167,6 +167,10 @@ exports.updateOrder = async (req, res) => {
         .eq('id', id)
         .eq('user_id', userId)
         .single();
+    
+    // Check if status is changing to a final state (delivered or cancelled)
+    const isCompleted = ['delivered', 'cancelled'].includes(req.body.status);
+    const isStatusChanging = req.body.status && req.body.status !== order.status;
 
     if (fetchError || !order) {
         return res.status(404).json({ error: 'Order not found' });
@@ -179,16 +183,101 @@ exports.updateOrder = async (req, res) => {
     }
 
     // 3. Update Order
+    const updates = { 
+        updated_at: new Date().toISOString() 
+    };
+    if (req.body.status) updates.status = req.body.status;
+    if (shipping_address) updates.shipping_address = shipping_address;
+
     const { error: updateError } = await client
         .from('orders')
-        .update({ 
-            shipping_address, 
-            updated_at: new Date().toISOString() 
-        })
+        .update(updates)
         .eq('id', id)
         .eq('user_id', userId);
 
     if (updateError) throw updateError;
+
+    // 4. File Cleanup (if status changed to final)
+    if (isCompleted && isStatusChanging) {
+        console.log(`Order ${id} is completed/cancelled. checking for file cleanup...`);
+        try {
+            // Fetch Order Items with their Design info
+            const { data: items } = await client
+                .from('order_items')
+                .select(`
+                    print_file_url, 
+                    user_design:user_designs (
+                        print_file_url
+                    )
+                `)
+                .eq('order_id', id);
+
+            if (items) {
+                const filesToDelete = [];
+                items.forEach(item => {
+                    // Check if the order used a file...
+                    if (!item.print_file_url) return;
+
+                    // ...and if the design currently has a DIFFERENT file (or no file)
+                    // If they are different, it means the design was updated after this order, 
+                    // and this order's file is now an orphan.
+                    const currentDesignFile = item.user_design?.print_file_url;
+                    
+                    console.log(`Checking item file: ${item.print_file_url} vs current: ${currentDesignFile}`);
+
+                    // Logic: If order file != current design file, it MAY be delete-able.
+                    
+                    let isStillInUse = false;
+                    if (currentDesignFile) {
+                         if (currentDesignFile.includes(item.print_file_url)) {
+                             isStillInUse = true;
+                         }
+                    }
+                    
+                    if (!isStillInUse) {
+                        try {
+                            let urls = [];
+                            try {
+                                const parsed = JSON.parse(item.print_file_url);
+                                urls = Array.isArray(parsed) ? parsed : Object.values(parsed);
+                            } catch(e) {
+                                urls = [item.print_file_url];
+                            }
+                            
+                            urls.forEach(url => {
+                                const parts = url.split('/print-files/');
+                                if (parts.length > 1) {
+                                    filesToDelete.push(parts[1]);
+                                }
+                            });
+                        } catch(e) { 
+                             console.error("Error parsing order file url for deletion", e);
+                        }
+                    } else {
+                        console.log("File is still in current design, skipping delete.");
+                    }
+                });
+
+                if (filesToDelete.length > 0) {
+                     console.log(`Order ${id} ${req.body.status}: Cleaning up orphaned files:`, filesToDelete);
+                     const storageClient = supabaseAdmin || supabase;
+                     const { error: deleteError } = await storageClient.storage
+                        .from('print-files')
+                        .remove(filesToDelete);
+                     
+                     if (deleteError) {
+                         console.error("Failed to delete files from storage:", deleteError);
+                     } else {
+                         console.log("Files deleted successfully");
+                     }
+                } else {
+                    console.log("No orphaned files found to delete.");
+                }
+            }
+        } catch (cleanupError) {
+            console.error("Global cleanup error:", cleanupError);
+        }
+    }
 
     res.json({ message: 'Order updated successfully' });
 
