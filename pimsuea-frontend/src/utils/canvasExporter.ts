@@ -1,5 +1,5 @@
 import { fabric } from 'fabric';
-import { supabase } from '../lib/supabase';
+import { uploadFile } from '../services/api'; // Import our new API method
 
 /**
  * Handles the high-resolution rendering and upload of the design for production.
@@ -15,7 +15,6 @@ interface ExportOptions {
 
 export const exportDesignForProduction = async (
   canvas: fabric.Canvas | fabric.StaticCanvas,
-  userId: string,
   options?: ExportOptions
 ): Promise<string | null> => {
   try {
@@ -111,28 +110,11 @@ export const exportDesignForProduction = async (
     const byteArray = new Uint8Array(byteNumbers);
     const blob = new Blob([byteArray], { type: 'image/png' });
 
-    // Step D: Upload to Supabase
-    const timestamp = Date.now();
-    // Use a random suffix to avoid collision if multiple uploads happen fast (e.g. front/back)
+    // Step D: Upload to Backend (which handles Supabase)
     const suffix = Math.random().toString(36).substring(7);
-    const filePath = `uploads/${userId}/${timestamp}_${suffix}_print_file.png`;
+    const fileName = `${suffix}_print_file.png`; // Backend will prepend timestamp
 
-    const { data, error } = await supabase.storage
-      .from('print-files')
-      .upload(filePath, blob, {
-        upsert: false,
-        contentType: 'image/png',
-      });
-
-    if (error) {
-      console.error('Error uploading print file:', error);
-      return null;
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('print-files')
-      .getPublicUrl(filePath);
+    const publicUrl = await uploadFile(blob, 'print', fileName);
     
     return publicUrl;
   } catch (error) {

@@ -112,4 +112,20 @@ export const updateOrder = async (id: number | string, data: any): Promise<any> 
     return response.data;
 };
 
+export const uploadFile = async (file: Blob | File, type: 'preview' | 'print' | 'asset', fileName?: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    if (fileName) {
+        formData.append('fileName', fileName);
+    }
+
+    const response = await api.post('/uploads', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data.url;
+};
+
 export default api;

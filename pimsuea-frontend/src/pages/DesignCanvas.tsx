@@ -16,7 +16,7 @@ import WebFont from "webfontloader";
 import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle, ShoppingCart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import api from "@/services/api";
+import api, { uploadFile } from "@/services/api";
 import { exportDesignForProduction } from "@/utils/canvasExporter";
 import { useCart } from "@/contexts/CartContext";
 
@@ -1028,19 +1028,8 @@ export default function DesignCanvas() {
     // 1. Create Placeholder on Canvas - REMOVED (Using Skeleton Overlay instead)
     
     try {
-        // Upload to 'design-assets' bucket
-        const timestamp = Date.now();
-        const fileName = `uploads/${user.id}/${timestamp}_${file.name.replace(/\s+/g, '_')}`;
-        
-        const { error: uploadError } = await supabase.storage
-            .from('design-assets') 
-            .upload(fileName, file);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('design-assets')
-            .getPublicUrl(fileName);
+        // Upload via Backend API
+        const publicUrl = await uploadFile(file, 'asset'); // 'asset' maps to design-assets
 
         console.log("Uploaded Public URL:", publicUrl);
 
@@ -1134,24 +1123,10 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
         const res = await fetch(previewDataUrl);
         const blob = await res.blob();
         
-        // 3. Upload to Supabase Storage
-        const timestamp = Date.now();
-        const fileName = `uid_${user.id}/${timestamp}_${currentTemplate.side}.png`;
-        const { error } = await supabase.storage
-          .from('design-previews')
-          .upload(fileName, blob, {
-              cacheControl: '3600',
-              upsert: false
-          });
-
-      if (error) throw error;
-      
-      // Get Public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('design-previews')
-        .getPublicUrl(fileName);
-        
-      const previewUrl = publicUrl;
+        // 3. Upload to Backend (which proxies to Supabase)
+        // We pass 'preview' type and let backend handle path/timestamp
+        const previewFilename = `${currentTemplate.side}.png`; 
+        const previewUrl = await uploadFile(blob, 'preview', previewFilename);
       
       let targetId = designId;
 
@@ -1193,7 +1168,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             // A. Export Current Side (Online)
             const currentPrintUrl = await exportDesignForProduction(
                 fabricRef.current, 
-                user.id,
+                // user.id removed
                 { crop: printZoneBoundsRef.current || undefined }
             );
             if (currentPrintUrl) {
@@ -1248,7 +1223,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                          } catch (e) { console.warn("Bounds calc fail", e); }
                     }
 
-                    const url = await exportDesignForProduction(staticCanvas, user.id, { crop: bounds });
+                    const url = await exportDesignForProduction(staticCanvas, { crop: bounds });
                     if (url) {
                         printFiles[tmpl.side.toLowerCase()] = url;
                     }
