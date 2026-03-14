@@ -169,6 +169,9 @@ export default function DesignCanvas() {
   // New Delete Dialog State
   const [deleteImageName, setDeleteImageName] = useState<string | null>(null);
 
+  // DPI Warning Dialog State
+  const [dpiWarningFile, setDpiWarningFile] = useState<{ file: File; dpi: number } | null>(null);
+
   // Auto-dismiss notification
   useEffect(() => {
     if (notification) {
@@ -1014,31 +1017,13 @@ export default function DesignCanvas() {
     }
   };
 
-  // Handle Image Upload with Persistent Storage
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0] || !fabricRef.current) return;
-    if (!user) {
-        alert("กรุณาเข้าสู่ระบบเพื่ออัพโหลดรูปภาพ");
-        return;
-    }
-    
+  // Execute the actual upload after DPI check passes
+  const proceedWithUpload = async (file: File) => {
     setIsUploading(true);
-    const file = e.target.files[0];
-
-    // 1. Create Placeholder on Canvas - REMOVED (Using Skeleton Overlay instead)
-    
     try {
-        // Upload via Backend API
-        const publicUrl = await uploadFile(file, 'asset'); // 'asset' maps to design-assets
-
-        console.log("Uploaded Public URL:", publicUrl);
-
-        // Add to canvas (this will be the "replacement" of the placeholder)
+        const publicUrl = await uploadFile(file, 'asset');
         addImageToCanvas(publicUrl);
-        
-        // Refresh Library if open
         if (showImageLibrary) fetchUserUploads();
-
     } catch (err: any) {
         console.error("Upload failed:", err);
         setNotification({
@@ -1049,6 +1034,43 @@ export default function DesignCanvas() {
     } finally {
         setIsUploading(false);
     }
+  };
+
+  // Handle Image Upload with Persistent Storage
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !fabricRef.current) return;
+    if (!user) {
+        alert("กรุณาเข้าสู่ระบบเพื่ออัพโหลดรูปภาพ");
+        return;
+    }
+
+    const file = e.target.files[0];
+    // Reset input so the same file can be re-selected after a cancel
+    e.target.value = '';
+
+    // DPI check: measure image pixel dimensions vs print zone physical size
+    const physW = currentTemplate?.print_area_config?.physical_w_cm ?? 29.7;
+    const physH = currentTemplate?.print_area_config?.physical_h_cm ?? 42.0;
+
+    const effectiveDpi = await new Promise<number>((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const dpiW = img.naturalWidth / (physW / 2.54);
+            const dpiH = img.naturalHeight / (physH / 2.54);
+            resolve(Math.min(dpiW, dpiH));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(Infinity); };
+        img.src = url;
+    });
+
+    if (effectiveDpi < 150) {
+        setDpiWarningFile({ file, dpi: Math.round(effectiveDpi) });
+        return;
+    }
+
+    await proceedWithUpload(file);
   };
 
   // Add Uploaded Image to Canvas (from sidebar click)
@@ -1920,6 +1942,31 @@ const handleManualSave = async () => {
 
         </main>
       </div>
+            {/* DPI Warning Dialog */}
+            <AlertDialog open={!!dpiWarningFile} onOpenChange={(open) => !open && setDpiWarningFile(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>ความละเอียดรูปภาพต่ำ</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            รูปภาพนี้มีความละเอียดประมาณ <strong>{dpiWarningFile?.dpi} DPI</strong> ซึ่งต่ำกว่า 150 DPI ที่แนะนำสำหรับงานพิมพ์{' '}
+                            ผลลัพธ์การพิมพ์อาจไม่คมชัดหรือเบลอได้ คุณต้องการอัปโหลดต่อหรือไม่?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setDpiWarningFile(null)}>ยกเลิก</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                const file = dpiWarningFile!.file;
+                                setDpiWarningFile(null);
+                                proceedWithUpload(file);
+                            }}
+                        >
+                            อัปโหลดต่อ
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* Delete Confirmation Dialog for Image Library */}
             <AlertDialog open={!!deleteImageName} onOpenChange={(open) => !open && setDeleteImageName(null)}>
                 <AlertDialogContent>
