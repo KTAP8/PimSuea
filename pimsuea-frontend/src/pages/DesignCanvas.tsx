@@ -1235,11 +1235,48 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
         }
 
         // -------------------------------------------------------------------
-        // 3. Save to Backend
+        // 3. Calculate design AABB in cm for pricing tier lookup
+        // -------------------------------------------------------------------
+        let print_w_cm: number | undefined;
+        let print_h_cm: number | undefined;
+
+        const designObjects = fabricRef.current.getObjects().filter(
+            (o: any) => o.name !== 'static_bg' && o.name !== 'print_zone'
+        );
+
+        if (designObjects.length > 0 && printZoneBoundsRef.current) {
+            const pz = printZoneBoundsRef.current;
+            const xs: number[] = [];
+            const ys: number[] = [];
+
+            designObjects.forEach((obj: fabric.Object) => {
+                const rect = obj.getBoundingRect(true);
+                xs.push(rect.left, rect.left + rect.width);
+                ys.push(rect.top, rect.top + rect.height);
+            });
+
+            // Clamp to print zone bounds
+            const minX = Math.max(Math.min(...xs), pz.left);
+            const maxX = Math.min(Math.max(...xs), pz.left + pz.width);
+            const minY = Math.max(Math.min(...ys), pz.top);
+            const maxY = Math.min(Math.max(...ys), pz.top + pz.height);
+            const bboxW = Math.max(0, maxX - minX);
+            const bboxH = Math.max(0, maxY - minY);
+
+            // Physical print zone in cm — read from template config or default to A3
+            const physW = currentTemplate.print_area_config?.physical_w_cm ?? 29.7;
+            const physH = currentTemplate.print_area_config?.physical_h_cm ?? 42.0;
+
+            print_w_cm = parseFloat(((bboxW / pz.width) * physW).toFixed(2));
+            print_h_cm = parseFloat(((bboxH / pz.height) * physH).toFixed(2));
+        }
+
+        // -------------------------------------------------------------------
+        // 4. Save to Backend
         // -------------------------------------------------------------------
         // Capture current canvas JSON
         saveCurrentCanvas(); // Update ref
-        const canvasDataFull = savedDesigns.current; 
+        const canvasDataFull = savedDesigns.current;
 
         if (designId) {
             // UPDATE
@@ -1249,8 +1286,10 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 preview_image_url: previewUrl,
                 available_colors: Array.from(activeColorIds),
                 printing_type: printingType,
-                print_file_url: printFilePayload, // Pass the high-res URLs
-                design_hash: currentHash
+                print_file_url: printFilePayload,
+                design_hash: currentHash,
+                print_w_cm,
+                print_h_cm,
             });
             // Cleanup old preview if URL changed (optional optimization)
         } else {
@@ -1261,9 +1300,11 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 canvas_data: canvasDataFull,
                 preview_image_url: previewUrl,
                 available_colors: Array.from(activeColorIds),
-                printing_type: printingType, 
-                print_file_url: printFilePayload, // Pass the high-res URLs
-                design_hash: currentHash
+                printing_type: printingType,
+                print_file_url: printFilePayload,
+                design_hash: currentHash,
+                print_w_cm,
+                print_h_cm,
              };
 
              const response = await api.post('/designs', createPayload);

@@ -1,13 +1,15 @@
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
-import type { 
-    Category, 
-    DashboardData, 
-    Product, 
-    Order, 
+import type {
+    Category,
+    DashboardData,
+    Product,
+    Order,
     Transaction,
     News,
-    ProductTemplate
+    ProductTemplate,
+    PriceInput,
+    PriceBreakdown,
 } from '@/types/api';
 
 const api = axios.create({
@@ -99,6 +101,11 @@ export const getMyOrders = async (): Promise<Order[]> => {
 
 export const getWallet = async (): Promise<Transaction[]> => {
     const response = await api.get<Transaction[]>('/wallet/transactions');
+    return response.data;
+};
+
+export const getPrice = async (input: PriceInput): Promise<PriceBreakdown> => {
+    const response = await api.post<PriceBreakdown>('/pricing', input);
     return response.data;
 };
 

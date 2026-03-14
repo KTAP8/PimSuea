@@ -1,5 +1,5 @@
 
-const { getAuthenticatedSupabase, supabaseAdmin } = require('../config/supabaseClient');
+const { supabaseAdmin } = require('../config/supabaseClient');
 
 exports.uploadFile = async (req, res) => {
   try {
@@ -68,27 +68,23 @@ exports.uploadFile = async (req, res) => {
     // in the sense that backend controls it, but "unsafe" if we bypass logical checks.
     // Using authenticated client is best for RLS consistency.)
     
-    const db = getAuthenticatedSupabase(req.headers.authorization);
-
     // NOTE: Supabase JS Client 'storage.from().upload()' takes a File object, Blob, or Buffer.
     // When using supabase-js in Node, Buffer matches 'ArrayBuffer' compatible types.
-    
-    const { data, error } = await db.storage
+
+    const { data, error } = await supabaseAdmin.storage
       .from(bucketName)
       .upload(filePath, fileBuffer, {
         contentType: file.mimetype,
-        upsert: false
+        upsert: true,
       });
 
     if (error) {
-         // Fallback: If RLS fails but we really want to allow it (backend override), 
-         // we could retry with supabaseAdmin. But for now let's respect RLS.
-         console.error('Supabase upload error:', error);
-         throw error;
+      console.error('Supabase upload error:', error);
+      throw error;
     }
 
     // Get Public URL
-    const { data: publicUrlData } = db.storage
+    const { data: publicUrlData } = supabaseAdmin.storage
       .from(bucketName)
       .getPublicUrl(filePath);
 

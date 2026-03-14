@@ -1,4 +1,5 @@
-const { supabase, getAuthenticatedSupabase } = require('../config/supabaseClient');
+const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
+const { calculatePrice } = require('../utils/pricing');
 
 exports.getUserOrders = async (req, res) => {
   const userId = req.user.id;
@@ -96,22 +97,83 @@ exports.getOrderDetails = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   const userId = req.user.id;
-  const { items, shipping, total } = req.body;
+  const { items, shipping } = req.body;
 
   if (!items || items.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
   }
 
-  // Use Authenticated Client to respect RLS but allow insert if policy permits
   const client = getAuthenticatedSupabase(req.headers.authorization);
 
   try {
-    // 1. Create Order
+    // 1. Server-side price recalculation for each item
+    const pricedItems = await Promise.all(items.map(async (item) => {
+      const designId = (item.designId && item.designId !== 'custom') ? item.designId : null;
+
+      if (!designId) {
+        // No design: cannot verify price, fall back to client-submitted price
+        console.warn(`Order item has no design_id; using client price: ${item.price}`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+
+      // Fetch design data needed for pricing
+      const { data: design, error: designError } = await supabaseAdmin
+        .from('user_designs')
+        .select('print_w_cm, print_h_cm, printing_type, base_product_id')
+        .eq('id', designId)
+        .single();
+
+      if (designError || !design) {
+        console.warn(`Could not fetch design ${designId}; using client price`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+
+      if (!design.print_w_cm || !design.print_h_cm || !design.printing_type) {
+        console.warn(`Design ${designId} missing AABB/printing_type; using client price`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+
+      // Resolve color_id → color_name
+      const { data: colorRow } = await supabaseAdmin
+        .from('colors')
+        .select('name')
+        .eq('id', item.color_id || item.color)
+        .single();
+
+      const color_name = colorRow?.name;
+      if (!color_name || !['White', 'Black'].includes(color_name)) {
+        console.warn(`Color '${item.color_id || item.color}' not priceable; using client price`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+
+      try {
+        const breakdown = await calculatePrice({
+          printingType: design.printing_type,
+          aabb_w_cm: Number(design.print_w_cm),
+          aabb_h_cm: Number(design.print_h_cm),
+          quantity: item.quantity,
+          productId: design.base_product_id,
+          color_name,
+          size: item.size,
+        });
+        return { ...item, verifiedUnitPrice: breakdown.total_per_unit };
+      } catch (priceErr) {
+        console.warn(`Pricing lookup failed for design ${designId}: ${priceErr.message}; using client price`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+    }));
+
+    const verifiedTotal = pricedItems.reduce(
+      (sum, item) => sum + item.verifiedUnitPrice * item.quantity,
+      0
+    );
+
+    // 2. Create Order with server-verified total
     const { data: order, error: orderError } = await client
       .from('orders')
       .insert({
         user_id: userId,
-        total_amount: total,
+        total_amount: verifiedTotal,
         status: 'pending_payment',
         shipping_address: shipping,
         created_at: new Date().toISOString(),
@@ -122,17 +184,15 @@ exports.createOrder = async (req, res) => {
 
     if (orderError) throw orderError;
 
-    // 2. Create Order Items
-    const orderItems = items.map(item => ({
+    // 3. Create Order Items with server-verified unit prices
+    const orderItems = pricedItems.map(item => ({
       order_id: order.id,
-      // Map 'custom' or missing IDs to null to avoid UUID syntax errors
       user_design_id: (item.designId && item.designId !== 'custom') ? item.designId : null,
       size: item.size,
-      color: item.color,
+      color: item.color_id || item.color,
       quantity: item.quantity,
-      quantity: item.quantity,
-      unit_price: item.price,
-      print_file_url: item.print_file_url // Map from frontend payload
+      unit_price: item.verifiedUnitPrice,
+      print_file_url: item.print_file_url,
     }));
 
     const { error: itemsError } = await client
@@ -140,7 +200,6 @@ exports.createOrder = async (req, res) => {
       .insert(orderItems);
 
     if (itemsError) {
-      // Rollback: try to delete the order if items fail
       await client.from('orders').delete().eq('id', order.id);
       throw itemsError;
     }

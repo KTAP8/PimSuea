@@ -26,6 +26,8 @@ export interface ProductTemplate {
         y: number;
         width: number;
         height: number;
+        physical_w_cm?: number; // physical width of the print zone in cm
+        physical_h_cm?: number; // physical height of the print zone in cm
     };
     color_id?: string;
     is_default?: boolean;
@@ -36,6 +38,28 @@ export interface PrintPricingTier {
     print_method_id: string;
     min_quantity: number;
     unit_price: number;
+}
+
+export type PrintTier = '3x4in' | 'A5' | 'A4' | 'A3' | 'A2';
+export type PrintingType = 'DTG' | 'DTF';
+
+export interface PriceInput {
+    printingType: PrintingType;
+    aabb_w_cm: number;
+    aabb_h_cm: number;
+    quantity: number;
+    productId: string;
+    color_id: string;
+    size: string;
+}
+
+export interface PriceBreakdown {
+    tier: PrintTier;
+    shirt_per_unit: number;
+    print_per_unit: number;
+    total_per_unit: number;
+    total: number;
+    quantity: number;
 }
 
 export interface PrintMethod {

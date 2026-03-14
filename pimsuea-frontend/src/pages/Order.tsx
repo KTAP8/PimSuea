@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates } from "@/services/api";
+import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice } from "@/services/api";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -19,14 +19,17 @@ interface CartItem {
   productId: string;
   productName: string;
   size: string;
-  color: string;
+  color: string;     // display name
+  color_id: string;  // used for pricing lookup
   quantity: number;
   price: number;
   availableSizes: string[];
   availableColors: any[]; // { id, name, hex_code }
   sizeGuide: any;
-  pricingTiers: any[];
-  print_file_url?: string; // Add high-res URL
+  print_file_url?: string;
+  printingType?: string;
+  print_w_cm?: number;
+  print_h_cm?: number;
 }
 
 interface ShippingInfo {
@@ -136,21 +139,24 @@ export default function Order() {
                  if (availableColors.length === 0) availableColors = allProductColors;
             }
 
-            // Pricing Tiers: Use the design's printing_type
-            const printMethod = product.print_methods?.find((m: any) => m.id === design.printing_type) 
-                || product.print_methods?.[0];
-            const pricingTiers = printMethod?.tiers || [];
-
-            // Initial Price Logic
+            // Initial Price via new pricing API
             const quantity = 1;
+            const initialSize = availableSizes[0] || 'M';
+            const initialColor = availableColors[0];
+            const initialColorId = initialColor?.id || 'white';
             let initialPrice = product.starting_price || product.price || 500;
-            
-            if (pricingTiers.length > 0) {
-                // Find tier
-                const tier = pricingTiers
-                    .filter((t: any) => quantity >= t.min_quantity)
-                    .sort((a: any, b: any) => b.min_quantity - a.min_quantity)[0];
-                if (tier) initialPrice = tier.unit_price;
+
+            if (design.print_w_cm && design.print_h_cm && design.printing_type) {
+                const breakdown = await getPrice({
+                    printingType: design.printing_type as 'DTG' | 'DTF',
+                    aabb_w_cm: design.print_w_cm,
+                    aabb_h_cm: design.print_h_cm,
+                    quantity,
+                    productId: design.base_product_id,
+                    color_id: initialColorId,
+                    size: initialSize,
+                }).catch(() => null);
+                if (breakdown) initialPrice = breakdown.total_per_unit;
             }
 
             const newItem: CartItem = {
@@ -160,15 +166,18 @@ export default function Order() {
                 designImage: design.preview_image_url,
                 productId: String(product.id),
                 productName: product.name,
-                size: availableSizes[0] || 'M',
-                color: availableColors[0]?.name || 'Default', 
-                quantity: quantity,
+                size: initialSize,
+                color: initialColor?.name || 'Default',
+                color_id: initialColorId,
+                quantity,
                 price: initialPrice,
                 availableSizes,
                 availableColors,
                 sizeGuide,
-                pricingTiers,
-                print_file_url: design.print_file_url
+                printingType: design.printing_type,
+                print_w_cm: design.print_w_cm,
+                print_h_cm: design.print_h_cm,
+                print_file_url: design.print_file_url,
             };
 
             setCartItems([newItem]);
@@ -223,37 +232,55 @@ export default function Order() {
                      
                      const availableColors = allProductColors;
 
-                     // Pricing
-                     // We don't know the printing type from Context Item directly unless we save it.
-                     // We should probably save 'printing_type' in CartContext Item.
-                     // For now, assume default method or first method.
-                     const printMethod = product.print_methods?.[0]; // Fallback
-                     const pricingTiers = printMethod?.tiers || [];
-                     
+                     // Pricing via new pricing API
+                     const colorId = cItem.color_id || availableColors[0]?.id || 'white';
                      let price = cItem.price || product.starting_price || 500;
-                     if (pricingTiers.length > 0) {
-                         const tier = pricingTiers
-                            .filter((t: any) => cItem.quantity >= t.min_quantity)
-                            .sort((a: any, b: any) => b.min_quantity - a.min_quantity)[0];
-                         if (tier) price = tier.unit_price;
+                     let printingType: string | undefined;
+                     let print_w_cm: number | undefined;
+                     let print_h_cm: number | undefined;
+
+                     // Fetch design for AABB if available
+                     if (cItem.design_id && cItem.design_id !== 'custom') {
+                         const design = await getDesignById(cItem.design_id).catch(() => null);
+                         if (design) {
+                             printingType = design.printing_type;
+                             print_w_cm = design.print_w_cm;
+                             print_h_cm = design.print_h_cm;
+                         }
+                     }
+
+                     if (print_w_cm && print_h_cm && printingType) {
+                         const breakdown = await getPrice({
+                             printingType: printingType as 'DTG' | 'DTF',
+                             aabb_w_cm: print_w_cm,
+                             aabb_h_cm: print_h_cm,
+                             quantity: cItem.quantity,
+                             productId: String(product.id),
+                             color_id: colorId,
+                             size: cItem.size,
+                         }).catch(() => null);
+                         if (breakdown) price = breakdown.total_per_unit;
                      }
 
                      return {
                          id: cItem.id,
-                         designId: cItem.design_id || "custom", 
+                         designId: cItem.design_id || "custom",
                          designName: cItem.design_name || "Custom Design",
-                         designImage: cItem.preview_url || "https://via.placeholder.com/150", 
+                         designImage: cItem.preview_url || "https://via.placeholder.com/150",
                          productId: String(product.id),
                          productName: product.name,
                          size: cItem.size,
                          color: availableColors.find((c: any) => c.id === cItem.color_id)?.name || cItem.color_id,
+                         color_id: colorId,
                          quantity: cItem.quantity,
-                         price: price,
+                         price,
                          availableSizes,
                          availableColors,
                          sizeGuide,
-                         pricingTiers,
-                         print_file_url: cItem.print_file_url
+                         printingType,
+                         print_w_cm,
+                         print_h_cm,
+                         print_file_url: cItem.print_file_url,
                      };
                  }));
                  
@@ -304,18 +331,24 @@ export default function Order() {
                  if (availableColors.length === 0) availableColors = allProductColors;
             }
 
-            // Pricing: Use the design's printing_type
-            const printMethod = product.print_methods?.find((m: any) => m.id === design.printing_type) 
-                || product.print_methods?.[0];
-            const pricingTiers = printMethod?.tiers || [];
-            
+            // Initial Price via new pricing API
             const quantity = 1;
+            const initialSize = availableSizes[0] || 'M';
+            const initialColor = availableColors[0];
+            const initialColorId = initialColor?.id || 'white';
             let initialPrice = product.starting_price || product.price || 500;
-             if (pricingTiers.length > 0) {
-                const tier = pricingTiers
-                    .filter((t: any) => quantity >= t.min_quantity)
-                    .sort((a: any, b: any) => b.min_quantity - a.min_quantity)[0];
-                if (tier) initialPrice = tier.unit_price;
+
+            if (design.print_w_cm && design.print_h_cm && design.printing_type) {
+                const breakdown = await getPrice({
+                    printingType: design.printing_type as 'DTG' | 'DTF',
+                    aabb_w_cm: design.print_w_cm,
+                    aabb_h_cm: design.print_h_cm,
+                    quantity,
+                    productId: design.base_product_id,
+                    color_id: initialColorId,
+                    size: initialSize,
+                }).catch(() => null);
+                if (breakdown) initialPrice = breakdown.total_per_unit;
             }
 
             const newItem: CartItem = {
@@ -325,15 +358,18 @@ export default function Order() {
                 designImage: design.preview_image_url,
                 productId: String(product.id),
                 productName: product.name,
-                size: availableSizes[0] || 'M',
-                color: availableColors[0]?.name || 'Default', 
-                quantity: quantity,
+                size: initialSize,
+                color: initialColor?.name || 'Default',
+                color_id: initialColorId,
+                quantity,
                 price: initialPrice,
                 availableSizes,
                 availableColors,
                 sizeGuide,
-                pricingTiers,
-                print_file_url: design.print_file_url
+                printingType: design.printing_type,
+                print_w_cm: design.print_w_cm,
+                print_h_cm: design.print_h_cm,
+                print_file_url: design.print_file_url,
             };
 
             setCartItems(prev => [...prev, newItem]);
@@ -353,62 +389,54 @@ export default function Order() {
       setStep(prev => Math.max(prev - 1, 1));
   };
 
-  const updateItem = (id: string, field: keyof CartItem, value: any) => {
-      // Update Context
+  const updateItem = async (id: string, field: keyof CartItem, value: any) => {
+      // 1. Sync context update
       if (contextCartItems.some(i => i.id === id)) {
-           // We only update specific fields in context that match (size, color, qty)
-           // Context Item is simpler, but let's try to update relevant keys.
-           if (field === 'quantity' || field === 'size' || field === 'color') {
-               // Map 'color' name back to ID? 
-               // Wait, context stores 'color_id'. 'value' here is likely name?
-               // Line 489: `e.target.value` (name).
-               
-               // This is tricky. CartContext expects IDs?
-               // CartItem interface in Context has `color_id`.
-               // CartItem in Order has `color` (name).
-               
-               // If we change color, we need the ID.
-               // We need to find the ID from `availableColors`.
-               // Let's implement that lookup.
-               
-               let updates: any = {};
-               if (field === 'quantity') updates.quantity = value;
-               if (field === 'size') updates.size = value;
-               if (field === 'color') {
-                   // Find ID
-                   const currentItem = cartItems.find(i => i.id === id);
-                   if (currentItem) {
-                       const colorObj = currentItem.availableColors.find((c: any) => c.name === value);
-                       if (colorObj) updates.color_id = colorObj.id;
-                   }
-               }
-               
-               if (Object.keys(updates).length > 0) {
-                   updateCartItem(id, updates);
-               }
-           }
+          if (field === 'quantity' || field === 'size' || field === 'color') {
+              let updates: any = {};
+              if (field === 'quantity') updates.quantity = value;
+              if (field === 'size') updates.size = value;
+              if (field === 'color') {
+                  const currentItem = cartItems.find(i => i.id === id);
+                  if (currentItem) {
+                      const colorObj = currentItem.availableColors.find((c: any) => c.name === value);
+                      if (colorObj) updates.color_id = colorObj.id;
+                  }
+              }
+              if (Object.keys(updates).length > 0) updateCartItem(id, updates);
+          }
       }
 
-      setCartItems(prev => prev.map(item => {
-          if (item.id === id) {
-              const updatedItem = { ...item, [field]: value };
-              
-              // Recalculate Price if Quantity Changed
-              if (field === 'quantity' && item.pricingTiers.length > 0) {
-                   const qty = value as number;
-                   const tier = item.pricingTiers
-                        .filter((t: any) => qty >= t.min_quantity)
-                        .sort((a: any, b: any) => b.min_quantity - a.min_quantity)[0];
-                   
-                   if (tier) {
-                       updatedItem.price = tier.unit_price;
-                   }
-              }
-              
-              return updatedItem;
+      // 2. Immediate local state update
+      setCartItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+
+      // 3. Async price refresh when pricing-affecting fields change
+      if (field === 'quantity' || field === 'size' || field === 'color') {
+          const item = cartItems.find(i => i.id === id);
+          if (!item || !item.print_w_cm || !item.print_h_cm || !item.printingType) return;
+
+          let colorId = item.color_id;
+          if (field === 'color') {
+              const colorObj = item.availableColors.find((c: any) => c.name === value);
+              colorId = colorObj?.id || item.color_id;
           }
-          return item;
-      }));
+
+          const breakdown = await getPrice({
+              printingType: item.printingType as 'DTG' | 'DTF',
+              aabb_w_cm: item.print_w_cm,
+              aabb_h_cm: item.print_h_cm,
+              quantity: field === 'quantity' ? (value as number) : item.quantity,
+              productId: item.productId,
+              color_id: colorId,
+              size: field === 'size' ? value : item.size,
+          }).catch(() => null);
+
+          if (breakdown) {
+              setCartItems(prev => prev.map(i =>
+                  i.id === id ? { ...i, price: breakdown.total_per_unit, color_id: colorId } : i
+              ));
+          }
+      }
   };
 
   const removeItem = (id: string) => {

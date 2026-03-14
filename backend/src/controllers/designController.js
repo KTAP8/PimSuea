@@ -79,11 +79,13 @@ exports.saveDesign = async (req, res) => {
           design_name: design_name || 'Untitled Design',
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
-          print_file_url: print_file_url || null, // Save print file URL(s)
-          design_hash: req.body.design_hash || null, // SAVE HASH
+          print_file_url: print_file_url || null,
+          design_hash: req.body.design_hash || null,
           is_ordered: false,
           available_colors: req.body.available_colors || [],
-          printing_type: printingType
+          printing_type: printingType,
+          print_w_cm: req.body.print_w_cm ?? null,
+          print_h_cm: req.body.print_h_cm ?? null,
       }])
       .select()
       .single();
@@ -134,10 +136,12 @@ exports.updateDesign = async (req, res) => {
           design_name: design_name || 'Untitled Design',
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
-          print_file_url: print_file_url || oldDesign.print_file_url, // Update if new provided
-          design_hash: req.body.design_hash || oldDesign.design_hash, // UPDATE HASH
+          print_file_url: print_file_url || oldDesign.print_file_url,
+          design_hash: req.body.design_hash || oldDesign.design_hash,
           available_colors: req.body.available_colors || [],
           printing_type: req.body.printing_type || undefined,
+          print_w_cm: req.body.print_w_cm ?? undefined,
+          print_h_cm: req.body.print_h_cm ?? undefined,
           updated_at: new Date()
       })
       .eq('id', id)
