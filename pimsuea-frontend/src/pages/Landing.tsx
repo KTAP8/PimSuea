@@ -55,6 +55,7 @@ const content = {
       title: 'เข้าร่วม waitlist',
       titleSub: 'เป็นผู้ใช้กลุ่มแรก พร้อม',
       highlight: 'ราคาพิเศษ',
+      desc: 'ลงทะเบียนตอนนี้เพื่อล็อคราคาลดพิเศษเฉพาะช่วงเปิดตัวเท่านั้น คุณจะได้สิทธิ์สั่งซื้อในราคาที่ดีที่สุดก่อนใคร',
       namePlaceholder: 'ชื่อจริง',
       emailPlaceholder: 'อีเมลของคุณ',
       reasonLabel: 'คุณต้องการสั่งเสื้อเพื่ออะไร',
@@ -128,6 +129,7 @@ const content = {
       title: 'Join the waitlist',
       titleSub: 'Be the first to get',
       highlight: 'exclusive pricing',
+      desc: 'Lock in our lowest prices by joining the waitlist before we officially launch. You will be guaranteed the best deal available.',
       namePlaceholder: 'Your name',
       emailPlaceholder: 'Your email',
       reasonLabel: 'What are you ordering shirts for?',
@@ -630,14 +632,16 @@ export default function Landing() {
             <h2 className="font-heavy text-4xl md:text-5xl text-foreground mb-2 leading-tight">
               {t.waitlist.title}
             </h2>
-            <p className="font-bold text-lg text-muted-foreground mb-8">
+            <p className="font-bold text-xl text-foreground mb-3">
               {t.waitlist.titleSub}{' '}
               <span
-                className="text-foreground"
                 style={{ textDecoration: 'underline', textDecorationColor: '#F05A25', textDecorationThickness: '3px', textUnderlineOffset: '4px' }}
               >
                 {t.waitlist.highlight}
               </span>
+            </p>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-8 leading-relaxed font-light">
+              {t.waitlist.desc}
             </p>
 
             {status === 'success' ? (

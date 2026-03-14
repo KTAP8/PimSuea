@@ -20,7 +20,7 @@ import api, { uploadFile } from "@/services/api";
 import { exportDesignForProduction } from "@/utils/canvasExporter";
 import { useCart } from "@/contexts/CartContext";
 
-import { getDesignById, updateDesign } from "@/services/api";
+import { getDesignById, updateDesign as _updateDesign } from "@/services/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,8 +148,8 @@ export default function DesignCanvas() {
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Cart State (Defaults for now)
-  const [selectedSize, setSelectedSize] = useState('M');
-  const [quantity, setQuantity] = useState(1);
+  const [selectedSize] = useState('M');
+  const [quantity] = useState(1);
   
   // Image Library State
   const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -1448,13 +1448,6 @@ const handleAddToCart = async () => {
         });
     } finally {
         setIsGenerating(false);
-    }
-};
-
-const handleOrderNow = async () => {
-    const result = await saveDesign(true); // Silent save
-    if (result?.targetId) {
-        navigate(`/order?initialDesignId=${result.targetId}`);
     }
 };
 

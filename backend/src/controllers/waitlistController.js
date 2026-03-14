@@ -4,6 +4,24 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'PimSuea <onboarding@resend.dev>';
 
+const emailWrapper = (content) => `
+  <div style="background:#f0f2f4;padding:40px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <div style="background:#08636D;padding:28px 32px;text-align:center;">
+        <span style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;">PimSuea</span>
+      </div>
+      <div style="padding:32px;">
+        ${content}
+      </div>
+      <div style="background:#f9fafb;padding:20px 32px;border-top:1px solid #e5e7eb;">
+        <p style="color:#9ca3af;font-size:12px;margin:0;line-height:1.7;">
+          หากคุณไม่ได้ดำเนินการนี้ด้วยตนเอง สามารถเพิกเฉยต่ออีเมลฉบับนี้ได้เลย
+        </p>
+      </div>
+    </div>
+  </div>
+`;
+
 // POST /api/waitlist
 // Public — no auth required
 const signup = async (req, res) => {
@@ -36,23 +54,18 @@ const signup = async (req, res) => {
     resend.emails.send({
       from: FROM_EMAIL,
       to: email,
-      subject: 'ยืนยันการลงทะเบียน PimSuea Waitlist 🎉',
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-          <h2 style="margin: 0 0 16px;">ยินดีต้อนรับสู่ PimSuea!</h2>
-          <p style="color: #444; line-height: 1.6;">
-            คุณได้ลงทะเบียนรอรับสิทธิ์เข้าใช้งาน <strong>PimSuea</strong> เรียบร้อยแล้ว
-            เราจะแจ้งให้คุณทราบทันทีเมื่อแพลตฟอร์มพร้อมใช้งาน
-          </p>
-          <p style="color: #444; line-height: 1.6;">
-            PimSuea คือแพลตฟอร์มออกแบบและพิมพ์เสื้อยืด Custom ที่ง่ายที่สุด
-            ออกแบบ พิมพ์ และรับของถึงบ้านคุณ
-          </p>
-          <p style="color: #888; font-size: 13px; margin-top: 32px;">
-            หากคุณไม่ได้ลงทะเบียน กรุณาเพิกเฉยต่ออีเมลฉบับนี้
-          </p>
-        </div>
-      `,
+      subject: 'ยืนยันการลงทะเบียน Waitlist — PimSuea 🎉',
+      html: emailWrapper(`
+        <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#111;">ยินดีต้อนรับ! 🎉</h2>
+        <p style="color:#555;line-height:1.7;margin:0 0 16px;">
+          คุณได้ลงทะเบียนรอรับสิทธิ์เข้าใช้งาน <strong>PimSuea</strong> เรียบร้อยแล้ว
+          เราจะแจ้งให้คุณทราบทันทีที่แพลตฟอร์มพร้อมเปิดให้บริการ
+        </p>
+        <p style="color:#555;line-height:1.7;margin:0;">
+          PimSuea คือแพลตฟอร์มออกแบบและสั่งพิมพ์เสื้อยืด Custom ที่ง่ายที่สุด —
+          ออกแบบเอง พิมพ์ลาย และรับของถึงบ้าน
+        </p>
+      `),
     }).catch(err => console.error('Confirmation email failed:', err));
   }
 
@@ -89,22 +102,16 @@ const notify = async (req, res) => {
       await resend.emails.send({
         from: FROM_EMAIL,
         to: signup.email,
-        subject: 'PimSuea พร้อมแล้ว! 🚀',
-        html: `
-          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-            <h2 style="margin: 0 0 16px;">PimSuea เปิดตัวแล้ว!</h2>
-            <p style="color: #444; line-height: 1.6;">
-              เรายินดีที่จะแจ้งให้ทราบว่า <strong>PimSuea</strong> พร้อมให้คุณใช้งานแล้ว!
-              ขอบคุณที่รอเราอย่างอดทน
-            </p>
-            <a href="https://pimsuea.com" style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold;">
-              เริ่มออกแบบเลย
-            </a>
-            <p style="color: #888; font-size: 13px; margin-top: 32px;">
-              หากคุณไม่ต้องการรับอีเมลจากเรา กรุณาเพิกเฉยต่ออีเมลฉบับนี้
-            </p>
-          </div>
-        `,
+        subject: 'PimSuea เปิดให้บริการแล้ว! 🚀',
+        html: emailWrapper(`
+          <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#111;">รอคอยมานานแล้ว — วันนี้มาถึงแล้ว! 🚀</h2>
+          <p style="color:#555;line-height:1.7;margin:0 0 24px;">
+            ขอบคุณที่รอคอยเรา — <strong>PimSuea</strong> พร้อมให้คุณออกแบบและสั่งพิมพ์เสื้อยืดในแบบของคุณเองได้แล้ววันนี้!
+          </p>
+          <a href="https://pimsuea.com" style="display:inline-block;padding:14px 28px;background:#08636D;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px;">
+            เริ่มออกแบบเลย →
+          </a>
+        `),
       });
 
       // Mark as notified
