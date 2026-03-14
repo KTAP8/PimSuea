@@ -11,13 +11,14 @@ import Order from './pages/Order';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import NewsDetails from './pages/NewsDetails';
+import Landing from './pages/Landing';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
   const location = useLocation();
-  const hideSidebarRoutes = ['/login', '/register'];
+  const hideSidebarRoutes = ['/login', '/register', '/'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname);
 
   return (
@@ -29,12 +30,13 @@ function Layout() {
         
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-             <Route path="/" element={<Dashboard />} />
+             <Route path="/dashboard" element={<Dashboard />} />
              <Route path="/news/:id" element={<NewsDetails />} />
              <Route path="/catalog" element={<Catalog />} />
              <Route path="/product/:id" element={<ProductDetails />} />

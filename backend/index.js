@@ -26,6 +26,7 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/uploads', require('./src/routes/uploadRoutes'));
 app.use('/api/pricing', require('./src/routes/pricingRoutes'));
+app.use('/api/waitlist', require('./src/routes/waitlistRoutes'));
 
 // Health check
 app.get('/', (req, res) => {

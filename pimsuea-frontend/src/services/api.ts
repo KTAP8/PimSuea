@@ -135,4 +135,11 @@ export const uploadFile = async (file: Blob | File, type: 'preview' | 'print' | 
     return response.data.url;
 };
 
+// Public endpoint — no auth token needed
+const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000/api';
+export const joinWaitlist = async (payload: { name: string; email: string; reason: string }): Promise<{ message: string }> => {
+    const response = await axios.post<{ message: string }>(`${API_BASE}/waitlist`, payload);
+    return response.data;
+};
+
 export default api;

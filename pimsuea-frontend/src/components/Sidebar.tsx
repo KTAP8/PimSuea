@@ -29,7 +29,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
   return (
     <div className="flex flex-col h-full py-6">
       <div className={cn("px-6 mb-8 transition-all duration-300", collapsed ? "px-2 flex justify-center" : "")}>
-        <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2 overflow-hidden whitespace-nowrap">
+        <Link to="/dashboard" className="text-2xl font-bold text-primary flex items-center gap-2 overflow-hidden whitespace-nowrap">
           <img src={logo} alt="PimSuea" className="h-8 w-auto min-w-[2rem]" />
           {!collapsed && <span className="animate-in fade-in duration-300">PimSuea</span>}
         </Link>
