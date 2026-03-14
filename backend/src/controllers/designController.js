@@ -1,5 +1,8 @@
 
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
+const { isUUID, isPositiveInt } = require('../utils/validate');
+
+const PRINTING_TYPES = ['DTG', 'DTF'];
 
 exports.getUserDesigns = async (req, res) => {
   const userId = req.user.id; // From requireAuth
@@ -30,6 +33,10 @@ exports.getUserDesigns = async (req, res) => {
 exports.getDesignById = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
 
   try {
     const db = getAuthenticatedSupabase(req.headers.authorization);
@@ -63,20 +70,30 @@ exports.saveDesign = async (req, res) => {
        return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  if (!isPositiveInt(base_product_id) && !isUUID(String(base_product_id))) {
+    return res.status(400).json({ error: 'base_product_id ไม่ถูกต้อง' });
+  }
+
+  const printingType = req.body.printing_type || null;
+  if (printingType && !PRINTING_TYPES.includes(printingType)) {
+    return res.status(400).json({ error: 'printing_type ไม่ถูกต้อง' });
+  }
+
+  const safeName = (design_name && typeof design_name === 'string')
+    ? design_name.slice(0, 200)
+    : 'Untitled Design';
+
   try {
-    console.log(`Saving design for user ${userId}: ${design_name}`);
-    
+    console.log(`Saving design for user ${userId}: ${safeName}`);
+
     const db = getAuthenticatedSupabase(req.headers.authorization);
-    
-    // Check if printing_type is provided
-    const printingType = req.body.printing_type || null;
 
     const { data, error } = await db
       .from('user_designs')
       .insert([{ 
-          user_id: userId, 
+          user_id: userId,
           base_product_id: base_product_id,
-          design_name: design_name || 'Untitled Design',
+          design_name: safeName,
           canvas_data: canvas_data, 
           preview_image_url: preview_image_url,
           print_file_url: print_file_url || null,
@@ -103,9 +120,22 @@ exports.updateDesign = async (req, res) => {
   const { id } = req.params;
   const { canvas_data, preview_image_url, design_name, print_file_url } = req.body;
 
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
+
   if (!canvas_data || !preview_image_url) {
        return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  const updatePrintingType = req.body.printing_type || undefined;
+  if (updatePrintingType && !PRINTING_TYPES.includes(updatePrintingType)) {
+    return res.status(400).json({ error: 'printing_type ไม่ถูกต้อง' });
+  }
+
+  const safeUpdateName = (design_name && typeof design_name === 'string')
+    ? design_name.slice(0, 200)
+    : 'Untitled Design';
 
   try {
     console.log("Updating design " + id + " for user " + userId);
@@ -132,13 +162,13 @@ exports.updateDesign = async (req, res) => {
     const { data, error } = await db
       .from('user_designs')
       .update({ 
-          design_name: design_name || 'Untitled Design',
-          canvas_data: canvas_data, 
+          design_name: safeUpdateName,
+          canvas_data: canvas_data,
           preview_image_url: preview_image_url,
           print_file_url: print_file_url || oldDesign.print_file_url,
           design_hash: req.body.design_hash || oldDesign.design_hash,
           available_colors: req.body.available_colors || [],
-          printing_type: req.body.printing_type || undefined,
+          printing_type: updatePrintingType,
           print_dimensions: req.body.print_dimensions ?? undefined,
           updated_at: new Date()
       })
@@ -159,6 +189,10 @@ exports.updateDesign = async (req, res) => {
 exports.deleteDesign = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
 
   try {
     console.log(`Deleting design ${id} for user ${userId}`);

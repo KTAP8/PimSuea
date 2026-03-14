@@ -1,5 +1,8 @@
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 const { calculatePrice } = require('../utils/pricing');
+const { isUUID, isPositiveInt } = require('../utils/validate');
+
+const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 exports.getUserOrders = async (req, res) => {
   const userId = req.user.id;
@@ -48,6 +51,11 @@ exports.getUserOrders = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
+
   const client = getAuthenticatedSupabase(req.headers.authorization);
 
   try {
@@ -101,6 +109,19 @@ exports.createOrder = async (req, res) => {
 
   if (!items || items.length === 0) {
     return res.status(400).json({ error: 'Cart is empty' });
+  }
+
+  if (!shipping || typeof shipping !== 'object' || Array.isArray(shipping)) {
+    return res.status(400).json({ error: 'ข้อมูลที่อยู่จัดส่งไม่ครบถ้วน' });
+  }
+
+  for (const item of items) {
+    if (!isPositiveInt(item.quantity)) {
+      return res.status(400).json({ error: 'quantity ต้องเป็นจำนวนเต็มบวก' });
+    }
+    if (!VALID_SIZES.includes(item.size)) {
+      return res.status(400).json({ error: `size "${item.size}" ไม่ถูกต้อง` });
+    }
   }
 
   const client = getAuthenticatedSupabase(req.headers.authorization);
@@ -227,6 +248,11 @@ exports.updateOrder = async (req, res) => {
   const userId = req.user.id;
   const { id } = req.params;
   const { shipping_address } = req.body;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
+
   const client = getAuthenticatedSupabase(req.headers.authorization);
 
   try {

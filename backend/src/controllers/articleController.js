@@ -1,7 +1,12 @@
 const { supabase } = require('../config/supabaseClient');
+const { isUUID, isPositiveInt } = require('../utils/validate');
 
 exports.getArticleById = async (req, res) => {
   const { id } = req.params;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
 
   try {
     const { data: article, error } = await supabase

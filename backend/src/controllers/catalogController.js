@@ -1,4 +1,5 @@
 const { supabase } = require('../config/supabaseClient');
+const { isUUID, isPositiveInt } = require('../utils/validate');
 
 exports.getCategories = async (req, res) => {
   try {
@@ -73,6 +74,10 @@ exports.getProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   const { id } = req.params;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
 
   try {
     const { data: product, error } = await supabase
@@ -153,6 +158,10 @@ exports.getProductById = async (req, res) => {
 
 exports.getProductTemplates = async (req, res) => {
   const { id } = req.params;
+
+  if (!isUUID(id) && !isPositiveInt(id)) {
+    return res.status(400).json({ error: 'ID ไม่ถูกต้อง' });
+  }
 
   try {
     const { data: templates, error } = await supabase

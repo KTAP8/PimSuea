@@ -1,5 +1,12 @@
 
 const { supabaseAdmin } = require('../config/supabaseClient');
+const { sanitizeFileName } = require('../utils/validate');
+
+const ALLOWED_MIME = {
+  preview: ['image/png', 'image/jpeg', 'image/webp'],
+  print:   ['image/png', 'image/jpeg'],
+  asset:   ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
+};
 
 exports.uploadFile = async (req, res) => {
   try {
@@ -9,6 +16,11 @@ exports.uploadFile = async (req, res) => {
 
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const bucketType = ALLOWED_MIME[type] ? type : 'asset';
+    if (!ALLOWED_MIME[bucketType].includes(file.mimetype)) {
+      return res.status(400).json({ error: 'ประเภทไฟล์ไม่รองรับ' });
     }
 
     // Determine bucket and path based on type
@@ -52,7 +64,7 @@ exports.uploadFile = async (req, res) => {
 
     // Allow overriding filename from body if strictly required (e.g. knowing the side)
     if (req.body.fileName) {
-        fileName = req.body.fileName;
+        fileName = sanitizeFileName(req.body.fileName);
     }
 
     const filePath = `${folder}/${fileName}`;

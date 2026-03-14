@@ -2,6 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { generalLimiter, strictLimiter } = require('./src/middleware/rateLimiter');
 
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const catalogRoutes = require('./src/routes/catalogRoutes');
@@ -16,6 +17,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(generalLimiter);               // global rate limit — all routes
+app.use('/api/waitlist', strictLimiter); // stricter limit — public endpoint
 
 // Routes
 app.use('/api/dashboard', dashboardRoutes);
