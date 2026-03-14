@@ -1189,9 +1189,14 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             
             // A. Export Current Side (Online)
             const currentPrintUrl = await exportDesignForProduction(
-                fabricRef.current, 
-                // user.id removed
-                { crop: printZoneBoundsRef.current || undefined }
+                fabricRef.current,
+                {
+                    crop: printZoneBoundsRef.current || undefined,
+                    physicalSize: {
+                        w_cm: currentTemplate.print_area_config?.physical_w_cm ?? 29.7,
+                        h_cm: currentTemplate.print_area_config?.physical_h_cm ?? 42.0,
+                    },
+                }
             );
             if (currentPrintUrl) {
                 printFiles[currentTemplate.side.toLowerCase()] = currentPrintUrl;
@@ -1245,7 +1250,13 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                          } catch (e) { console.warn("Bounds calc fail", e); }
                     }
 
-                    const url = await exportDesignForProduction(staticCanvas, { crop: bounds });
+                    const url = await exportDesignForProduction(staticCanvas, {
+                        crop: bounds,
+                        physicalSize: {
+                            w_cm: tmpl.print_area_config?.physical_w_cm ?? 29.7,
+                            h_cm: tmpl.print_area_config?.physical_h_cm ?? 42.0,
+                        },
+                    });
                     if (url) {
                         printFiles[tmpl.side.toLowerCase()] = url;
                     }
