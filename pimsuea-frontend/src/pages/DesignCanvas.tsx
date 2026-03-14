@@ -1259,14 +1259,14 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
         // -------------------------------------------------------------------
         // 3. Calculate design AABB in cm per side for pricing tier lookup
         // -------------------------------------------------------------------
-        const print_dimensions: Record<string, { w: number; h: number }> = {};
+        const print_dimensions: Record<string, { w: number; h: number; px_x: number; px_y: number; px_w: number; px_h: number }> = {};
 
         const computeSideAabb = (
             objects: fabric.Object[],
             pz: { left: number; top: number; width: number; height: number },
             physW: number,
             physH: number,
-        ): { w: number; h: number } | null => {
+        ): { w: number; h: number; px_x: number; px_y: number; px_w: number; px_h: number } | null => {
             const designObjs = objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
             if (designObjs.length === 0) return null;
             const xs: number[] = [];
@@ -1285,6 +1285,10 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             return {
                 w: parseFloat(((bboxW / pz.width) * physW).toFixed(2)),
                 h: parseFloat(((bboxH / pz.height) * physH).toFixed(2)),
+                px_x: Math.round(minX),
+                px_y: Math.round(minY),
+                px_w: Math.round(bboxW),
+                px_h: Math.round(bboxH),
             };
         };
 
