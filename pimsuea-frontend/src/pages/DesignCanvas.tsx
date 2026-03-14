@@ -1235,40 +1235,72 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
         }
 
         // -------------------------------------------------------------------
-        // 3. Calculate design AABB in cm for pricing tier lookup
+        // 3. Calculate design AABB in cm per side for pricing tier lookup
         // -------------------------------------------------------------------
-        let print_w_cm: number | undefined;
-        let print_h_cm: number | undefined;
+        const print_dimensions: Record<string, { w: number; h: number }> = {};
 
-        const designObjects = fabricRef.current.getObjects().filter(
-            (o: any) => o.name !== 'static_bg' && o.name !== 'print_zone'
-        );
-
-        if (designObjects.length > 0 && printZoneBoundsRef.current) {
-            const pz = printZoneBoundsRef.current;
+        const computeSideAabb = (
+            objects: fabric.Object[],
+            pz: { left: number; top: number; width: number; height: number },
+            physW: number,
+            physH: number,
+        ): { w: number; h: number } | null => {
+            const designObjs = objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
+            if (designObjs.length === 0) return null;
             const xs: number[] = [];
             const ys: number[] = [];
-
-            designObjects.forEach((obj: fabric.Object) => {
+            designObjs.forEach((obj: fabric.Object) => {
                 const rect = obj.getBoundingRect(true);
                 xs.push(rect.left, rect.left + rect.width);
                 ys.push(rect.top, rect.top + rect.height);
             });
-
-            // Clamp to print zone bounds
             const minX = Math.max(Math.min(...xs), pz.left);
             const maxX = Math.min(Math.max(...xs), pz.left + pz.width);
             const minY = Math.max(Math.min(...ys), pz.top);
             const maxY = Math.min(Math.max(...ys), pz.top + pz.height);
             const bboxW = Math.max(0, maxX - minX);
             const bboxH = Math.max(0, maxY - minY);
+            return {
+                w: parseFloat(((bboxW / pz.width) * physW).toFixed(2)),
+                h: parseFloat(((bboxH / pz.height) * physH).toFixed(2)),
+            };
+        };
 
-            // Physical print zone in cm — read from template config or default to A3
+        // Current (active) side
+        if (printZoneBoundsRef.current) {
             const physW = currentTemplate.print_area_config?.physical_w_cm ?? 29.7;
             const physH = currentTemplate.print_area_config?.physical_h_cm ?? 42.0;
+            const result = computeSideAabb(fabricRef.current.getObjects(), printZoneBoundsRef.current, physW, physH);
+            if (result) {
+                print_dimensions[currentTemplate.side] = result;
+            }
+        }
 
-            print_w_cm = parseFloat(((bboxW / pz.width) * physW).toFixed(2));
-            print_h_cm = parseFloat(((bboxH / pz.height) * physH).toFixed(2));
+        // Other sides for the same color
+        const otherSideTemplates = templates.filter(
+            t => t.color?.id === selectedColorId && t.id !== currentTemplate.id
+        );
+        const canvasW = fabricRef.current.getWidth();
+        const canvasH = fabricRef.current.getHeight();
+
+        for (const tmpl of otherSideTemplates) {
+            const saved = savedDesigns.current[tmpl.id];
+            const json = saved?.json || saved;
+            if (!json) continue;
+
+            const sideCanvas = new fabric.StaticCanvas(null, { width: canvasW, height: canvasH });
+            await new Promise<void>(resolve => sideCanvas.loadFromJSON(json, () => resolve()));
+
+            const sidePz = saved?.bounds || printZoneBoundsRef.current;
+            if (sidePz) {
+                const physW = tmpl.print_area_config?.physical_w_cm ?? 29.7;
+                const physH = tmpl.print_area_config?.physical_h_cm ?? 42.0;
+                const result = computeSideAabb(sideCanvas.getObjects(), sidePz, physW, physH);
+                if (result) {
+                    print_dimensions[tmpl.side] = result;
+                }
+            }
+            sideCanvas.dispose();
         }
 
         // -------------------------------------------------------------------
@@ -1288,8 +1320,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 printing_type: printingType,
                 print_file_url: printFilePayload,
                 design_hash: currentHash,
-                print_w_cm,
-                print_h_cm,
+                print_dimensions: Object.keys(print_dimensions).length > 0 ? print_dimensions : undefined,
             });
             // Cleanup old preview if URL changed (optional optimization)
         } else {
@@ -1303,8 +1334,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 printing_type: printingType,
                 print_file_url: printFilePayload,
                 design_hash: currentHash,
-                print_w_cm,
-                print_h_cm,
+                print_dimensions: Object.keys(print_dimensions).length > 0 ? print_dimensions : undefined,
              };
 
              const response = await api.post('/designs', createPayload);

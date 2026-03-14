@@ -84,8 +84,7 @@ exports.saveDesign = async (req, res) => {
           is_ordered: false,
           available_colors: req.body.available_colors || [],
           printing_type: printingType,
-          print_w_cm: req.body.print_w_cm ?? null,
-          print_h_cm: req.body.print_h_cm ?? null,
+          print_dimensions: req.body.print_dimensions ?? null,
       }])
       .select()
       .single();
@@ -140,8 +139,7 @@ exports.updateDesign = async (req, res) => {
           design_hash: req.body.design_hash || oldDesign.design_hash,
           available_colors: req.body.available_colors || [],
           printing_type: req.body.printing_type || undefined,
-          print_w_cm: req.body.print_w_cm ?? undefined,
-          print_h_cm: req.body.print_h_cm ?? undefined,
+          print_dimensions: req.body.print_dimensions ?? undefined,
           updated_at: new Date()
       })
       .eq('id', id)

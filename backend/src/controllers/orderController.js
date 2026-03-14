@@ -119,7 +119,7 @@ exports.createOrder = async (req, res) => {
       // Fetch design data needed for pricing
       const { data: design, error: designError } = await supabaseAdmin
         .from('user_designs')
-        .select('print_w_cm, print_h_cm, printing_type, base_product_id')
+        .select('print_dimensions, printing_type, base_product_id')
         .eq('id', designId)
         .single();
 
@@ -128,7 +128,18 @@ exports.createOrder = async (req, res) => {
         return { ...item, verifiedUnitPrice: item.price };
       }
 
-      if (!design.print_w_cm || !design.print_h_cm || !design.printing_type) {
+      // Derive max dimensions across all sides
+      const dims = design.print_dimensions;
+      let aabb_w_cm = 0;
+      let aabb_h_cm = 0;
+      if (dims && typeof dims === 'object') {
+        for (const side of Object.values(dims)) {
+          aabb_w_cm = Math.max(aabb_w_cm, side.w ?? 0);
+          aabb_h_cm = Math.max(aabb_h_cm, side.h ?? 0);
+        }
+      }
+
+      if (!aabb_w_cm || !aabb_h_cm || !design.printing_type) {
         console.warn(`Design ${designId} missing AABB/printing_type; using client price`);
         return { ...item, verifiedUnitPrice: item.price };
       }
@@ -149,8 +160,8 @@ exports.createOrder = async (req, res) => {
       try {
         const breakdown = await calculatePrice({
           printingType: design.printing_type,
-          aabb_w_cm: Number(design.print_w_cm),
-          aabb_h_cm: Number(design.print_h_cm),
+          aabb_w_cm,
+          aabb_h_cm,
           quantity: item.quantity,
           productId: design.base_product_id,
           color_name,
