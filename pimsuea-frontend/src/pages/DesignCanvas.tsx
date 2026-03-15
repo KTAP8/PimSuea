@@ -16,7 +16,8 @@ import WebFont from "webfontloader";
 import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle, ShoppingCart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import api, { uploadFile } from "@/services/api";
+import api, { uploadFile, getPrice } from "@/services/api";
+import type { PriceBreakdown } from "@/types/api";
 import { exportDesignForProduction } from "@/utils/canvasExporter";
 import { useCart } from "@/contexts/CartContext";
 
@@ -37,8 +38,10 @@ export default function DesignCanvas() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const designId = searchParams.get('designId');
-  // Support both cases
-  const printingType = searchParams.get('printingType') || searchParams.get('printing_type'); 
+  // Normalize to uppercase — DB ids are 'dtg'/'dtf', backend expects 'DTG'/'DTF'
+  const rawPrintingType = searchParams.get('printingType') || searchParams.get('printing_type');
+  const normalizedPrintingType = rawPrintingType?.toUpperCase();
+  const printingType = (normalizedPrintingType === 'DTG' || normalizedPrintingType === 'DTF') ? normalizedPrintingType : null;
   console.log("Captured Printing Type:", printingType); // DEBUG
   const navigate = useNavigate();
   
@@ -150,6 +153,9 @@ export default function DesignCanvas() {
   // Cart State (Defaults for now)
   const [selectedSize] = useState('M');
   const [quantity] = useState(1);
+
+  // Pricing
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   
   // Image Library State
   const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -1124,7 +1130,7 @@ export default function DesignCanvas() {
      fabricRef.current.renderAll();
   };
 
-const saveDesign = async (silent = false): Promise<{ targetId: string | null, printFilePayload: string } | null> => {
+const saveDesign = async (silent = false): Promise<{ targetId: string | null, printFilePayload: string, print_dimensions: Record<string, { w: number; h: number }> } | null> => {
     if (!currentTemplate || !fabricRef.current) return null;
     if (!user) {
         alert('กรุณาเข้าสู่ระบบเพื่อบันทึกงานออกแบบ');
@@ -1387,7 +1393,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             setNotification({ type: 'success', title: 'บันทึกสำเร็จ', message: 'บันทึกงานออกแบบเรียบร้อยแล้ว' });
         }
         
-        return { targetId, printFilePayload }; // Return useful data
+        return { targetId, printFilePayload, print_dimensions }; // Return useful data
 
     } catch (error: any) {
         console.error("Save failed:", error);
@@ -1457,6 +1463,31 @@ const handleManualSave = async () => {
         // We just created a new design, navigate to its edit page
         // Format: /design/:productId?designId=:newDesignId
         navigate(`/design/${id}?designId=${result.targetId}`, { replace: true });
+    }
+
+    // Calculate price from AABB after save
+    if (result?.print_dimensions && printingType && selectedColorId && currentTemplate) {
+        const dims = Object.values(result.print_dimensions);
+        if (dims.length > 0) {
+            const aabb_w_cm = Math.max(...dims.map(s => s.w));
+            const aabb_h_cm = Math.max(...dims.map(s => s.h));
+            if (aabb_w_cm > 0 && aabb_h_cm > 0) {
+                try {
+                    const breakdown = await getPrice({
+                        printingType: printingType as 'DTG' | 'DTF',
+                        aabb_w_cm,
+                        aabb_h_cm,
+                        quantity: 1,
+                        productId: currentTemplate.product_id,
+                        color_id: selectedColorId,
+                        size: selectedSize,
+                    });
+                    setPriceBreakdown(breakdown);
+                } catch {
+                    // Pricing not available for this config — leave previous value
+                }
+            }
+        }
     }
 };
 
@@ -1819,6 +1850,25 @@ const handleManualSave = async () => {
                                     </div>
                                 </PopoverContent>
                             </Popover>
+                        </div>
+                    </div>
+                )}
+
+                {/* PRICE CARD */}
+                {priceBreakdown && (
+                    <div className="w-48 bg-white p-3 rounded-xl shadow-xl border">
+                        <span className="text-[10px] uppercase text-gray-400 font-bold block mb-2">ราคาโดยประมาณ</span>
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>เสื้อ (size {selectedSize})</span>
+                            <span>฿{priceBreakdown.shirt_per_unit.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mb-2">
+                            <span>พิมพ์ ({priceBreakdown.tier})</span>
+                            <span>฿{priceBreakdown.print_per_unit.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold border-t pt-2">
+                            <span>รวม/ชิ้น</span>
+                            <span className="text-teal-700">฿{priceBreakdown.total_per_unit.toLocaleString()}</span>
                         </div>
                     </div>
                 )}
