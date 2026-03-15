@@ -1,6 +1,7 @@
 
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
+const { getLocationFromUrl, deleteObject } = require('../config/r2Client');
 
 const PRINTING_TYPES = ['DTG', 'DTF'];
 
@@ -197,21 +198,54 @@ exports.deleteDesign = async (req, res) => {
   try {
     console.log(`Deleting design ${id} for user ${userId}`);
     const db = getAuthenticatedSupabase(req.headers.authorization);
-    
-    // Check if design exists and belongs to user first (optional but good for debugging)
-    // Actually DELETE with RLS will just silently fail (count=0) if not matched.
-    
-    const { error, count } = await db
+
+    // Fetch file URLs before deleting so we can clean up R2
+    const { data: design, error: fetchError } = await db
       .from('user_designs')
-      .delete({ count: 'exact' })
+      .select('preview_image_url, print_file_url')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !design) {
+      return res.status(404).json({ error: 'Design not found' });
+    }
+
+    // Delete DB record first
+    const { error } = await db
+      .from('user_designs')
+      .delete()
       .eq('id', id)
       .eq('user_id', userId);
 
     if (error) throw error;
-    
-    // Note: Supabase delete returns count of deleted rows if proper header? 
-    // Usually it returns null data on success unless .select() appended.
-    
+
+    // Clean up R2 files (best-effort — don't fail the request if R2 delete fails)
+    // print_file_url is stored as JSON: {"front":"https://...","back":"https://..."}
+    const printUrls = [];
+    if (design.print_file_url) {
+      try {
+        const parsed = JSON.parse(design.print_file_url);
+        if (typeof parsed === 'object' && parsed !== null) {
+          printUrls.push(...Object.values(parsed));
+        } else {
+          printUrls.push(design.print_file_url); // legacy plain URL
+        }
+      } catch {
+        printUrls.push(design.print_file_url); // legacy plain URL
+      }
+    }
+
+    const urlsToDelete = [design.preview_image_url, ...printUrls].filter(Boolean);
+    for (const url of urlsToDelete) {
+      const loc = getLocationFromUrl(url);
+      if (loc) {
+        deleteObject(loc.bucket, loc.key).catch(err =>
+          console.error(`R2 delete failed for ${url}: ${err.message}`)
+        );
+      }
+    }
+
     res.json({ message: 'Design deleted successfully' });
   } catch (error) {
     console.error('Error deleting design:', error);

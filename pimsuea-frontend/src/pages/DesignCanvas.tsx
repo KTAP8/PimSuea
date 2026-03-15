@@ -310,22 +310,60 @@ export default function DesignCanvas() {
                 // Set Preview URL
                 if (design.preview_image_url) setCurrentPreviewUrl(design.preview_image_url);
                 // Restore Active Colors
+                let loadFirstColorId: string | null = null;
+                let loadMatchingTemplate: any = null;
                 if (design.available_colors && Array.isArray(design.available_colors) && design.available_colors.length > 0) {
                      setActiveColorIds(new Set(design.available_colors));
-                     
+
                      // Set Initial Color & Template from Saved Data
-                     const firstColorId = design.available_colors[0];
-                     setSelectedColorId(firstColorId);
-                     
-                     const matchingTemplate = data.find((t: any) => 
-                        t.color?.id === firstColorId && t.side.toLowerCase() === 'front'
-                     ) || data.find((t: any) => t.color?.id === firstColorId);
-                     
-                     if (matchingTemplate) {
-                         setCurrentTemplate(matchingTemplate);
+                     loadFirstColorId = design.available_colors[0];
+                     setSelectedColorId(loadFirstColorId);
+
+                     loadMatchingTemplate = data.find((t: any) =>
+                        t.color?.id === loadFirstColorId && t.side.toLowerCase() === 'front'
+                     ) || data.find((t: any) => t.color?.id === loadFirstColorId);
+
+                     if (loadMatchingTemplate) {
+                         setCurrentTemplate(loadMatchingTemplate);
                      }
                 }
-                
+
+                // Calculate pricing immediately from stored print_dimensions
+                if (design.print_dimensions && design.printing_type) {
+                    const colorId = loadFirstColorId || data[0]?.color?.id;
+                    const productId = loadMatchingTemplate?.product_id || data[0]?.product_id;
+                    if (colorId && productId) {
+                        const entries = Object.entries(design.print_dimensions as Record<string, { w: number; h: number }>)
+                            .filter(([, d]) => d.w > 0 && d.h > 0);
+                        const sideResults: { side: string; tier: string; print_per_unit: number }[] = [];
+                        let shirt_per_unit = 0;
+                        for (const [side, dims] of entries) {
+                            try {
+                                const bd = await getPrice({
+                                    printingType: design.printing_type as 'DTG' | 'DTF',
+                                    aabb_w_cm: dims.w,
+                                    aabb_h_cm: dims.h,
+                                    quantity: 1,
+                                    productId,
+                                    color_id: colorId,
+                                    size: 'M',
+                                });
+                                shirt_per_unit = bd.shirt_per_unit;
+                                sideResults.push({ side, tier: bd.tier, print_per_unit: bd.print_per_unit });
+                            } catch { /* skip if no pricing match */ }
+                        }
+                        if (sideResults.length > 0) {
+                            const total_print_per_unit = sideResults.reduce((s, r) => s + r.print_per_unit, 0);
+                            setPriceBreakdown({
+                                sides: sideResults,
+                                shirt_per_unit,
+                                total_print_per_unit,
+                                total_per_unit: shirt_per_unit + total_print_per_unit,
+                            });
+                        }
+                    }
+                }
+
                 console.log("Loaded Canvas Data:", Object.keys(savedDesigns.current));
             }
         }
@@ -1929,26 +1967,33 @@ const handleManualSave = async () => {
                     </div>
                 )}
 
-                {/* PRICE CARD */}
-                {priceBreakdown && (
-                    <div className="w-48 bg-white p-3 rounded-xl shadow-xl border">
-                        <span className="text-[10px] uppercase text-gray-400 font-bold block mb-2">ราคาโดยประมาณ</span>
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>เสื้อ (size {selectedSize})</span>
-                            <span>฿{priceBreakdown.shirt_per_unit.toLocaleString()}</span>
-                        </div>
-                        {priceBreakdown.sides.map(s => (
-                            <div key={s.side} className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>พิมพ์ {s.side} ({s.tier})</span>
-                                <span>฿{s.print_per_unit.toLocaleString()}</span>
-                            </div>
-                        ))}
-                        <div className="flex justify-between text-sm font-bold border-t pt-2 mt-1">
-                            <span>รวม/ชิ้น</span>
-                            <span className="text-teal-700">฿{priceBreakdown.total_per_unit.toLocaleString()}</span>
-                        </div>
+                {/* PRICE CARD — always visible */}
+                <div className="w-48 bg-white p-3 rounded-xl shadow-xl border">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] uppercase text-gray-400 font-bold">ราคาโดยประมาณ</span>
+                        <span className="text-[9px] text-gray-300">1 ชิ้น</span>
                     </div>
-                )}
+                    {priceBreakdown ? (
+                        <>
+                            <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>เสื้อ (size {selectedSize})</span>
+                                <span>฿{priceBreakdown.shirt_per_unit.toLocaleString()}</span>
+                            </div>
+                            {priceBreakdown.sides.map(s => (
+                                <div key={s.side} className="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>พิมพ์ {s.side} ({s.tier})</span>
+                                    <span>฿{s.print_per_unit.toLocaleString()}</span>
+                                </div>
+                            ))}
+                            <div className="flex justify-between text-sm font-bold border-t pt-2 mt-1">
+                                <span>รวม/ชิ้น</span>
+                                <span className="text-teal-700">฿{priceBreakdown.total_per_unit.toLocaleString()}</span>
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-xs text-gray-300 text-center py-3">บันทึกเพื่อดูราคา</p>
+                    )}
+                </div>
 
                 {/* LAYERS PANEL */}
                 <div className="w-48 bg-white p-3 rounded-lg shadow-xl border flex flex-col gap-3 max-h-[60vh]">

@@ -1,4 +1,4 @@
-const { S3Client } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 
 const r2 = new S3Client({
   region: 'auto',
@@ -27,4 +27,28 @@ function getPublicUrl(bucketName, filePath) {
   return `${base}/${filePath}`;
 }
 
-module.exports = { r2, getPublicUrl };
+/**
+ * Resolves a public URL back to { bucket, key } by matching against known base URLs.
+ * Returns null if the URL doesn't match any configured bucket.
+ * @param {string} url
+ * @returns {{ bucket: string, key: string } | null}
+ */
+function getLocationFromUrl(url) {
+  for (const [bucket, base] of Object.entries(R2_PUBLIC_URLS)) {
+    if (base && url.startsWith(base + '/')) {
+      return { bucket, key: url.slice(base.length + 1) };
+    }
+  }
+  return null;
+}
+
+/**
+ * Deletes an object from R2 given its bucket + key.
+ * @param {string} bucketName
+ * @param {string} key
+ */
+async function deleteObject(bucketName, key) {
+  await r2.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
+}
+
+module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject };
