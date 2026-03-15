@@ -53,7 +53,8 @@ exports.uploadFile = async (req, res) => {
     }
 
     if (req.body.fileName) {
-      fileName = sanitizeFileName(req.body.fileName);
+      // Keep timestamp prefix so each save produces a unique URL (prevents browser caching stale previews)
+      fileName = `${timestamp}_${sanitizeFileName(req.body.fileName)}`;
     }
 
     const filePath = `${folder}/${fileName}`;
