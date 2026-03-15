@@ -154,7 +154,8 @@ export default function DesignCanvas() {
   const [selectedSize] = useState('M');
   const [quantity] = useState(1);
 
-  // Pricing
+  // Pricing — effectivePrintingType persists across URL navigations and loads from saved design
+  const [effectivePrintingType, setEffectivePrintingType] = useState<string | null>(printingType);
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
   
   // Image Library State
@@ -289,6 +290,8 @@ export default function DesignCanvas() {
                 savedDesigns.current = design.canvas_data;
                 // Set Design Name
                 if (design.design_name) setDesignName(design.design_name);
+                // Set printing type from saved design (used for pricing)
+                if (design.printing_type) setEffectivePrintingType(design.printing_type);
                 // Set Preview URL
                 if (design.preview_image_url) setCurrentPreviewUrl(design.preview_image_url);
                 // Restore Active Colors
@@ -1466,7 +1469,7 @@ const handleManualSave = async () => {
     }
 
     // Calculate price from AABB after save
-    if (result?.print_dimensions && printingType && selectedColorId && currentTemplate) {
+    if (result?.print_dimensions && effectivePrintingType && selectedColorId && currentTemplate) {
         const dims = Object.values(result.print_dimensions);
         if (dims.length > 0) {
             const aabb_w_cm = Math.max(...dims.map(s => s.w));
@@ -1474,7 +1477,7 @@ const handleManualSave = async () => {
             if (aabb_w_cm > 0 && aabb_h_cm > 0) {
                 try {
                     const breakdown = await getPrice({
-                        printingType: printingType as 'DTG' | 'DTF',
+                        printingType: effectivePrintingType as 'DTG' | 'DTF',
                         aabb_w_cm,
                         aabb_h_cm,
                         quantity: 1,
