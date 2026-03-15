@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { MD5 } from 'crypto-js';
 import { fabric } from "fabric";
 import { getProductTemplates } from "@/services/api";
@@ -153,6 +153,10 @@ export default function DesignCanvas() {
   // Cart State (Defaults for now)
   const [selectedSize] = useState('M');
   const [quantity] = useState(1);
+
+  // Unsaved changes tracking
+  const isDirtyRef = useRef(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Pricing — effectivePrintingType persists across URL navigations and loads from saved design
   const [effectivePrintingType, setEffectivePrintingType] = useState<string | null>(printingType);
@@ -540,6 +544,8 @@ export default function DesignCanvas() {
       // 4. Bind History Events (After Init)
       const onHistoryChange = () => {
          if (isHistoryLocked.current) return;
+         isDirtyRef.current = true;
+         setIsDirty(true);
          const json = JSON.stringify(newCanvas.toJSON(['name', 'selectable', 'evented', 'id']));
          
          // Logic using Mutable Refs to avoid Stale Closures
@@ -1390,8 +1396,10 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
         }
         
         // Success Actions
-        setCurrentPreviewUrl(previewUrl); 
-        
+        setCurrentPreviewUrl(previewUrl);
+        isDirtyRef.current = false;
+        setIsDirty(false);
+
         if (!silent) {
             setNotification({ type: 'success', title: 'บันทึกสำเร็จ', message: 'บันทึกงานออกแบบเรียบร้อยแล้ว' });
         }
@@ -1494,6 +1502,28 @@ const handleManualSave = async () => {
     }
 };
 
+  // Manual guard for in-app navigation (BrowserRouter doesn't support useBlocker)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const handleBackClick = () => {
+    if (isDirtyRef.current) {
+      setShowUnsavedDialog(true);
+    } else {
+      navigate('/my-products');
+    }
+  };
+
+  // Block browser close / refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
@@ -1511,14 +1541,33 @@ const handleManualSave = async () => {
           </div>
       )}
 
+      {/* UNSAVED CHANGES DIALOG */}
+      <AlertDialog open={showUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ยังไม่ได้บันทึก</AlertDialogTitle>
+            <AlertDialogDescription>
+              งานออกแบบยังไม่ได้บันทึก หากออกตอนนี้การเปลี่ยนแปลงจะหายไป ต้องการออกหรือไม่?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowUnsavedDialog(false)}>อยู่ต่อ</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setShowUnsavedDialog(false); navigate('/my-products'); }}
+            >
+              ออกโดยไม่บันทึก
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* HEADER */}
       <div className="h-16 bg-white border-b flex items-center justify-between px-4 z-10 w-full shrink-0">
         <div className="flex items-center gap-4">
-          <Link to="/my-products">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" onClick={handleBackClick}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
           <div className="flex flex-col">
             <input 
                 type="text" 
@@ -1535,7 +1584,7 @@ const handleManualSave = async () => {
             <Button variant="outline" size="sm" onClick={() => {}} disabled={true}>
                  ตัวอย่าง
             </Button>
-            <Button size="sm" variant="outline" onClick={handleManualSave} disabled={saving}>
+            <Button size="sm" variant={isDirty ? "default" : "outline"} onClick={handleManualSave} disabled={saving}>
                 {saving ? (
                     <>
                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
