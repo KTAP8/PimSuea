@@ -11,6 +11,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 // Interfaces
+interface SidePriceBreakdown { side: string; tier: string; print_per_unit: number; }
+interface ItemPriceBreakdown {
+  sides: SidePriceBreakdown[];
+  shirt_per_unit: number;
+  total_print_per_unit: number;
+  total_per_unit: number;
+}
+
 interface CartItem {
   id: string; // unique ID for cart row
   designId: string;
@@ -28,8 +36,8 @@ interface CartItem {
   sizeGuide: any;
   print_file_url?: string;
   printingType?: string;
-  print_w_cm?: number;
-  print_h_cm?: number;
+  print_dimensions?: Record<string, { w: number; h: number }>;
+  priceBreakdown?: ItemPriceBreakdown;
 }
 
 interface ShippingInfo {
@@ -40,6 +48,39 @@ interface ShippingInfo {
   province: string;
   district: string;
   postalCode: string;
+}
+
+// Calculate price for all sides, sum print costs, add shirt once
+async function calcMultiSidePrice(
+  printingType: string,
+  print_dimensions: Record<string, { w: number; h: number }>,
+  quantity: number,
+  productId: string,
+  color_id: string,
+  size: string,
+): Promise<ItemPriceBreakdown | null> {
+  const entries = Object.entries(print_dimensions).filter(([, d]) => d.w > 0 && d.h > 0);
+  if (entries.length === 0) return null;
+  const sideResults: SidePriceBreakdown[] = [];
+  let shirt_per_unit = 0;
+  for (const [side, dims] of entries) {
+    try {
+      const bd = await getPrice({
+        printingType: printingType as 'DTG' | 'DTF',
+        aabb_w_cm: dims.w,
+        aabb_h_cm: dims.h,
+        quantity,
+        productId,
+        color_id,
+        size,
+      });
+      shirt_per_unit = bd.shirt_per_unit;
+      sideResults.push({ side, tier: bd.tier, print_per_unit: bd.print_per_unit });
+    } catch { /* skip sides with no pricing match */ }
+  }
+  if (sideResults.length === 0) return null;
+  const total_print_per_unit = sideResults.reduce((s, r) => s + r.print_per_unit, 0);
+  return { sides: sideResults, shirt_per_unit, total_print_per_unit, total_per_unit: shirt_per_unit + total_print_per_unit };
 }
 
 export default function Order() {
@@ -145,18 +186,11 @@ export default function Order() {
             const initialColor = availableColors[0];
             const initialColorId = initialColor?.id || 'white';
             let initialPrice = product.starting_price || product.price || 500;
+            let priceBreakdown: ItemPriceBreakdown | undefined;
 
-            if (design.print_w_cm && design.print_h_cm && design.printing_type) {
-                const breakdown = await getPrice({
-                    printingType: design.printing_type as 'DTG' | 'DTF',
-                    aabb_w_cm: design.print_w_cm,
-                    aabb_h_cm: design.print_h_cm,
-                    quantity,
-                    productId: design.base_product_id,
-                    color_id: initialColorId,
-                    size: initialSize,
-                }).catch(() => null);
-                if (breakdown) initialPrice = breakdown.total_per_unit;
+            if (design.print_dimensions && design.printing_type) {
+                const bd = await calcMultiSidePrice(design.printing_type, design.print_dimensions, quantity, String(design.base_product_id), initialColorId, initialSize).catch(() => null);
+                if (bd) { priceBreakdown = bd; initialPrice = bd.total_per_unit; }
             }
 
             const newItem: CartItem = {
@@ -175,8 +209,8 @@ export default function Order() {
                 availableColors,
                 sizeGuide,
                 printingType: design.printing_type,
-                print_w_cm: design.print_w_cm,
-                print_h_cm: design.print_h_cm,
+                print_dimensions: design.print_dimensions,
+                priceBreakdown,
                 print_file_url: design.print_file_url,
             };
 
@@ -236,30 +270,21 @@ export default function Order() {
                      const colorId = cItem.color_id || availableColors[0]?.id || 'white';
                      let price = cItem.price || product.starting_price || 500;
                      let printingType: string | undefined;
-                     let print_w_cm: number | undefined;
-                     let print_h_cm: number | undefined;
+                     let print_dimensions: Record<string, { w: number; h: number }> | undefined;
+                     let priceBreakdown: ItemPriceBreakdown | undefined;
 
-                     // Fetch design for AABB if available
+                     // Fetch design for print_dimensions if available
                      if (cItem.design_id && cItem.design_id !== 'custom') {
                          const design = await getDesignById(cItem.design_id).catch(() => null);
                          if (design) {
                              printingType = design.printing_type;
-                             print_w_cm = design.print_w_cm;
-                             print_h_cm = design.print_h_cm;
+                             print_dimensions = design.print_dimensions;
                          }
                      }
 
-                     if (print_w_cm && print_h_cm && printingType) {
-                         const breakdown = await getPrice({
-                             printingType: printingType as 'DTG' | 'DTF',
-                             aabb_w_cm: print_w_cm,
-                             aabb_h_cm: print_h_cm,
-                             quantity: cItem.quantity,
-                             productId: String(product.id),
-                             color_id: colorId,
-                             size: cItem.size,
-                         }).catch(() => null);
-                         if (breakdown) price = breakdown.total_per_unit;
+                     if (print_dimensions && printingType) {
+                         const bd = await calcMultiSidePrice(printingType, print_dimensions, cItem.quantity, String(product.id), colorId, cItem.size).catch(() => null);
+                         if (bd) { priceBreakdown = bd; price = bd.total_per_unit; }
                      }
 
                      return {
@@ -278,8 +303,8 @@ export default function Order() {
                          availableColors,
                          sizeGuide,
                          printingType,
-                         print_w_cm,
-                         print_h_cm,
+                         print_dimensions,
+                         priceBreakdown,
                          print_file_url: cItem.print_file_url,
                      };
                  }));
@@ -337,18 +362,11 @@ export default function Order() {
             const initialColor = availableColors[0];
             const initialColorId = initialColor?.id || 'white';
             let initialPrice = product.starting_price || product.price || 500;
+            let priceBreakdown: ItemPriceBreakdown | undefined;
 
-            if (design.print_w_cm && design.print_h_cm && design.printing_type) {
-                const breakdown = await getPrice({
-                    printingType: design.printing_type as 'DTG' | 'DTF',
-                    aabb_w_cm: design.print_w_cm,
-                    aabb_h_cm: design.print_h_cm,
-                    quantity,
-                    productId: design.base_product_id,
-                    color_id: initialColorId,
-                    size: initialSize,
-                }).catch(() => null);
-                if (breakdown) initialPrice = breakdown.total_per_unit;
+            if (design.print_dimensions && design.printing_type) {
+                const bd = await calcMultiSidePrice(design.printing_type, design.print_dimensions, quantity, String(design.base_product_id), initialColorId, initialSize).catch(() => null);
+                if (bd) { priceBreakdown = bd; initialPrice = bd.total_per_unit; }
             }
 
             const newItem: CartItem = {
@@ -367,8 +385,8 @@ export default function Order() {
                 availableColors,
                 sizeGuide,
                 printingType: design.printing_type,
-                print_w_cm: design.print_w_cm,
-                print_h_cm: design.print_h_cm,
+                print_dimensions: design.print_dimensions,
+                priceBreakdown,
                 print_file_url: design.print_file_url,
             };
 
@@ -413,7 +431,7 @@ export default function Order() {
       // 3. Async price refresh when pricing-affecting fields change
       if (field === 'quantity' || field === 'size' || field === 'color') {
           const item = cartItems.find(i => i.id === id);
-          if (!item || !item.print_w_cm || !item.print_h_cm || !item.printingType) return;
+          if (!item || !item.print_dimensions || !item.printingType) return;
 
           let colorId = item.color_id;
           if (field === 'color') {
@@ -421,19 +439,13 @@ export default function Order() {
               colorId = colorObj?.id || item.color_id;
           }
 
-          const breakdown = await getPrice({
-              printingType: item.printingType as 'DTG' | 'DTF',
-              aabb_w_cm: item.print_w_cm,
-              aabb_h_cm: item.print_h_cm,
-              quantity: field === 'quantity' ? (value as number) : item.quantity,
-              productId: item.productId,
-              color_id: colorId,
-              size: field === 'size' ? value : item.size,
-          }).catch(() => null);
+          const qty = field === 'quantity' ? (value as number) : item.quantity;
+          const size = field === 'size' ? value : item.size;
+          const bd = await calcMultiSidePrice(item.printingType, item.print_dimensions, qty, item.productId, colorId, size).catch(() => null);
 
-          if (breakdown) {
+          if (bd) {
               setCartItems(prev => prev.map(i =>
-                  i.id === id ? { ...i, price: breakdown.total_per_unit, color_id: colorId } : i
+                  i.id === id ? { ...i, price: bd.total_per_unit, color_id: colorId, priceBreakdown: bd } : i
               ));
           }
       }
@@ -568,7 +580,23 @@ export default function Order() {
                              </div>
                              <div className="flex flex-col items-end gap-2">
                                  <span className="font-bold text-lg">฿{(item.price * item.quantity).toLocaleString()}</span>
-                                 <span className="text-xs text-gray-400">฿{item.price.toLocaleString()} / ชิ้น</span>
+                                 {item.priceBreakdown ? (
+                                     <div className="text-right space-y-0.5">
+                                         <div className="flex justify-between gap-4 text-xs text-gray-400">
+                                             <span>เสื้อ</span>
+                                             <span>฿{item.priceBreakdown.shirt_per_unit.toLocaleString()}</span>
+                                         </div>
+                                         {item.priceBreakdown.sides.map(s => (
+                                             <div key={s.side} className="flex justify-between gap-4 text-xs text-gray-400">
+                                                 <span>พิมพ์ {s.side} ({s.tier})</span>
+                                                 <span>฿{s.print_per_unit.toLocaleString()}</span>
+                                             </div>
+                                         ))}
+                                         <div className="text-xs text-gray-500 font-medium border-t pt-0.5">฿{item.price.toLocaleString()} / ชิ้น</div>
+                                     </div>
+                                 ) : (
+                                     <span className="text-xs text-gray-400">฿{item.price.toLocaleString()} / ชิ้น</span>
+                                 )}
                                  <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => removeItem(item.id)}>
                                      <Trash2 className="w-4 h-4" />
                                  </Button>
@@ -655,9 +683,25 @@ export default function Order() {
                <div className="bg-gray-50 p-6 rounded-xl border space-y-4">
                    <h3 className="font-semibold border-b pb-2">สรุปคำสั่งซื้อ</h3>
                    {cartItems.map(item => (
-                       <div key={item.id} className="flex justify-between text-sm">
-                           <span>{item.designName} ({item.size}) x {item.quantity}</span>
-                           <span>฿{(item.price * item.quantity).toLocaleString()}</span>
+                       <div key={item.id} className="space-y-0.5">
+                           <div className="flex justify-between text-sm font-medium">
+                               <span>{item.designName} ({item.size}, {item.color}) x {item.quantity}</span>
+                               <span>฿{(item.price * item.quantity).toLocaleString()}</span>
+                           </div>
+                           {item.priceBreakdown && (
+                               <div className="pl-2 space-y-0.5">
+                                   <div className="flex justify-between text-xs text-gray-400">
+                                       <span>เสื้อ</span>
+                                       <span>฿{item.priceBreakdown.shirt_per_unit.toLocaleString()} / ชิ้น</span>
+                                   </div>
+                                   {item.priceBreakdown.sides.map(s => (
+                                       <div key={s.side} className="flex justify-between text-xs text-gray-400">
+                                           <span>พิมพ์ {s.side} ({s.tier})</span>
+                                           <span>฿{s.print_per_unit.toLocaleString()} / ชิ้น</span>
+                                       </div>
+                                   ))}
+                               </div>
+                           )}
                        </div>
                    ))}
                    <div className="flex justify-between font-bold text-lg pt-2 border-t">

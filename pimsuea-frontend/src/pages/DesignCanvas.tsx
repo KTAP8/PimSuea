@@ -17,7 +17,6 @@ import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MouseP
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api, { uploadFile, getPrice } from "@/services/api";
-import type { PriceBreakdown } from "@/types/api";
 import { exportDesignForProduction } from "@/utils/canvasExporter";
 import { useCart } from "@/contexts/CartContext";
 
@@ -160,7 +159,19 @@ export default function DesignCanvas() {
 
   // Pricing — effectivePrintingType persists across URL navigations and loads from saved design
   const [effectivePrintingType, setEffectivePrintingType] = useState<string | null>(printingType);
-  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
+
+  interface SidePriceBreakdown {
+    side: string;
+    tier: string;
+    print_per_unit: number;
+  }
+  interface MultiSidePriceBreakdown {
+    sides: SidePriceBreakdown[];
+    shirt_per_unit: number;
+    total_print_per_unit: number;
+    total_per_unit: number;
+  }
+  const [priceBreakdown, setPriceBreakdown] = useState<MultiSidePriceBreakdown | null>(null);
   
   // Image Library State
   const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -1478,27 +1489,37 @@ const handleManualSave = async () => {
         navigate(`/design/${id}?designId=${result.targetId}`, { replace: true });
     }
 
-    // Calculate price from AABB after save
+    // Calculate price per side, sum print costs, add shirt once
     if (result?.print_dimensions && effectivePrintingType && selectedColorId && currentTemplate) {
-        const dims = Object.values(result.print_dimensions);
-        if (dims.length > 0) {
-            const aabb_w_cm = Math.max(...dims.map(s => s.w));
-            const aabb_h_cm = Math.max(...dims.map(s => s.h));
-            if (aabb_w_cm > 0 && aabb_h_cm > 0) {
+        const entries = Object.entries(result.print_dimensions).filter(([, d]) => d.w > 0 && d.h > 0);
+        if (entries.length > 0) {
+            const sideResults: { side: string; tier: string; print_per_unit: number }[] = [];
+            let shirt_per_unit = 0;
+            for (const [side, dims] of entries) {
                 try {
                     const breakdown = await getPrice({
                         printingType: effectivePrintingType as 'DTG' | 'DTF',
-                        aabb_w_cm,
-                        aabb_h_cm,
+                        aabb_w_cm: dims.w,
+                        aabb_h_cm: dims.h,
                         quantity: 1,
                         productId: currentTemplate.product_id,
                         color_id: selectedColorId,
                         size: selectedSize,
                     });
-                    setPriceBreakdown(breakdown);
+                    shirt_per_unit = breakdown.shirt_per_unit;
+                    sideResults.push({ side, tier: breakdown.tier, print_per_unit: breakdown.print_per_unit });
                 } catch {
-                    // Pricing not available for this config — leave previous value
+                    // Skip sides with no pricing match
                 }
+            }
+            if (sideResults.length > 0) {
+                const total_print_per_unit = sideResults.reduce((sum, s) => sum + s.print_per_unit, 0);
+                setPriceBreakdown({
+                    sides: sideResults,
+                    shirt_per_unit,
+                    total_print_per_unit,
+                    total_per_unit: shirt_per_unit + total_print_per_unit,
+                });
             }
         }
     }
@@ -1916,11 +1937,13 @@ const handleManualSave = async () => {
                             <span>เสื้อ (size {selectedSize})</span>
                             <span>฿{priceBreakdown.shirt_per_unit.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-gray-500 mb-2">
-                            <span>พิมพ์ ({priceBreakdown.tier})</span>
-                            <span>฿{priceBreakdown.print_per_unit.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-bold border-t pt-2">
+                        {priceBreakdown.sides.map(s => (
+                            <div key={s.side} className="flex justify-between text-xs text-gray-500 mb-1">
+                                <span>พิมพ์ {s.side} ({s.tier})</span>
+                                <span>฿{s.print_per_unit.toLocaleString()}</span>
+                            </div>
+                        ))}
+                        <div className="flex justify-between text-sm font-bold border-t pt-2 mt-1">
                             <span>รวม/ชิ้น</span>
                             <span className="text-teal-700">฿{priceBreakdown.total_per_unit.toLocaleString()}</span>
                         </div>
