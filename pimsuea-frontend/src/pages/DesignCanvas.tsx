@@ -172,6 +172,7 @@ export default function DesignCanvas() {
     total_per_unit: number;
   }
   const [priceBreakdown, setPriceBreakdown] = useState<MultiSidePriceBreakdown | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
   
   // Image Library State
   const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -333,6 +334,7 @@ export default function DesignCanvas() {
                     const colorId = loadFirstColorId || data[0]?.color?.id;
                     const productId = loadMatchingTemplate?.product_id || data[0]?.product_id;
                     if (colorId && productId) {
+                        setPriceLoading(true);
                         const entries = Object.entries(design.print_dimensions as Record<string, { w: number; h: number }>)
                             .filter(([, d]) => d.w > 0 && d.h > 0);
                         const sideResults: { side: string; tier: string; print_per_unit: number }[] = [];
@@ -361,6 +363,7 @@ export default function DesignCanvas() {
                                 total_per_unit: shirt_per_unit + total_print_per_unit,
                             });
                         }
+                        setPriceLoading(false);
                     }
                 }
 
@@ -1531,6 +1534,7 @@ const handleManualSave = async () => {
     if (result?.print_dimensions && effectivePrintingType && selectedColorId && currentTemplate) {
         const entries = Object.entries(result.print_dimensions).filter(([, d]) => d.w > 0 && d.h > 0);
         if (entries.length > 0) {
+            setPriceLoading(true);
             const sideResults: { side: string; tier: string; print_per_unit: number }[] = [];
             let shirt_per_unit = 0;
             for (const [side, dims] of entries) {
@@ -1559,6 +1563,7 @@ const handleManualSave = async () => {
                     total_per_unit: shirt_per_unit + total_print_per_unit,
                 });
             }
+            setPriceLoading(false);
         }
     }
 };
@@ -1971,9 +1976,18 @@ const handleManualSave = async () => {
                 <div className="w-48 bg-white p-3 rounded-xl shadow-xl border">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase text-gray-400 font-bold">ราคาโดยประมาณ</span>
-                        <span className="text-[9px] text-gray-300">1 ชิ้น</span>
+                        {priceLoading
+                            ? <Loader2 className="w-3 h-3 text-gray-300 animate-spin" />
+                            : <span className="text-[9px] text-gray-300">1 ชิ้น</span>
+                        }
                     </div>
-                    {priceBreakdown ? (
+                    {priceLoading ? (
+                        <div className="space-y-2 py-1">
+                            <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
+                            <div className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />
+                            <div className="h-4 bg-gray-100 rounded animate-pulse w-3/5 mt-3" />
+                        </div>
+                    ) : priceBreakdown ? (
                         <>
                             <div className="flex justify-between text-xs text-gray-500 mb-1">
                                 <span>เสื้อ (size {selectedSize})</span>
