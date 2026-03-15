@@ -303,7 +303,15 @@ export default function DesignCanvas() {
             const design = await getDesignById(designId);
             if (design && design.canvas_data) {
                 // Populate savedDesignsRef
-                savedDesigns.current = design.canvas_data;
+                let parsedData = design.canvas_data;
+                if (typeof parsedData === 'string') {
+                    try {
+                        parsedData = JSON.parse(parsedData);
+                    } catch (e) {
+                        console.error("Failed to parse canvas_data", e);
+                    }
+                }
+                savedDesigns.current = parsedData;
                 // Set Design Name
                 if (design.design_name) setDesignName(design.design_name);
                 // Set printing type from saved design (used for pricing)
@@ -504,7 +512,10 @@ export default function DesignCanvas() {
 
       if (sourceFields) {
            // PATH A: Restore (from pending or saved)
-           newCanvas.loadFromJSON(sourceFields, () => {
+           // Deep clone sourceFields because React StrictMode's double-render 
+           // causes Fabric.js to mutate the original object in the first pass
+           const clonedSource = typeof sourceFields === 'string' ? sourceFields : JSON.parse(JSON.stringify(sourceFields));
+           newCanvas.loadFromJSON(clonedSource, () => {
                // Ensure we remove unwanted bg constraints from JSON if any
                newCanvas.getObjects().forEach(o => {
                   if (o.name === 'static_bg') newCanvas.remove(o);
@@ -656,7 +667,7 @@ export default function DesignCanvas() {
       fabricRef.current = null;
     };
 
-  }, [currentTemplate]);
+  }, [currentTemplate, loading]);
 
   // ------------------------------------------------------------------
   // 3.5 Zoom & Pan Logic (Attached separately to avoid Canvas recreation)
@@ -1284,7 +1295,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                     const height = fabricRef.current.getHeight();
                     const staticCanvas = new fabric.StaticCanvas(null, { width, height });
                     
-                    await new Promise<void>(resolve => staticCanvas.loadFromJSON(json, () => resolve()));
+                    const clonedJson = typeof json === 'string' ? json : JSON.parse(JSON.stringify(json));
+                    await new Promise<void>(resolve => staticCanvas.loadFromJSON(clonedJson, () => resolve()));
                     
                     // Determine Bounds
                     let bounds = saved?.bounds;
@@ -1395,7 +1407,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             if (!json) continue;
 
             const sideCanvas = new fabric.StaticCanvas(null, { width: canvasW, height: canvasH });
-            await new Promise<void>(resolve => sideCanvas.loadFromJSON(json, () => resolve()));
+            const clonedSideJson = typeof json === 'string' ? json : JSON.parse(JSON.stringify(json));
+            await new Promise<void>(resolve => sideCanvas.loadFromJSON(clonedSideJson, () => resolve()));
 
             const sidePz = saved?.bounds || printZoneBoundsRef.current;
             if (sidePz) {
