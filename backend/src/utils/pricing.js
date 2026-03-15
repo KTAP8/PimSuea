@@ -7,10 +7,13 @@ const { supabaseAdmin } = require('../config/supabaseClient');
  * @returns {'3x4in'|'A5'|'A4'|'A3'|'A2'}
  */
 function getPrintTier(w_cm, h_cm) {
-  if (w_cm <= 7.62 && h_cm <= 10.16) return '3x4in';
-  if (w_cm <= 14.8  && h_cm <= 21.0)  return 'A5';
-  if (w_cm <= 21.0  && h_cm <= 29.7)  return 'A4';
-  if (w_cm <= 29.7  && h_cm <= 42.0)  return 'A3';
+  // Normalize to short/long so landscape and portrait are treated identically
+  const short = Math.min(w_cm, h_cm);
+  const long  = Math.max(w_cm, h_cm);
+  if (short <= 7.62 && long <= 10.16) return '3x4in';
+  if (short <= 14.8  && long <= 21.0)  return 'A5';
+  if (short <= 21.0  && long <= 29.7)  return 'A4';
+  if (short <= 29.7  && long <= 42.0)  return 'A3';
   return 'A2';
 }
 
