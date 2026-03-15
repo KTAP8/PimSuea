@@ -19,7 +19,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
   };
 
   const navItems = [
-    { label: "หน้าหลัก", path: "/", icon: <Home className="w-5 h-5" /> },
+    { label: "หน้าหลัก", path: "/dashboard", icon: <Home className="w-5 h-5" /> },
     { label: "แคตตาล็อก", path: "/catalog", icon: <ShoppingBag className="w-5 h-5" /> },
     { label: "งานของฉัน", path: "/my-products", icon: <Palette className="w-5 h-5" /> },
     { label: "คำสั่งซื้อ", path: "/orders", icon: <Package className="w-5 h-5" /> },
