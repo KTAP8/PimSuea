@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { Sidebar } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Catalog from './pages/Catalog';
@@ -58,6 +59,7 @@ function App() {
       <CartProvider>
        <Router>
          <Layout />
+         <Analytics />
        </Router>
       </CartProvider>
     </AuthProvider>
