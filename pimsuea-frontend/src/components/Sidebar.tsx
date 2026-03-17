@@ -1,10 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, ShoppingBag, Palette, Package, Wallet, Menu, LogOut, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import { Home, ShoppingBag, Palette, Package, Wallet, Menu, LogOut, Settings, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 
 import logo from "@/assets/logo.svg";
 
@@ -13,7 +14,8 @@ import logo from "@/assets/logo.svg";
 const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolean, onItemClick?: () => void }) => {
   const location = useLocation();
   const { signOut } = useAuth();
-  
+  const { cartCount } = useCart();
+
   const handleLogout = async () => {
     await signOut();
   };
@@ -22,6 +24,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
     { label: "หน้าหลัก", path: "/dashboard", icon: <Home className="w-5 h-5" /> },
     { label: "แคตตาล็อก", path: "/catalog", icon: <ShoppingBag className="w-5 h-5" /> },
     { label: "งานของฉัน", path: "/my-products", icon: <Palette className="w-5 h-5" /> },
+    { label: "ตะกร้าสินค้า", path: "/order", icon: <ShoppingCart className="w-5 h-5" />, badge: cartCount },
     { label: "คำสั่งซื้อ", path: "/orders", icon: <Package className="w-5 h-5" /> },
     { label: "กระเป๋าเงิน", path: "/wallet", icon: <Wallet className="w-5 h-5" /> },
   ];
@@ -46,9 +49,16 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
                 collapsed ? "justify-center px-0" : "justify-start px-4"
               )}
             >
-              {item.icon}
+              <span className="relative">
+                {item.icon}
+                {item.badge != null && item.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
+              </span>
               {!collapsed && <span className="ml-3 animate-in fade-in duration-300 whitespace-nowrap">{item.label}</span>}
-              
+
               {/* Tooltip for collapsed mode */}
               {collapsed && (
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">

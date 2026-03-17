@@ -27,6 +27,7 @@ app.use('/api/designs', designRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/articles', articleRoutes);
+app.use('/api/cart', require('./src/routes/cartRoutes'));
 app.use('/api/uploads', require('./src/routes/uploadRoutes'));
 app.use('/api/pricing', require('./src/routes/pricingRoutes'));
 app.use('/api/waitlist', require('./src/routes/waitlistRoutes'));

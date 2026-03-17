@@ -162,7 +162,7 @@ export default function Order() {
   }, [isAddOpen]);
 
   // Data State
-  const { cartItems: contextCartItems, clearCart, removeFromCart, updateCartItem } = useCart();
+  const { cartItems: contextCartItems, addToCart: ctxAddToCart, clearCart, removeFromCart, updateCartItem } = useCart();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     fullName: '', phone: '', addressLine1: '', addressLine2: '', province: '', district: '', postalCode: ''
@@ -230,8 +230,22 @@ export default function Order() {
                 if (bd) { priceBreakdown = bd; initialPrice = bd.total_per_unit; }
             }
 
+            // Persist to CartContext/DB (check for duplicate first)
+            const existingCtx = contextCartItems.find(i => i.design_id === design.id);
+            const ctxId = existingCtx?.id ?? ctxAddToCart({
+                product_id: design.base_product_id,
+                color_id: initialColorId,
+                size: initialSize,
+                quantity,
+                design_id: design.id,
+                print_file_url: design.print_file_url || '',
+                design_json: {},
+                preview_url: design.preview_image_url,
+                design_name: design.design_name,
+            });
+
             const newItem: CartItem = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: ctxId,
                 designId: design.id,
                 designName: design.design_name,
                 designImage: design.preview_image_url,
@@ -412,8 +426,21 @@ export default function Order() {
                 if (bd) { priceBreakdown = bd; initialPrice = bd.total_per_unit; }
             }
 
+            // Persist to CartContext/DB so it survives navigation
+            const ctxId = ctxAddToCart({
+                product_id: design.base_product_id,
+                color_id: initialColorId,
+                size: initialSize,
+                quantity,
+                design_id: design.id,
+                print_file_url: design.print_file_url || '',
+                design_json: {},
+                preview_url: design.preview_image_url,
+                design_name: design.design_name,
+            });
+
             const newItem: CartItem = {
-                id: Math.random().toString(36).substr(2, 9),
+                id: ctxId,
                 designId: design.id,
                 designName: design.design_name,
                 designImage: design.preview_image_url,

@@ -1,4 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+    getCartFromDB,
+    upsertCartItemToDB,
+    updateCartItemInDB,
+    removeCartItemFromDB,
+    clearCartInDB,
+} from '@/services/api';
+import { useAuth } from './AuthContext';
 
 // Define the shape of a Cart Item
 export interface CartItem {
@@ -9,15 +17,15 @@ export interface CartItem {
     quantity: number;
     design_id?: string; // Link to saved design
     print_file_url: string; // High-Res URL
-    design_json: object; // Editable design
+    design_json: object; // Editable design (not persisted to DB)
     preview_url?: string; // For UI display
-    price?: number; // Optional, can be fetched at checkout
+    price?: number; // Optional, recalculated at checkout
     design_name?: string;
 }
 
 interface CartContextType {
     cartItems: CartItem[];
-    addToCart: (item: Omit<CartItem, 'id'>) => void;
+    addToCart: (item: Omit<CartItem, 'id'>) => string;
     removeFromCart: (id: string) => void;
     updateCartItem: (id: string, updates: Partial<CartItem>) => void;
     clearCart: () => void;
@@ -28,52 +36,74 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const { user } = useAuth();
 
-    // Load from LocalStorage on mount
+    // Load from DB when user is authenticated; clear on logout
     useEffect(() => {
-        const storedCart = localStorage.getItem('pim_suea_cart');
-        if (storedCart) {
+        setCartItems([]);
+        if (!user) return;
+
+        const loadCart = async () => {
             try {
-                setCartItems(JSON.parse(storedCart));
-            } catch (error) {
-                console.error("Failed to parse cart data:", error);
-                localStorage.removeItem('pim_suea_cart');
+                const items = await getCartFromDB();
+                if (items.length > 0) {
+                    setCartItems(items as CartItem[]);
+                } else {
+                    // One-time migration from localStorage
+                    const stored = localStorage.getItem('pim_suea_cart');
+                    if (stored) {
+                        try {
+                            const local: CartItem[] = JSON.parse(stored);
+                            if (local.length > 0) {
+                                setCartItems(local);
+                                local.forEach(item => upsertCartItemToDB(item).catch(() => {}));
+                            }
+                        } catch { /* malformed localStorage data — ignore */ }
+                        localStorage.removeItem('pim_suea_cart');
+                    }
+                }
+            } catch {
+                // Offline fallback: use localStorage
+                const stored = localStorage.getItem('pim_suea_cart');
+                if (stored) {
+                    try { setCartItems(JSON.parse(stored)); } catch { /* ignore */ }
+                }
             }
-        }
-    }, []);
+        };
+        loadCart();
+    }, [user?.id]); // Re-run when user changes; fires after auth resolves
 
-    // Save to LocalStorage on change
-    useEffect(() => {
-        localStorage.setItem('pim_suea_cart', JSON.stringify(cartItems));
-    }, [cartItems]);
-
-    const addToCart = (item: Omit<CartItem, 'id'>) => {
-        const newItem = { ...item, id: crypto.randomUUID() };
+    const addToCart = (item: Omit<CartItem, 'id'>): string => {
+        const id = crypto.randomUUID();
+        const newItem = { ...item, id };
         setCartItems(prev => [...prev, newItem]);
+        upsertCartItemToDB(newItem).catch(console.error);
+        return id;
     };
 
     const removeFromCart = (id: string) => {
-        setCartItems(prev => prev.filter(item => item.id !== id));
+        setCartItems(prev => prev.filter(i => i.id !== id));
+        removeCartItemFromDB(id).catch(console.error);
     };
 
     const updateCartItem = (id: string, updates: Partial<CartItem>) => {
-        setCartItems(prev => prev.map(item => 
-            item.id === id ? { ...item, ...updates } : item
-        ));
+        setCartItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
+        updateCartItemInDB(id, updates).catch(console.error);
     };
 
     const clearCart = () => {
         setCartItems([]);
+        clearCartInDB().catch(console.error);
     };
 
     return (
-        <CartContext.Provider value={{ 
-            cartItems, 
-            addToCart, 
-            removeFromCart, 
+        <CartContext.Provider value={{
+            cartItems,
+            addToCart,
+            removeFromCart,
             updateCartItem,
             clearCart,
-            cartCount: cartItems.length 
+            cartCount: cartItems.length
         }}>
             {children}
         </CartContext.Provider>

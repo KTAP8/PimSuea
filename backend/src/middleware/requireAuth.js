@@ -19,6 +19,7 @@ const requireAuth = async (req, res, next) => {
     }
 
     req.user = user;
+    req.token = token;
     next();
   } catch (err) {
     console.error('Unexpected auth error:', err);

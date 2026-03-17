@@ -135,6 +135,32 @@ export const uploadFile = async (file: Blob | File, type: 'preview' | 'print' | 
     return response.data.url;
 };
 
+// Cart API
+export const getCartFromDB = async (): Promise<any[]> => {
+    const response = await api.get('/cart');
+    return response.data;
+};
+
+export const upsertCartItemToDB = async (item: any): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { design_json, price, priceBreakdown, availableSizes, availableColors, sizeGuide, ...rest } = item;
+    await api.post('/cart/items', rest);
+};
+
+export const updateCartItemInDB = async (id: string, updates: Record<string, any>): Promise<void> => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { design_json, price, priceBreakdown, availableSizes, availableColors, sizeGuide, ...rest } = updates;
+    await api.put(`/cart/items/${id}`, rest);
+};
+
+export const removeCartItemFromDB = async (id: string): Promise<void> => {
+    await api.delete(`/cart/items/${id}`);
+};
+
+export const clearCartInDB = async (): Promise<void> => {
+    await api.delete('/cart');
+};
+
 // Public endpoint — no auth token needed
 const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000/api';
 export const joinWaitlist = async (payload: { name: string; email: string; reason: string }): Promise<{ message: string }> => {
