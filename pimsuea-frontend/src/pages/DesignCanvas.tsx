@@ -1348,6 +1348,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             pz: { left: number; top: number; width: number; height: number },
             physW: number,
             physH: number,
+            imgZoneW: number, // print zone width in original background image pixels
+            imgZoneH: number, // print zone height in original background image pixels
         ): { w: number; h: number; x_cm: number; y_cm: number; px_x: number; px_y: number; px_w: number; px_h: number } | null => {
             const designObjs = objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
             if (designObjs.length === 0) return null;
@@ -1364,23 +1366,29 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             const maxY = Math.min(Math.max(...ys), pz.top + pz.height);
             const bboxW = Math.max(0, maxX - minX);
             const bboxH = Math.max(0, maxY - minY);
+            const w    = parseFloat(((bboxW / pz.width)  * physW).toFixed(2));
+            const h    = parseFloat(((bboxH / pz.height) * physH).toFixed(2));
+            const x_cm = parseFloat((((minX - pz.left) / pz.width)  * physW).toFixed(2));
+            const y_cm = parseFloat((((minY - pz.top)  / pz.height) * physH).toFixed(2));
+            // px values in original background image pixel space
+            // pz coords are scaled (canvas px), imgZoneW/H are unscaled (original image px)
+            // ratio = 1/scaleFactor, so: orig_px = canvas_px * (imgZoneW / pz.width)
             return {
-                w:    parseFloat(((bboxW / pz.width)  * physW).toFixed(2)),
-                h:    parseFloat(((bboxH / pz.height) * physH).toFixed(2)),
-                x_cm: parseFloat((((minX - pz.left) / pz.width)  * physW).toFixed(2)),
-                y_cm: parseFloat((((minY - pz.top)  / pz.height) * physH).toFixed(2)),
-                px_x: Math.round(minX),
-                px_y: Math.round(minY),
-                px_w: Math.round(bboxW),
-                px_h: Math.round(bboxH),
+                w, h, x_cm, y_cm,
+                px_x: Math.round((minX - pz.left) / pz.width  * imgZoneW),
+                px_y: Math.round((minY - pz.top)  / pz.height * imgZoneH),
+                px_w: Math.round(bboxW             / pz.width  * imgZoneW),
+                px_h: Math.round(bboxH             / pz.height * imgZoneH),
             };
         };
 
         // Current (active) side
         if (printZoneBoundsRef.current) {
-            const physW = currentTemplate.print_area_config?.physical_w_cm ?? 29.7;
-            const physH = currentTemplate.print_area_config?.physical_h_cm ?? 42.0;
-            const result = computeSideAabb(fabricRef.current.getObjects(), printZoneBoundsRef.current, physW, physH);
+            const physW    = currentTemplate.print_area_config?.physical_w_cm ?? 29.7;
+            const physH    = currentTemplate.print_area_config?.physical_h_cm ?? 42.0;
+            const imgZoneW = currentTemplate.print_area_config?.width  ?? printZoneBoundsRef.current.width;
+            const imgZoneH = currentTemplate.print_area_config?.height ?? printZoneBoundsRef.current.height;
+            const result = computeSideAabb(fabricRef.current.getObjects(), printZoneBoundsRef.current, physW, physH, imgZoneW, imgZoneH);
             if (result) {
                 print_dimensions[currentTemplate.side] = result;
             }
@@ -1404,9 +1412,11 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
 
             const sidePz = saved?.bounds || printZoneBoundsRef.current;
             if (sidePz) {
-                const physW = tmpl.print_area_config?.physical_w_cm ?? 29.7;
-                const physH = tmpl.print_area_config?.physical_h_cm ?? 42.0;
-                const result = computeSideAabb(sideCanvas.getObjects(), sidePz, physW, physH);
+                const physW    = tmpl.print_area_config?.physical_w_cm ?? 29.7;
+                const physH    = tmpl.print_area_config?.physical_h_cm ?? 42.0;
+                const imgZoneW = tmpl.print_area_config?.width  ?? sidePz.width;
+                const imgZoneH = tmpl.print_area_config?.height ?? sidePz.height;
+                const result = computeSideAabb(sideCanvas.getObjects(), sidePz, physW, physH, imgZoneW, imgZoneH);
                 if (result) {
                     print_dimensions[tmpl.side] = result;
                 }
