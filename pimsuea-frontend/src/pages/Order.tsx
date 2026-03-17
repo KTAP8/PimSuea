@@ -153,16 +153,18 @@ export default function Order() {
                 getProductTemplates(design.base_product_id).catch(() => [])
             ]);
             
-            // Safe Parsing Size Guide
+            // Available Sizes — from shirt_pricing (authoritative)
+            const availableSizes: string[] = product.available_sizes?.length
+                ? product.available_sizes
+                : ['S', 'M', 'L', 'XL', 'XXL'];
+
+            // Keep size_guide for reference only (measurements display)
             let sizeGuide = {};
             if (typeof product.size_guide === 'string') {
                  try { sizeGuide = JSON.parse(product.size_guide) } catch(e) {}
             } else {
                  sizeGuide = product.size_guide || {};
             }
-            
-            // Available Sizes
-            const availableSizes = Object.keys(sizeGuide).length > 0 ? Object.keys(sizeGuide) : ['S', 'M', 'L', 'XL'];
             
             // Available Colors (Unique)
             let allProductColors = Array.from(new Map(
@@ -332,16 +334,18 @@ export default function Order() {
                 getProductTemplates(design.base_product_id).catch(() => [])
             ]);
             
-            // Safe Parsing Size Guide
+            // Available Sizes — from shirt_pricing (authoritative)
+            const availableSizes: string[] = product.available_sizes?.length
+                ? product.available_sizes
+                : ['S', 'M', 'L', 'XL', 'XXL'];
+
+            // Keep size_guide for reference only (measurements display)
             let sizeGuide = {};
             if (typeof product.size_guide === 'string') {
                  try { sizeGuide = JSON.parse(product.size_guide) } catch(e) {}
             } else {
                  sizeGuide = product.size_guide || {};
             }
-            
-            // Available Sizes
-            const availableSizes = Object.keys(sizeGuide).length > 0 ? Object.keys(sizeGuide) : ['S', 'M', 'L', 'XL'];
             
             // Available Colors (Unique)
             let allProductColors = Array.from(new Map(

@@ -13,13 +13,15 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import NewsDetails from './pages/NewsDetails';
 import Landing from './pages/Landing';
+import Onboarding from './pages/Onboarding';
+import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
   const location = useLocation();
-  const hideSidebarRoutes = ['/login', '/register', '/'];
+  const hideSidebarRoutes = ['/login', '/register', '/', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname) && !location.pathname.startsWith('/design/');
 
   return (
@@ -37,6 +39,7 @@ function Layout() {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
+             <Route path="/onboarding" element={<Onboarding />} />
              <Route path="/dashboard" element={<Dashboard />} />
              <Route path="/news/:id" element={<NewsDetails />} />
              <Route path="/catalog" element={<Catalog />} />
@@ -46,6 +49,7 @@ function Layout() {
              <Route path="/my-products" element={<MyProducts />} />
              <Route path="/wallet" element={<Wallet />} />
              <Route path="/order" element={<Order />} />
+             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>
       </main>

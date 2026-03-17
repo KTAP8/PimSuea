@@ -87,6 +87,7 @@ export interface Product {
     templates?: ProductTemplate[];
     print_methods?: PrintMethod[]; // New field
     size_guide?: any;
+    available_sizes?: string[];
     print_pricing_tiers?: any[];
 }
 

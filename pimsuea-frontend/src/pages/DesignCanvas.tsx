@@ -1762,7 +1762,7 @@ const handleManualSave = async () => {
 
         {/* Image Library Panel */}
         {showImageLibrary && (
-            <div className="w-72 bg-white border-r flex flex-col z-[100] shadow-2xl animate-in slide-in-from-left-5 absolute left-0 top-0 bottom-0">
+            <div className="w-72 bg-white border-r flex flex-col z-40 shadow-2xl animate-in slide-in-from-left-5 absolute left-0 top-0 bottom-0">
                 <div className="p-4 border-b flex items-center justify-between">
                     <h3 className="font-bold">คลังรูปภาพ</h3>
                     <Button variant="ghost" size="icon" onClick={() => setShowImageLibrary(false)}>
@@ -2211,17 +2211,27 @@ const handleManualSave = async () => {
             </AlertDialog>
         {/* Mockup Preview Dialog */}
         <Dialog open={showMockup} onOpenChange={setShowMockup}>
-            <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle>ตัวอย่างงานพิมพ์</DialogTitle>
+            <DialogContent className="max-w-4xl p-8 bg-white/95 backdrop-blur-md border-0 shadow-2xl rounded-2xl">
+                <DialogHeader className="mb-4">
+                    <DialogTitle className="text-2xl font-black text-center tracking-tight uppercase">
+                        Mockup Preview
+                    </DialogTitle>
+                    <p className="text-center text-sm text-gray-500 mt-1">
+                        ตรวจสอบตัวอย่างงานสกรีนบนเสื้อก่อนสั่งซื้อ
+                    </p>
                 </DialogHeader>
-                <div className="flex gap-4 flex-wrap justify-center">
+                <div className="flex gap-6 flex-wrap justify-center items-stretch mt-4">
                     {mockupUrl.map(({ side, url }) => (
-                        <div key={side} className="flex flex-col items-center gap-2">
-                            <p className="text-sm font-medium capitalize">{side}</p>
-                            <img src={url} alt={`mockup-${side}`} className="w-64 rounded-lg" />
-                            <a href={url} download={`mockup-${side}.png`}>
-                                <Button variant="outline" size="sm">ดาวน์โหลด</Button>
+                        <div key={side} className="flex flex-col items-center gap-4 bg-slate-50/50 p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 w-[300px]">
+                            <p className="text-sm font-bold text-slate-800 uppercase tracking-widest">{side}</p>
+                            <div className="relative group overflow-hidden rounded-xl bg-white w-full aspect-[4/5] flex items-center justify-center border border-slate-100/50">
+                                <img src={url} alt={`mockup-${side}`} className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                            </div>
+                            <a href={url} download={`mockup-${side}.png`} className="w-full mt-auto">
+                                <Button variant="outline" className="w-full rounded-xl hover:bg-black hover:text-white transition-colors border-slate-200 shadow-sm">
+                                    ดาวน์โหลดรูปภาพ
+                                </Button>
                             </a>
                         </div>
                     ))}

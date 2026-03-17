@@ -137,12 +137,31 @@ exports.getProductById = async (req, res) => {
         startingPrice = Math.min(...product.print_pricing_tiers.map(t => t.unit_price));
     }
 
+    // Derive available sizes from shirt_pricing (authoritative source)
+    const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL'];
+    const { data: shirtPricingRows } = await supabase
+        .from('shirt_pricing')
+        .select('size')
+        .eq('product_id', product.id);
+    const available_sizes = shirtPricingRows
+        ? [...new Set(shirtPricingRows.map(r => r.size))]
+            .sort((a, b) => {
+                const ai = SIZE_ORDER.indexOf(a);
+                const bi = SIZE_ORDER.indexOf(b);
+                if (ai === -1 && bi === -1) return a.localeCompare(b);
+                if (ai === -1) return 1;
+                if (bi === -1) return -1;
+                return ai - bi;
+            })
+        : Object.keys(product.size_guide || {});
+
     const formattedProduct = {
         ...product,
         images: product.product_images ? product.product_images.map(img => img.image_url) : [],
         image_url: product.product_images && product.product_images.length > 0 ? product.product_images[0].image_url : null,
         print_methods: printMethods,
-        starting_price: startingPrice
+        starting_price: startingPrice,
+        available_sizes,
     };
 
     // Remove raw join data to keep response clean
