@@ -52,6 +52,8 @@ export interface PriceInput {
     aabb_w_cm: number;
     aabb_h_cm: number;
     quantity: number;
+    shirt_qty?: number;  // combined qty for shirt tier (sum of same productId+color_id group)
+    print_qty?: number;  // combined qty for print tier (sum of same designId group)
     productId: string;
     color_id: string;
     size: string;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice } from "@/services/api";
 import { useCart } from "@/contexts/CartContext";
@@ -58,29 +58,61 @@ async function calcMultiSidePrice(
   productId: string,
   color_id: string,
   size: string,
+  shirtQty?: number,
+  printQty?: number,
 ): Promise<ItemPriceBreakdown | null> {
   const entries = Object.entries(print_dimensions).filter(([, d]) => d.w > 0 && d.h > 0);
   if (entries.length === 0) return null;
-  const sideResults: SidePriceBreakdown[] = [];
-  let shirt_per_unit = 0;
-  for (const [side, dims] of entries) {
+
+  // Fetch all sides in parallel
+  const settled = await Promise.all(entries.map(async ([side, dims]) => {
     try {
       const bd = await getPrice({
         printingType: printingType as 'DTG' | 'DTF',
         aabb_w_cm: dims.w,
         aabb_h_cm: dims.h,
         quantity,
+        shirt_qty: shirtQty,
+        print_qty: printQty,
         productId,
         color_id,
         size,
       });
-      shirt_per_unit = bd.shirt_per_unit;
-      sideResults.push({ side, tier: bd.tier, print_per_unit: bd.print_per_unit });
-    } catch { /* skip sides with no pricing match */ }
-  }
+      return { side, tier: bd.tier, print_per_unit: bd.print_per_unit, shirt_per_unit: bd.shirt_per_unit };
+    } catch { return null; }
+  }));
+
+  const sideResults = settled.filter((r): r is NonNullable<typeof r> => r !== null);
   if (sideResults.length === 0) return null;
+  const shirt_per_unit = sideResults[0].shirt_per_unit;
   const total_print_per_unit = sideResults.reduce((s, r) => s + r.print_per_unit, 0);
   return { sides: sideResults, shirt_per_unit, total_print_per_unit, total_per_unit: shirt_per_unit + total_print_per_unit };
+}
+
+// Reprice all items using combined group quantities for tier lookup
+async function repriceAll(items: CartItem[]): Promise<CartItem[]> {
+  // Shirt group: productId:color_id → combined qty
+  const shirtGroupQty = new Map<string, number>();
+  for (const item of items) {
+    const key = `${item.productId}:${item.color_id}`;
+    shirtGroupQty.set(key, (shirtGroupQty.get(key) ?? 0) + item.quantity);
+  }
+  // Print group: designId → combined qty
+  const printGroupQty = new Map<string, number>();
+  for (const item of items) {
+    printGroupQty.set(item.designId, (printGroupQty.get(item.designId) ?? 0) + item.quantity);
+  }
+
+  return Promise.all(items.map(async (item) => {
+    if (!item.print_dimensions || !item.printingType) return item;
+    const shirtQty = shirtGroupQty.get(`${item.productId}:${item.color_id}`) ?? item.quantity;
+    const printQty = printGroupQty.get(item.designId) ?? item.quantity;
+    const bd = await calcMultiSidePrice(
+      item.printingType, item.print_dimensions, item.quantity,
+      item.productId, item.color_id, item.size, shirtQty, printQty
+    ).catch(() => null);
+    return bd ? { ...item, price: bd.total_per_unit, priceBreakdown: bd } : item;
+  }));
 }
 
 export default function Order() {
@@ -93,6 +125,9 @@ export default function Order() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
+  // Debounce ref for quantity repricing
+  const repriceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   // Add Item Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [myDesigns, setMyDesigns] = useState<any[]>([]);
@@ -216,7 +251,8 @@ export default function Order() {
                 print_file_url: design.print_file_url,
             };
 
-            setCartItems([newItem]);
+            const repriced = await repriceAll([newItem]);
+            setCartItems(repriced);
 
         } catch (error) {
             console.error("Failed to init order:", error);
@@ -250,8 +286,10 @@ export default function Order() {
                           sizeGuide = product.size_guide || {};
                      }
                      
-                     // Available Sizes & Colors
-                     const availableSizes = Object.keys(sizeGuide).length > 0 ? Object.keys(sizeGuide) : ['S', 'M', 'L', 'XL'];
+                     // Available Sizes — from shirt_pricing (authoritative)
+                     const availableSizes: string[] = product.available_sizes?.length
+                         ? product.available_sizes
+                         : ['S', 'M', 'L', 'XL', 'XXL'];
                      
                      let allProductColors = Array.from(new Map(
                          templates.map((t: any) => [t.color?.id, t.color])
@@ -311,7 +349,8 @@ export default function Order() {
                      };
                  }));
                  
-                 setCartItems(richItems);
+                 const repriced = await repriceAll(richItems);
+                setCartItems(repriced);
              } catch (e) {
                  console.error("Failed to hydrate cart:", e);
              } finally {
@@ -394,7 +433,9 @@ export default function Order() {
                 print_file_url: design.print_file_url,
             };
 
-            setCartItems(prev => [...prev, newItem]);
+            const newItems = [...cartItems, newItem];
+            const repriced = await repriceAll(newItems);
+            setCartItems(repriced);
 
       } catch (error) {
           console.error("Failed to add item:", error);
@@ -429,28 +470,47 @@ export default function Order() {
           }
       }
 
-      // 2. Immediate local state update
-      setCartItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
-
-      // 3. Async price refresh when pricing-affecting fields change
+      // 2. Build updated items array (sync color_id when color name changes)
       if (field === 'quantity' || field === 'size' || field === 'color') {
-          const item = cartItems.find(i => i.id === id);
-          if (!item || !item.print_dimensions || !item.printingType) return;
+          const updatedItems = cartItems.map(item => {
+              if (item.id !== id) return item;
+              const next = { ...item, [field]: value } as CartItem;
+              if (field === 'color') {
+                  const colorObj = item.availableColors.find((c: any) => c.name === value);
+                  if (colorObj) next.color_id = colorObj.id;
+              }
+              return next;
+          });
+          setCartItems(updatedItems);
 
-          let colorId = item.color_id;
-          if (field === 'color') {
-              const colorObj = item.availableColors.find((c: any) => c.name === value);
-              colorId = colorObj?.id || item.color_id;
-          }
-
-          const qty = field === 'quantity' ? (value as number) : item.quantity;
-          const size = field === 'size' ? value : item.size;
-          const bd = await calcMultiSidePrice(item.printingType, item.print_dimensions, qty, item.productId, colorId, size).catch(() => null);
-
-          if (bd) {
-              setCartItems(prev => prev.map(i =>
-                  i.id === id ? { ...i, price: bd.total_per_unit, color_id: colorId, priceBreakdown: bd } : i
-              ));
+          if (field === 'quantity' || field === 'color') {
+              // Group quantities changed → reprice all items (debounced for quantity)
+              clearTimeout(repriceTimer.current);
+              const snapshot = updatedItems;
+              repriceTimer.current = setTimeout(async () => {
+                  const repriced = await repriceAll(snapshot);
+                  setCartItems(repriced);
+              }, field === 'quantity' ? 400 : 0);
+          } else {
+              // Size change: group quantities unchanged → reprice only this item
+              const item = updatedItems.find(i => i.id === id);
+              if (item?.print_dimensions && item?.printingType) {
+                  const shirtQty = updatedItems
+                      .filter(i => i.productId === item.productId && i.color_id === item.color_id)
+                      .reduce((s, i) => s + i.quantity, 0);
+                  const printQty = updatedItems
+                      .filter(i => i.designId === item.designId)
+                      .reduce((s, i) => s + i.quantity, 0);
+                  const bd = await calcMultiSidePrice(
+                      item.printingType, item.print_dimensions, item.quantity,
+                      item.productId, item.color_id, item.size, shirtQty, printQty
+                  ).catch(() => null);
+                  if (bd) {
+                      setCartItems(prev => prev.map(i =>
+                          i.id === id ? { ...i, price: bd.total_per_unit, priceBreakdown: bd } : i
+                      ));
+                  }
+              }
           }
       }
   };

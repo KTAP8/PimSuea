@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, AlertCircle, Eye, EyeOff, User, Lock, Save, Loader2 } from "lucide-react";
-import { motion, type Variants } from "framer-motion";
 
 const DESIGN_PURPOSES = [
   { value: "university_club", label: "มหาวิทยาลัย / ชมรม", icon: "🎓" },
@@ -22,23 +21,6 @@ const REFERRAL_SOURCES = [
   { value: "word_of_mouth", label: "เพื่อนแนะนำ", icon: "🗣️" },
   { value: "other",         label: "อื่น ๆ", icon: "✨" },
 ];
-
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-};
-
-const itemVariants: Variants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 100 }
-  }
-};
 
 export default function Settings() {
   const { user, profile, refreshProfile } = useAuth();
@@ -147,16 +129,11 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-background text-foreground py-12 px-4 selection:bg-action/30">
-      <motion.div 
-        className="max-w-4xl mx-auto space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div variants={itemVariants}>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div>
             <h1 className="text-3xl md:text-4xl font-light tracking-tight">Account <span className="font-bold">Settings</span><span className="text-action">.</span></h1>
             <p className="text-muted-foreground font-light mt-2">Manage your preferences, security, and personal profile.</p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8">
             
@@ -164,7 +141,7 @@ export default function Settings() {
             <div className="space-y-8">
                 
                 {/* ── Profile Section ── */}
-                <motion.section variants={itemVariants} className="bg-secondary/20 border border-border rounded-none p-6 md:p-8 relative overflow-hidden group">
+                <section className="bg-secondary/20 border border-border rounded-none p-6 md:p-8 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors duration-300" />
                     
                     <div className="flex items-center gap-3 mb-8">
@@ -279,7 +256,7 @@ export default function Settings() {
                             </Button>
                         </div>
                     </form>
-                </motion.section>
+                </section>
 
             </div>
 
@@ -287,7 +264,7 @@ export default function Settings() {
             <div className="space-y-8">
                 
                 {/* ── Account Info ── */}
-                <motion.section variants={itemVariants} className="bg-secondary/20 border border-border p-6 rounded-none relative overflow-hidden group">
+                <section className="bg-secondary/20 border border-border p-6 rounded-none relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-border group-hover:bg-primary/50 transition-colors duration-300" />
                     <h2 className="text-lg font-bold text-foreground mb-4 uppercase tracking-wider flex items-center gap-2">
                         Account Info
@@ -296,11 +273,11 @@ export default function Settings() {
                         <Label className="text-muted-foreground font-bold text-xs uppercase tracking-wider">Email Address</Label>
                         <p className="text-foreground font-light text-sm truncate">{user?.email ?? "—"}</p>
                     </div>
-                </motion.section>
+                </section>
 
                 {/* ── Change Password ── */}
                 {!isOAuthUser && (
-                <motion.section variants={itemVariants} className="bg-secondary/20 border border-border p-6 rounded-none relative overflow-hidden group">
+                <section className="bg-secondary/20 border border-border p-6 rounded-none relative overflow-hidden group">
                     <div className="absolute top-0 left-0 w-full h-1 bg-border group-hover:bg-action/50 transition-colors duration-300" />
                     
                     <h2 className="text-lg font-bold text-foreground mb-6 uppercase tracking-wider flex items-center gap-2">
@@ -402,12 +379,12 @@ export default function Settings() {
                         </Button>
                     </div>
                     </form>
-                </motion.section>
+                </section>
                 )}
             </div>
             
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

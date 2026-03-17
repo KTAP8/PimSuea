@@ -9,7 +9,7 @@ const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const VALID_COLORS = ['White', 'Black'];
 
 router.post('/', requireAuth, async (req, res) => {
-  const { printingType, aabb_w_cm, aabb_h_cm, quantity, productId, color_id, size } = req.body;
+  const { printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_id, size } = req.body;
 
   // Validate required fields
   if (!printingType || !VALID_PRINTING_TYPES.includes(printingType)) {
@@ -21,6 +21,12 @@ router.post('/', requireAuth, async (req, res) => {
   }
   if (!Number.isInteger(quantity) || quantity < 1) {
     return res.status(400).json({ error: 'quantity must be a positive integer' });
+  }
+  if (shirt_qty !== undefined && (!Number.isInteger(shirt_qty) || shirt_qty < 1)) {
+    return res.status(400).json({ error: 'shirt_qty must be a positive integer' });
+  }
+  if (print_qty !== undefined && (!Number.isInteger(print_qty) || print_qty < 1)) {
+    return res.status(400).json({ error: 'print_qty must be a positive integer' });
   }
   if (!productId || typeof productId !== 'string') {
     return res.status(400).json({ error: 'productId is required' });
@@ -56,6 +62,8 @@ router.post('/', requireAuth, async (req, res) => {
       aabb_w_cm,
       aabb_h_cm,
       quantity,
+      shirt_qty,
+      print_qty,
       productId,
       color_name,
       size,

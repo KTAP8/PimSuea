@@ -38,10 +38,12 @@ function getPrintTier(w_cm, h_cm) {
  *   quantity: number
  * }>}
  */
-async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, productId, color_name, size }) {
+async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_name, size }) {
   const db = supabaseAdmin;
 
   const tier = getPrintTier(aabb_w_cm, aabb_h_cm);
+  const shirtQuantity = shirt_qty ?? quantity;
+  const printQuantity = print_qty ?? quantity;
 
   // Look up shirt price (product + color + size + qty bracket)
   const { data: shirtRow, error: shirtError } = await db
@@ -50,13 +52,13 @@ async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, pr
     .eq('product_id', productId)
     .eq('color_name', color_name)
     .eq('size', size)
-    .lte('min_qty', quantity)
-    .or(`max_qty.is.null,max_qty.gte.${quantity}`)
+    .lte('min_qty', shirtQuantity)
+    .or(`max_qty.is.null,max_qty.gte.${shirtQuantity}`)
     .single();
 
   if (shirtError || !shirtRow) {
     throw new Error(
-      `No shirt pricing found for product=${productId} color=${color_name} size=${size} qty=${quantity}`
+      `No shirt pricing found for product=${productId} color=${color_name} size=${size} qty=${shirtQuantity}`
     );
   }
 
@@ -66,8 +68,8 @@ async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, pr
     .select('price_per_unit_thb')
     .eq('type_code', printingType)
     .eq('size_tier', tier)
-    .lte('min_qty', quantity)
-    .or(`max_qty.is.null,max_qty.gte.${quantity}`);
+    .lte('min_qty', printQuantity)
+    .or(`max_qty.is.null,max_qty.gte.${printQuantity}`);
 
   if (printingType === 'DTG') {
     printQuery = printQuery.eq('color_name', color_name);
@@ -79,7 +81,7 @@ async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, pr
 
   if (printError || !printRow) {
     throw new Error(
-      `No print pricing found for type=${printingType} tier=${tier} color=${color_name} qty=${quantity}`
+      `No print pricing found for type=${printingType} tier=${tier} color=${color_name} qty=${printQuantity}`
     );
   }
 
