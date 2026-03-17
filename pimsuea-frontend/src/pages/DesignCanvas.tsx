@@ -1539,7 +1539,7 @@ const handleMockup = async () => {
             const savedData = (saved as any).json || saved;
             const bounds = (saved as any).bounds ?? printZoneBoundsRef.current;
             if (!savedData || !bounds) continue;
-            const designUrl = await renderSideForMockup(savedData, bounds);
+            const designUrl = await renderSideForMockup(savedData, bounds, template.mockup_config.placement.w);
             const composited = await compositeSingleSide(
                 template.mockup_config.image_url,
                 template.mockup_config.placement,

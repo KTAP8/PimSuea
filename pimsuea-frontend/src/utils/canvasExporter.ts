@@ -193,7 +193,8 @@ export const exportDesignForProduction = async (
  */
 export async function renderSideForMockup(
   savedJson: any,
-  printZoneBounds: { left: number; top: number; width: number; height: number }
+  printZoneBounds: { left: number; top: number; width: number; height: number },
+  targetWidth?: number
 ): Promise<string> {
   const el = document.createElement('canvas');
   const tempCanvas = new fabric.StaticCanvas(el);
@@ -207,9 +208,18 @@ export async function renderSideForMockup(
     .forEach((o: any) => tempCanvas.remove(o));
   tempCanvas.setBackgroundColor(null as any, () => {});
 
+  // Render at a high resolution so the browser can downsample cleanly onto the
+  // mockup image. Downscaling always looks sharper than upscaling.
+  // targetWidth / printZoneBounds.width can be < 1 for small mockup placements,
+  // so we enforce a minimum of 3× screen pixels.
+  const ratio = targetWidth && printZoneBounds.width > 0
+    ? targetWidth / printZoneBounds.width
+    : 1;
+  const multiplier = Math.max(ratio, 3);
+
   const dataUrl = tempCanvas.toDataURL({
     format: 'png',
-    multiplier: 1,
+    multiplier,
     left: printZoneBounds.left,
     top: printZoneBounds.top,
     width: printZoneBounds.width,
