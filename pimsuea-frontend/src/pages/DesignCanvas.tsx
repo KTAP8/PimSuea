@@ -1547,6 +1547,7 @@ const handleMockup = async () => {
             );
             results.push({ side: template.side, url: composited });
         }
+        results.sort((a, b) => (a.side.toLowerCase() === 'front' ? 0 : 1) - (b.side.toLowerCase() === 'front' ? 0 : 1));
         setMockupUrl(results);
         setShowMockup(true);
     } finally {
