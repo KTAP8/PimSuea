@@ -20,14 +20,14 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 function Layout() {
   const location = useLocation();
   const hideSidebarRoutes = ['/login', '/register', '/'];
-  const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname);
+  const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname) && !location.pathname.startsWith('/design/');
 
   return (
     <div className="min-h-screen flex bg-slate-50">
       {shouldShowSidebar && <Sidebar />}
       <main className={`flex-1 min-w-0 transition-all duration-300 ${shouldShowSidebar ? 'md:ml-0' : ''}`}>
-        {/* Mobile header spacer */}
-        <div className="h-16 md:hidden"></div>
+        {/* Mobile header spacer — not needed on full-screen pages like DesignCanvas */}
+        {shouldShowSidebar && <div className="h-16 md:hidden"></div>}
         
         <Routes>
           {/* Public Routes */}

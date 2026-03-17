@@ -1,4 +1,4 @@
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 
 const r2 = new S3Client({
   region: 'auto',
@@ -51,4 +51,16 @@ async function deleteObject(bucketName, key) {
   await r2.send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }));
 }
 
-module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject };
+/**
+ * Lists objects in a bucket under a given prefix.
+ * @param {string} bucketName
+ * @param {string} prefix
+ * @returns {Promise<import('@aws-sdk/client-s3')._Object[]>}
+ */
+async function listObjects(bucketName, prefix) {
+  const cmd = new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix });
+  const res = await r2.send(cmd);
+  return res.Contents ?? [];
+}
+
+module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject, listObjects };

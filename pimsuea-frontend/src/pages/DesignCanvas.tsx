@@ -17,8 +17,15 @@ import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MouseP
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api, { uploadFile, getPrice } from "@/services/api";
-import { exportDesignForProduction } from "@/utils/canvasExporter";
+import { exportDesignForProduction, renderSideForMockup } from "@/utils/canvasExporter";
+import { compositeSingleSide } from "@/utils/mockupCompositor";
 import { useCart } from "@/contexts/CartContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { getDesignById, updateDesign as _updateDesign } from "@/services/api";
 import {
@@ -152,6 +159,11 @@ export default function DesignCanvas() {
   // Cart State (Defaults for now)
   const [selectedSize] = useState('M');
   const [quantity] = useState(1);
+
+  // Mockup State
+  const [showMockup, setShowMockup] = useState(false);
+  const [mockupUrl, setMockupUrl] = useState<{ side: string; url: string }[]>([]);
+  const [generatingMockup, setGeneratingMockup] = useState(false);
 
   // Unsaved changes tracking
   const isDirtyRef = useRef(false);
@@ -1022,28 +1034,8 @@ export default function DesignCanvas() {
       if (!user) return;
       setLoadingUploads(true);
       try {
-          const { data, error } = await supabase.storage
-              .from('design-assets')
-              .list(`uploads/${user.id}`, {
-                  limit: 50,
-                  offset: 0,
-                  sortBy: { column: 'created_at', order: 'desc' },
-              });
-              
-          if (error) throw error;
-          
-          console.log("Fetched Uploads Raw Data:", data);
-
-          if (data) {
-              const uploads = data.map(file => {
-                  const { data: { publicUrl } } = supabase.storage
-                      .from('design-assets')
-                      .getPublicUrl(`uploads/${user.id}/${file.name}`);
-                  return { name: file.name, url: publicUrl };
-              });
-              console.log("Processed Uploads:", uploads);
-              setUserUploads(uploads);
-          }
+          const { data } = await api.get<{ name: string; url: string }[]>('/uploads/assets');
+          setUserUploads(data);
       } catch (error) {
           console.error("Error fetching uploads:", error);
       } finally {
@@ -1101,7 +1093,7 @@ export default function DesignCanvas() {
     try {
         const publicUrl = await uploadFile(file, 'asset');
         addImageToCanvas(publicUrl);
-        if (showImageLibrary) fetchUserUploads();
+        fetchUserUploads();
     } catch (err: any) {
         console.error("Upload failed:", err);
         setNotification({
@@ -1535,6 +1527,33 @@ const handleAddToCart = async () => {
     }
 };
 
+const handleMockup = async () => {
+    saveCurrentCanvas();
+    setGeneratingMockup(true);
+    try {
+        const results: { side: string; url: string }[] = [];
+        for (const [templateId, saved] of Object.entries(savedDesigns.current)) {
+            const template = templates.find(t => t.id === templateId);
+            if (!template || template.color?.id !== selectedColorId) continue;
+            if (!template.mockup_config) continue;
+            const savedData = (saved as any).json || saved;
+            const bounds = (saved as any).bounds ?? printZoneBoundsRef.current;
+            if (!savedData || !bounds) continue;
+            const designUrl = await renderSideForMockup(savedData, bounds);
+            const composited = await compositeSingleSide(
+                template.mockup_config.image_url,
+                template.mockup_config.placement,
+                designUrl
+            );
+            results.push({ side: template.side, url: composited });
+        }
+        setMockupUrl(results);
+        setShowMockup(true);
+    } finally {
+        setGeneratingMockup(false);
+    }
+};
+
 const handleManualSave = async () => {
     const result = await saveDesign(false);
     if (result?.targetId && result.targetId !== designId) {
@@ -1660,8 +1679,8 @@ const handleManualSave = async () => {
         </div>
         
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => {}} disabled={true}>
-                 ตัวอย่าง
+            <Button variant="outline" size="sm" onClick={handleMockup} disabled={!templates.some(t => t.color?.id === selectedColorId && t.mockup_config) || generatingMockup}>
+                {generatingMockup ? <Loader2 className="w-3 h-3 animate-spin" /> : 'ตัวอย่าง'}
             </Button>
             <Button size="sm" variant={isDirty ? "default" : "outline"} onClick={handleManualSave} disabled={saving}>
                 {saving ? (
@@ -2189,6 +2208,25 @@ const handleManualSave = async () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+        {/* Mockup Preview Dialog */}
+        <Dialog open={showMockup} onOpenChange={setShowMockup}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>ตัวอย่างงานพิมพ์</DialogTitle>
+                </DialogHeader>
+                <div className="flex gap-4 flex-wrap justify-center">
+                    {mockupUrl.map(({ side, url }) => (
+                        <div key={side} className="flex flex-col items-center gap-2">
+                            <p className="text-sm font-medium capitalize">{side}</p>
+                            <img src={url} alt={`mockup-${side}`} className="w-64 rounded-lg" />
+                            <a href={url} download={`mockup-${side}.png`}>
+                                <Button variant="outline" size="sm">ดาวน์โหลด</Button>
+                            </a>
+                        </div>
+                    ))}
+                </div>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }

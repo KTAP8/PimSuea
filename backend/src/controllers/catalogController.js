@@ -170,6 +170,7 @@ exports.getProductTemplates = async (req, res) => {
       .eq('product_id', id);
 
     if (error) throw error;
+
     res.json(templates);
   } catch (error) {
     console.error('Error fetching product templates:', error);

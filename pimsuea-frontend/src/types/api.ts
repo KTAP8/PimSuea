@@ -32,6 +32,10 @@ export interface ProductTemplate {
     color_id?: string;
     is_default?: boolean;
     color?: Color;
+    mockup_config?: {
+        image_url: string;
+        placement: { x: number; y: number; w: number; h: number };
+    } | null;
 }
 
 export interface PrintPricingTier {

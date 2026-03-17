@@ -1,5 +1,5 @@
 
-const { r2, getPublicUrl } = require('../config/r2Client');
+const { r2, getPublicUrl, listObjects } = require('../config/r2Client');
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const { sanitizeFileName } = require('../utils/validate');
 
@@ -79,5 +79,26 @@ exports.uploadFile = async (req, res) => {
   } catch (error) {
     console.error('Upload controller error:', error);
     res.status(500).json({ error: error.message || 'File upload failed' });
+  }
+};
+
+exports.listAssets = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const prefix = `uploads/${userId}/`;
+    const objects = await listObjects('design-assets', prefix);
+
+    const files = objects
+      .filter(obj => obj.Key !== prefix) // skip the folder placeholder if any
+      .map(obj => ({
+        name: obj.Key.replace(prefix, ''),
+        url: getPublicUrl('design-assets', obj.Key),
+      }))
+      .sort((a, b) => b.name.localeCompare(a.name)); // newest first (timestamp prefix)
+
+    res.json(files);
+  } catch (error) {
+    console.error('List assets error:', error);
+    res.status(500).json({ error: error.message || 'Failed to list assets' });
   }
 };

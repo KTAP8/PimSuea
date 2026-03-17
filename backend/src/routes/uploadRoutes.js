@@ -16,4 +16,7 @@ const upload = multer({
 // Expects 'file' field in multipart/form-data
 router.post('/', requireAuth, upload.single('file'), uploadController.uploadFile);
 
+// Route: GET /api/uploads/assets — list user's uploaded images
+router.get('/assets', requireAuth, uploadController.listAssets);
+
 module.exports = router;

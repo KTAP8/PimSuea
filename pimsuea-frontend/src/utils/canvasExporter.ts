@@ -186,3 +186,36 @@ export const exportDesignForProduction = async (
     return null;
   }
 };
+
+/**
+ * Renders a saved side's canvas JSON to a PNG dataURL for mockup compositing.
+ * Does NOT upload anything — returns a local dataURL for display only.
+ */
+export async function renderSideForMockup(
+  savedJson: any,
+  printZoneBounds: { left: number; top: number; width: number; height: number }
+): Promise<string> {
+  const el = document.createElement('canvas');
+  const tempCanvas = new fabric.StaticCanvas(el);
+
+  await new Promise<void>((resolve) => {
+    tempCanvas.loadFromJSON(savedJson, () => resolve());
+  });
+
+  tempCanvas.getObjects()
+    .filter((o: any) => o.name === 'static_bg' || o.name === 'print_zone')
+    .forEach((o: any) => tempCanvas.remove(o));
+  tempCanvas.setBackgroundColor(null as any, () => {});
+
+  const dataUrl = tempCanvas.toDataURL({
+    format: 'png',
+    multiplier: 1,
+    left: printZoneBounds.left,
+    top: printZoneBounds.top,
+    width: printZoneBounds.width,
+    height: printZoneBounds.height,
+  });
+
+  tempCanvas.dispose();
+  return dataUrl;
+}
