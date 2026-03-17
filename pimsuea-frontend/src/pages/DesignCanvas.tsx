@@ -18,7 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import api, { uploadFile, getPrice } from "@/services/api";
 import { exportDesignForProduction, renderSideForMockup } from "@/utils/canvasExporter";
-import { compositeSingleSide } from "@/utils/mockupCompositor";
+import { compositeSingleSide, OUTPUT_SCALE } from "@/utils/mockupCompositor";
 import { useCart } from "@/contexts/CartContext";
 import {
   Dialog,
@@ -1539,7 +1539,7 @@ const handleMockup = async () => {
             const savedData = (saved as any).json || saved;
             const bounds = (saved as any).bounds ?? printZoneBoundsRef.current;
             if (!savedData || !bounds) continue;
-            const designUrl = await renderSideForMockup(savedData, bounds, template.mockup_config.placement.w);
+            const designUrl = await renderSideForMockup(savedData, bounds, template.mockup_config.placement.w * OUTPUT_SCALE);
             const composited = await compositeSingleSide(
                 template.mockup_config.image_url,
                 template.mockup_config.placement,
