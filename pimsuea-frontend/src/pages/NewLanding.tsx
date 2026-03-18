@@ -5,7 +5,8 @@ import { getProducts } from "@/services/api";
 import type { Product } from "@/types/api";
 import {
   MousePointer2, Type, Image as ImageIcon, Layers,
-  Upload, ArrowRight, Package, Zap, Truck, Loader2, Globe
+  Upload, ArrowRight, Package, Zap, Truck, Loader2, Globe,
+  ShieldCheck, Clock, Scissors, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Language, translations } from "@/translations/landing";
@@ -555,38 +556,52 @@ export default function NewLanding() {
               {
                 title: t.feature1Title,
                 quote: t.feature1Quote,
-                icon: "01",
+                iconText: "01",
+                icon: <Activity className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
               },
               {
                 title: t.feature2Title,
                 quote: t.feature2Quote,
-                icon: "02",
+                iconText: "02",
+                icon: <Clock className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
               },
               {
                 title: t.feature3Title,
                 quote: t.feature3Quote,
-                icon: "03",
+                iconText: "03",
+                icon: <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
               },
               {
                 title: t.feature4Title,
                 quote: t.feature4Quote,
-                icon: "04",
+                iconText: "04",
+                icon: <Scissors className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
               },
-            ].map(({ title, quote, icon }) => (
+            ].map(({ title, quote, iconText, icon }) => (
               <motion.div
                 key={title}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -4 }}
-                transition={{ duration: 0.3 }}
-                className="border border-border rounded-lg p-8 bg-card hover:border-primary/30 hover:shadow-md transition-all duration-300"
+                viewport={{ once: true, amount: 0.2 }}
+                whileHover={{ y: -8, scale: 1.01 }}
+                transition={{ duration: 0.4, type: "spring", stiffness: 120 }}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-10 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5"
               >
-                <span className="font-black text-5xl text-border block mb-4 leading-none">
-                  {icon}
+                {/* Background Glow on Hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                {/* Number Watermark */}
+                <span className="absolute -bottom-6 -right-4 font-black text-8xl md:text-9xl text-muted/10 select-none group-hover:text-primary/5 transition-colors duration-500">
+                  {iconText}
                 </span>
-                <h3 className="font-black text-xl mb-2">{title}</h3>
-                <p className="font-light text-muted-foreground leading-relaxed">"{quote}"</p>
+
+                <div className="relative z-10">
+                  <div className="mb-8 inline-flex items-center justify-center rounded-xl bg-secondary/30 p-4 ring-1 ring-border group-hover:bg-primary/10 group-hover:ring-primary/30 transition-all duration-300">
+                    {icon}
+                  </div>
+                  <h3 className="font-black text-2xl md:text-3xl mb-4 group-hover:text-primary transition-colors duration-300">{title}</h3>
+                  <p className="font-light text-muted-foreground text-lg leading-relaxed max-w-sm">"{quote}"</p>
+                </div>
               </motion.div>
             ))}
           </div>
