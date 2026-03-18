@@ -414,6 +414,134 @@ function HowItWorksSection() {
   );
 }
 
+// ─── Who We Are ───────────────────────────────────────────────────────────
+
+function WhoWeAreSection() {
+  const { lang } = useLandingLang();
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, amount: 0.2 });
+
+  const isEn = lang === 'en';
+
+  return (
+    <section className="border-t border-border bg-[#F8F9FA]">
+      <div className="max-w-5xl mx-auto px-6 py-24 lg:py-32">
+        <div ref={ref} className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+          {/* Left — Photo placeholder (replace src with real photo before launch) */}
+          <motion.div
+            initial={{ opacity: 0, x: -32 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="relative order-last lg:order-first"
+          >
+            <div className="relative aspect-[4/5] w-full max-w-md mx-auto lg:mx-0 overflow-hidden rounded-2xl bg-foreground">
+              {/* Geometric editorial placeholder — swap with <img> on launch */}
+              <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900" />
+              <div
+                className="absolute inset-0 opacity-[0.06]"
+                style={{
+                  backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+                  backgroundSize: "20px 20px",
+                }}
+              />
+              {/* Accent lines */}
+              <div className="absolute top-8 left-8 right-8 h-px bg-white/20" />
+              <div className="absolute bottom-8 left-8 right-8 h-px bg-white/20" />
+              <div className="absolute top-8 bottom-8 left-8 w-px bg-white/20" />
+              <div className="absolute top-8 bottom-8 right-8 w-px bg-white/20" />
+              {/* Center content */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-white/50">
+                <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center">
+                  <img src="/logo.svg" alt="" className="h-7 w-auto opacity-30" />
+                </div>
+                <p className="text-xs font-light tracking-[0.2em] uppercase">Founders Photo</p>
+              </div>
+              {/* Location badge */}
+              <div className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-action animate-pulse shrink-0" />
+                <span className="text-white/80 text-sm font-light tracking-wide">Bangkok, Thailand</span>
+              </div>
+            </div>
+            {/* Subtle shadow accent */}
+            <div className="absolute -bottom-4 left-4 right-12 h-8 bg-foreground/10 blur-xl rounded-full -z-10" />
+          </motion.div>
+
+          {/* Right — Narrative */}
+          <motion.div
+            initial={{ opacity: 0, x: 32 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
+            className="space-y-8"
+          >
+            {/* Eyebrow */}
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-muted-foreground">
+              Engineered in Bangkok
+            </p>
+
+            {/* Headline */}
+            <div className="space-y-2">
+              <h2 className="font-black text-4xl md:text-5xl leading-[1.05] tracking-tight">
+                {isEn ? (
+                  <>Engineered for creators.<br /><span className="text-primary">Built from experience.</span></>
+                ) : (
+                  <>ออกแบบโดยครีเอเตอร์<br /><span className="text-primary">พัฒนาโดยวิศวกร</span></>
+                )}
+              </h2>
+            </div>
+
+            {/* Divider */}
+            <div className="w-12 h-0.5 bg-primary" />
+
+            {/* Body */}
+            <div className="space-y-5 font-light text-lg text-muted-foreground leading-relaxed max-w-lg">
+              {isEn ? (
+                <>
+                  <p>
+                    PimSuea wasn't born in a boardroom. It started exactly where our users are:
+                    trying to order custom team shirts and hitting a wall of minimums, slow LINE replies,
+                    and unpredictable pricing.
+                  </p>
+                  <p>
+                    As Engineering students at Chulalongkorn University, we realized the problem wasn't
+                    the printing—it was the infrastructure. We built PimSuea to replace the friction of
+                    the traditional factory model with the precision of modern software.{" "}
+                    <span className="font-medium text-foreground">No middlemen. No guessing. Just your design, engineered flawlessly.</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>
+                    PimSuea ไม่ได้เริ่มต้นจากโรงงานสกรีน แต่เริ่มจากความหงุดหงิดที่เราเจอเหมือนคุณ—
+                    การต้องง้อขั้นต่ำ รอแอดมินตอบแชท และไม่เคยรู้ราคาที่แท้จริงจนกว่าจะตกลงสั่งทำ
+                  </p>
+                  <p>
+                    ในฐานะนิสิตวิศวกรรมศาสตร์ จุฬาลงกรณ์มหาวิทยาลัย เรามองเห็นว่าปัญหานี้แก้ได้ด้วยเทคโนโลยี
+                    เราจึงสร้างแพลตฟอร์มที่เปลี่ยนความยุ่งยากทั้งหมดให้จบได้ในหน้าเว็บเดียว...
+                    ลากวางลาย เห็นม็อคอัพจริง และคำนวณราคาเรียลไทม์
+                  </p>
+                  <p>
+                    <span className="font-medium text-foreground">เราไม่ได้แค่ทำร้านสกรีนเสื้อ แต่เรากำลังสร้างโครงสร้างพื้นฐานใหม่ให้คนทำเสื้อทุกคน</span>
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Sign-off */}
+            <div className="pt-4 border-t border-border space-y-1">
+              <p className="font-bold text-base text-foreground">The PimSuea Team</p>
+              <p className="text-sm text-muted-foreground font-light">
+                Chulalongkorn University, Faculty of Engineering
+              </p>
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NewLanding() {
@@ -673,6 +801,9 @@ export default function NewLanding() {
           )}
         </div>
       </section>
+
+      {/* ── Who We Are ───────────────────────────────────────────────── */}
+      <WhoWeAreSection />
 
       {/* ── Footer CTA ───────────────────────────────────────────────── */}
       <section className="bg-foreground text-background py-32 text-center">

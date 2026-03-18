@@ -166,6 +166,8 @@ export default function Order() {
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     fullName: '', phone: '', addressLine1: '', addressLine2: '', province: '', district: '', postalCode: ''
   });
+  const [shippingErrors, setShippingErrors] = useState<Partial<Record<keyof ShippingInfo, string>>>({});
+  const [touchedFields, setTouchedFields] = useState<Set<keyof ShippingInfo>>(new Set());
 
   // Calculate Total
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -470,7 +472,55 @@ export default function Order() {
       }
   };
 
+  const validateShippingField = (field: keyof ShippingInfo, value: string): string | undefined => {
+      switch (field) {
+          case 'fullName': return value.trim() ? undefined : 'กรุณากรอกชื่อ-นามสกุล';
+          case 'phone':
+              if (!value.trim()) return 'กรุณากรอกเบอร์โทรศัพท์';
+              if (!/^0\d{8,9}$/.test(value.trim())) return 'เบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)';
+              return undefined;
+          case 'province': return value.trim() ? undefined : 'กรุณากรอกจังหวัด';
+          case 'district': return value.trim() ? undefined : 'กรุณากรอกเขต/อำเภอ';
+          case 'postalCode':
+              if (!value.trim()) return 'กรุณากรอกรหัสไปรษณีย์';
+              if (!/^\d{5}$/.test(value.trim())) return 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก';
+              return undefined;
+          case 'addressLine1': return value.trim() ? undefined : 'กรุณากรอกที่อยู่';
+          default: return undefined;
+      }
+  };
+
+  const filterShippingInput = (field: keyof ShippingInfo, value: string): string => {
+      if (field === 'phone') return value.replace(/\D/g, '');
+      if (field === 'postalCode') return value.replace(/\D/g, '').slice(0, 5);
+      return value;
+  };
+
+  const handleShippingChange = (field: keyof ShippingInfo, value: string) => {
+      const filtered = filterShippingInput(field, value);
+      setShippingInfo(prev => ({ ...prev, [field]: filtered }));
+      if (touchedFields.has(field)) {
+          setShippingErrors(prev => ({ ...prev, [field]: validateShippingField(field, filtered) }));
+      }
+  };
+
+  const handleShippingBlur = (field: keyof ShippingInfo) => {
+      setTouchedFields(prev => new Set([...prev, field]));
+      setShippingErrors(prev => ({ ...prev, [field]: validateShippingField(field, shippingInfo[field]) }));
+  };
+
   const handleNext = () => {
+      if (step === 2) {
+          const fields: (keyof ShippingInfo)[] = ['fullName', 'phone', 'province', 'district', 'postalCode', 'addressLine1'];
+          setTouchedFields(new Set(fields));
+          const errors: Partial<Record<keyof ShippingInfo, string>> = {};
+          for (const f of fields) {
+              const err = validateShippingField(f, shippingInfo[f]);
+              if (err) errors[f] = err;
+          }
+          setShippingErrors(errors);
+          if (Object.keys(errors).length > 0) return;
+      }
       setStep(prev => Math.min(prev + 1, 3));
   };
   
@@ -759,30 +809,68 @@ export default function Order() {
               <h2 className="text-2xl font-bold flex items-center"><Truck className="mr-2" /> ที่อยู่จัดส่ง</h2>
               <div className="grid grid-cols-1 gap-4">
                   <div>
-                      <Label>ชื่อ-นามสกุล</Label>
-                      <Input value={shippingInfo.fullName} onChange={(e) => setShippingInfo({...shippingInfo, fullName: e.target.value})} />
+                      <Label>ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
+                      <Input
+                          value={shippingInfo.fullName}
+                          onChange={(e) => handleShippingChange('fullName', e.target.value)}
+                          onBlur={() => handleShippingBlur('fullName')}
+                          className={shippingErrors.fullName ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                      />
+                      {shippingErrors.fullName && <p className="text-red-500 text-xs mt-1">{shippingErrors.fullName}</p>}
                   </div>
                   <div>
-                      <Label>เบอร์โทรศัพท์</Label>
-                      <Input value={shippingInfo.phone} onChange={(e) => setShippingInfo({...shippingInfo, phone: e.target.value})} />
+                      <Label>เบอร์โทรศัพท์ <span className="text-red-500">*</span></Label>
+                      <Input
+                          value={shippingInfo.phone}
+                          onChange={(e) => handleShippingChange('phone', e.target.value)}
+                          onBlur={() => handleShippingBlur('phone')}
+                          className={shippingErrors.phone ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                          inputMode="tel"
+                      />
+                      {shippingErrors.phone && <p className="text-red-500 text-xs mt-1">{shippingErrors.phone}</p>}
                   </div>
                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                             <Label>จังหวัด</Label>
-                             <Input value={shippingInfo.province} onChange={(e) => setShippingInfo({...shippingInfo, province: e.target.value})} />
+                             <Label>จังหวัด <span className="text-red-500">*</span></Label>
+                             <Input
+                                 value={shippingInfo.province}
+                                 onChange={(e) => handleShippingChange('province', e.target.value)}
+                                 onBlur={() => handleShippingBlur('province')}
+                                 className={shippingErrors.province ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                             />
+                             {shippingErrors.province && <p className="text-red-500 text-xs mt-1">{shippingErrors.province}</p>}
                         </div>
                         <div>
-                             <Label>เขต/อำเภอ</Label>
-                             <Input value={shippingInfo.district} onChange={(e) => setShippingInfo({...shippingInfo, district: e.target.value})} />
+                             <Label>เขต/อำเภอ <span className="text-red-500">*</span></Label>
+                             <Input
+                                 value={shippingInfo.district}
+                                 onChange={(e) => handleShippingChange('district', e.target.value)}
+                                 onBlur={() => handleShippingBlur('district')}
+                                 className={shippingErrors.district ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                             />
+                             {shippingErrors.district && <p className="text-red-500 text-xs mt-1">{shippingErrors.district}</p>}
                         </div>
                    </div>
                    <div>
-                         <Label>รหัสไปรษณีย์</Label>
-                         <Input value={shippingInfo.postalCode} onChange={(e) => setShippingInfo({...shippingInfo, postalCode: e.target.value})} />
+                         <Label>รหัสไปรษณีย์ <span className="text-red-500">*</span></Label>
+                         <Input
+                             value={shippingInfo.postalCode}
+                             onChange={(e) => handleShippingChange('postalCode', e.target.value)}
+                             onBlur={() => handleShippingBlur('postalCode')}
+                             className={shippingErrors.postalCode ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                             inputMode="numeric"
+                         />
+                         {shippingErrors.postalCode && <p className="text-red-500 text-xs mt-1">{shippingErrors.postalCode}</p>}
                    </div>
                    <div>
-                       <Label>ที่อยู่ (บ้านเลขที่, ซอย, ถนน)</Label>
-                       <Input value={shippingInfo.addressLine1} onChange={(e) => setShippingInfo({...shippingInfo, addressLine1: e.target.value})} />
+                       <Label>ที่อยู่ (บ้านเลขที่, ซอย, ถนน) <span className="text-red-500">*</span></Label>
+                       <Input
+                           value={shippingInfo.addressLine1}
+                           onChange={(e) => handleShippingChange('addressLine1', e.target.value)}
+                           onBlur={() => handleShippingBlur('addressLine1')}
+                           className={shippingErrors.addressLine1 ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                       />
+                       {shippingErrors.addressLine1 && <p className="text-red-500 text-xs mt-1">{shippingErrors.addressLine1}</p>}
                    </div>
               </div>
           </div>
