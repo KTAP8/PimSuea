@@ -19,4 +19,7 @@ router.post('/', requireAuth, upload.single('file'), uploadController.uploadFile
 // Route: GET /api/uploads/assets — list user's uploaded images
 router.get('/assets', requireAuth, uploadController.listAssets);
 
+// Route: DELETE /api/uploads/assets/:filename — delete a user's asset from R2
+router.delete('/assets/:filename', requireAuth, uploadController.deleteAsset);
+
 module.exports = router;

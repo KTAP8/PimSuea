@@ -4,7 +4,7 @@ const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 exports.getCart = async (req, res) => {
   try {
-    const db = getAuthenticatedSupabase(req.token);
+    const db = getAuthenticatedSupabase(req.headers.authorization);
     const { data, error } = await db
       .from('cart_items')
       .select('*')
@@ -25,7 +25,7 @@ exports.upsertItem = async (req, res) => {
   }
 
   try {
-    const db = getAuthenticatedSupabase(req.token);
+    const db = getAuthenticatedSupabase(req.headers.authorization);
     const { error } = await db.from('cart_items').upsert({
       id,
       user_id: req.user.id,
@@ -61,7 +61,7 @@ exports.updateItem = async (req, res) => {
   updates.updated_at = new Date().toISOString();
 
   try {
-    const db = getAuthenticatedSupabase(req.token);
+    const db = getAuthenticatedSupabase(req.headers.authorization);
     const { error } = await db.from('cart_items').update(updates).eq('id', id);
     if (error) throw error;
     res.json({ ok: true });
@@ -73,7 +73,7 @@ exports.updateItem = async (req, res) => {
 
 exports.removeItem = async (req, res) => {
   try {
-    const db = getAuthenticatedSupabase(req.token);
+    const db = getAuthenticatedSupabase(req.headers.authorization);
     const { error } = await db.from('cart_items').delete().eq('id', req.params.id);
     if (error) throw error;
     res.json({ ok: true });
@@ -85,7 +85,7 @@ exports.removeItem = async (req, res) => {
 
 exports.clearCart = async (req, res) => {
   try {
-    const db = getAuthenticatedSupabase(req.token);
+    const db = getAuthenticatedSupabase(req.headers.authorization);
     const { error } = await db.from('cart_items').delete().eq('user_id', req.user.id);
     if (error) throw error;
     res.json({ ok: true });

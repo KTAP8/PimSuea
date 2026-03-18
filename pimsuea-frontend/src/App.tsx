@@ -13,6 +13,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import NewsDetails from './pages/NewsDetails';
 import Landing from './pages/Landing';
+import NewLanding from './pages/NewLanding';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
@@ -21,7 +22,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
   const location = useLocation();
-  const hideSidebarRoutes = ['/login', '/register', '/', '/onboarding'];
+  const hideSidebarRoutes = ['/login', '/register', '/', '/onboarding', '/home'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname) && !location.pathname.startsWith('/design/');
 
   return (
@@ -34,6 +35,7 @@ function Layout() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />
+          <Route path="/home" element={<NewLanding />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 

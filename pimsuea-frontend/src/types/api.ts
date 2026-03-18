@@ -119,7 +119,7 @@ export interface Order {
     id: number;
     user_id: string;
     total_amount: number;
-    status: string; // 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'pending_payment'
+    status: string; // 'pending_payment' | 'pending' | 'paid_processing' | 'printing' | 'shipped' | 'delivered' | 'cancelled'
     created_at: string;
     items?: OrderItem[];
     shipping_address?: ShippingInfo;

@@ -1060,27 +1060,23 @@ export default function DesignCanvas() {
     if (!user || !deleteImageName) return;
 
     try {
-        const { error } = await supabase.storage
-            .from('design-assets')
-            .remove([`uploads/${user.id}/${deleteImageName}`]);
+        await api.delete(`/uploads/assets/${encodeURIComponent(deleteImageName)}`);
 
-        if (error) throw error;
-
-        // Optimistic Remove
+        // Remove from local state
         setUserUploads(prev => prev.filter(f => f.name !== deleteImageName));
-        
+
         setNotification({
-             type: 'success', 
-             title: 'ลบรูปภาพสำเร็จ', 
-             message: 'ลบรูปภาพออกจากคลังเรียบร้อยแล้ว' 
+             type: 'success',
+             title: 'ลบรูปภาพสำเร็จ',
+             message: 'ลบรูปภาพออกจากคลังเรียบร้อยแล้ว'
         });
 
     } catch (err: any) {
         console.error("Delete failed:", err);
         setNotification({
-             type: 'error', 
-             title: 'ลบไม่สำเร็จ', 
-             message: err.message || 'เกิดข้อผิดพลาดในการลบ' 
+             type: 'error',
+             title: 'ลบไม่สำเร็จ',
+             message: err.response?.data?.error || 'เกิดข้อผิดพลาดในการลบ'
         });
     } finally {
         setDeleteImageName(null);

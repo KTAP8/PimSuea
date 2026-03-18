@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice } from "@/services/api";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -124,6 +124,7 @@ export default function Order() {
   // Step State
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [addingDesignId, setAddingDesignId] = useState<string | null>(null);
   
   // Debounce ref for quantity repricing
   const repriceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -135,20 +136,18 @@ export default function Order() {
   
   // Notification State
   const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Auto-dismiss notification
+  // Auto-dismiss notification (errors only)
   useEffect(() => {
     if (notification) {
         const timer = setTimeout(() => {
             setNotification(null);
-            // If success, navigate after dismiss
-            if (notification.type === 'success') {
-                 navigate('/orders');
-            }
         }, 3000);
         return () => clearTimeout(timer);
     }
-  }, [notification, navigate]);
+  }, [notification]);
 
   // Fetch designs when modal opens
   useEffect(() => {
@@ -378,8 +377,7 @@ export default function Order() {
 
   const addToCart = async (design: any) => {
       // ... no changes to addToCart ...
-      setLoading(true);
-      setIsAddOpen(false); 
+      setAddingDesignId(design.id);
       try {
             // Fetch Product & Templates
             const [product, templates] = await Promise.all([
@@ -467,7 +465,8 @@ export default function Order() {
       } catch (error) {
           console.error("Failed to add item:", error);
       } finally {
-          setLoading(false);
+          setAddingDesignId(null);
+          setIsAddOpen(false); 
       }
   };
 
@@ -557,18 +556,12 @@ export default function Order() {
             total: totalPrice
         };
         console.log("SUBMITTING ORDER:", orderPayload);
-        
-        await createOrder(orderPayload);
-        
-        setNotification({
-             type: 'success',
-             title: 'สั่งซื้อสำเร็จ',
-             message: 'ระบบบันทึกคำสั่งซื้อเรียบร้อยแล้ว'
-        });
-        
+
+        const result = await createOrder(orderPayload);
+
         clearCart();
-        
-        // Navigation handled in useEffect
+        setPlacedOrderId(result.orderId);
+        setStep(4);
       } catch (error) {
           console.error("Order submission failed:", error);
           setNotification({
@@ -599,8 +592,7 @@ export default function Order() {
       )}
 
       {/* Steps Indicator */}
-      {/* ... same ... */}
-      <div className="flex items-center justify-center mb-8">
+      {step < 4 && <div className="flex items-center justify-center mb-8">
           <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current">1</div>
               <span>ตะกร้าสินค้า</span>
@@ -615,7 +607,7 @@ export default function Order() {
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current">3</div>
               <span>สรุป & จ่ายเงิน</span>
           </div>
-      </div>
+      </div>}
 
       {step === 1 && (
         <div className="space-y-6">
@@ -700,24 +692,52 @@ export default function Order() {
              <div className="flex justify-between pt-4 border-t mt-4">
                  <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
                      <SheetTrigger asChild>
-                         <Button variant="ghost"><Plus className="w-4 h-4 mr-2"/> ซื้อสินค้าเพิ่ม</Button>
+                         <Button variant="outline" className="border-border rounded-none font-bold uppercase tracking-widest hover:bg-secondary/80 text-foreground transition-all duration-300">
+                             <Plus className="w-4 h-4 mr-2"/> ซื้อสินค้าเพิ่ม
+                         </Button>
                      </SheetTrigger>
-                     <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-                         <SheetHeader>
-                             <SheetTitle>เลือกผลงานออกแบบของฉัน</SheetTitle>
+                     <SheetContent side="right" className="w-[400px] sm:w-[540px] bg-background border-l border-border pt-12">
+                         <SheetHeader className="mb-6">
+                             <SheetTitle className="font-bold uppercase tracking-wider text-xl text-foreground flex items-center gap-2">
+                                <Plus className="w-5 h-5 text-action" /> เลือกผลงานออกแบบของฉัน
+                             </SheetTitle>
                          </SheetHeader>
-                         <ScrollArea className="h-[calc(100vh-100px)] mt-4 pr-4">
+                         <ScrollArea className="h-[calc(100vh-120px)] pr-6">
                              {loadingDesigns ? (
-                                 <div className="flex justify-center p-8"><Loader2 className="animate-spin"/></div>
+                                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-muted-foreground w-8 h-8"/></div>
+                             ) : myDesigns.length === 0 ? (
+                                 <div className="text-center p-12 border border-border bg-secondary/20 rounded-none mt-4">
+                                     <p className="text-muted-foreground font-light">ยังไม่มีผลงานออกแบบ</p>
+                                 </div>
                              ) : (
-                                 <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-2 gap-6 pb-8">
                                      {myDesigns.map(design => (
                                          <div key={design.id} 
-                                            className="border rounded-lg p-2 cursor-pointer hover:border-primary hover:shadow-md transition-all"
-                                            onClick={() => addToCart(design)}
+                                            className={`relative bg-secondary/20 border border-border p-4 cursor-pointer transition-all duration-300 group overflow-hidden ${
+                                                addingDesignId === design.id 
+                                                ? "opacity-70 pointer-events-none" 
+                                                : "hover:border-primary/50 hover:bg-secondary/40 shadow-sm"
+                                            }`}
+                                            onClick={() => {
+                                                if (addingDesignId !== design.id) {
+                                                    addToCart(design);
+                                                }
+                                            }}
                                          >
-                                             <img src={design.preview_image_url || "https://via.placeholder.com/150"} alt={design.design_name} className="w-full aspect-square object-contain bg-gray-50 mb-2 rounded" />
-                                             <p className="font-medium text-sm truncate">{design.design_name}</p>
+                                             {/* Accent Bar */}
+                                             <div className="absolute top-0 left-0 w-full h-1 bg-border group-hover:bg-primary/50 transition-colors duration-300" />
+
+                                             {addingDesignId === design.id && (
+                                                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 border border-primary">
+                                                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                 </div>
+                                             )}
+                                             
+                                             <div className="bg-secondary/50 border border-border p-2 mb-4 group-hover:border-primary/30 transition-colors">
+                                                 <img src={design.preview_image_url || "https://via.placeholder.com/150"} alt={design.design_name} className="w-full aspect-square object-contain" />
+                                             </div>
+                                             
+                                             <p className="font-bold uppercase tracking-widest text-xs text-center text-foreground truncate px-2">{design.design_name}</p>
                                          </div>
                                      ))}
                                  </div>
@@ -809,21 +829,100 @@ export default function Order() {
           </div>
       )}
 
-      <div className="mt-8 flex justify-between">
-          {step > 1 ? (
-              <Button variant="outline" onClick={handleBack}>ย้อนกลับ</Button>
-          ) : null}
-          
-          {step < 3 ? (
-              <Button onClick={handleNext} disabled={cartItems.length === 0}>
-                  ดำเนินการต่อ <ChevronRight className="w-4 h-4 ml-2" />
+      {step === 4 && (
+        <div className="max-w-xl mx-auto space-y-6">
+          <div className="text-center">
+            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold">สั่งซื้อสำเร็จแล้ว!</h2>
+            <p className="text-gray-500 mt-1">กรุณาชำระเงินตามขั้นตอนด้านล่าง</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl border p-4">
+            <p className="text-sm text-gray-500 mb-1">หมายเลขคำสั่งซื้อ</p>
+            <div className="flex items-center gap-3">
+              <span className="text-xl font-bold font-mono flex-1">#{placedOrderId}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(String(placedOrderId));
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="shrink-0"
+              >
+                {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
               </Button>
-          ) : (
-              <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-                  ยืนยันการสั่งซื้อ
-              </Button>
-          )}
-      </div>
+            </div>
+          </div>
+
+          <div className="bg-white border rounded-xl divide-y overflow-hidden">
+            <div className="p-4 space-y-3">
+              <p className="font-semibold">1. เพิ่มเพื่อน LINE ของ PimSuea</p>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+                {import.meta.env.VITE_LINE_QR_URL && (
+                  <img
+                    src={import.meta.env.VITE_LINE_QR_URL}
+                    alt="LINE QR Code"
+                    className="w-40 h-40 sm:w-48 sm:h-48 object-contain border rounded-lg"
+                  />
+                )}
+                <div>
+                  <p className="text-sm text-gray-500">หรือค้นหา LINE ID:</p>
+                  <p className="text-lg font-bold text-green-600">{import.meta.env.VITE_LINE_ID || '@PimSuea'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <p className="font-semibold">2. ส่งหมายเลขคำสั่งซื้อในแชท LINE</p>
+              <p className="text-sm text-gray-500 mt-1">
+                ส่ง <span className="font-mono font-bold text-gray-800">#{placedOrderId}</span> ให้เราทราบในแชท LINE
+              </p>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <p className="font-semibold">3. ชำระเงินผ่าน PromptPay</p>
+              <p className="text-sm text-gray-500">
+                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{totalPrice.toLocaleString()}</span>
+              </p>
+              {import.meta.env.VITE_PROMPTPAY_QR_URL && (
+                <img
+                  src={import.meta.env.VITE_PROMPTPAY_QR_URL}
+                  alt="PromptPay QR Code"
+                  className="w-64 h-64 sm:w-80 sm:h-80 object-contain mx-auto border rounded-xl"
+                />
+              )}
+            </div>
+          </div>
+
+          <Link to="/orders">
+            <Button className="w-full" size="lg">
+              ดูคำสั่งซื้อของฉัน <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {step < 4 && (
+        <div className="mt-8 flex justify-between">
+            {step > 1 ? (
+                <Button variant="outline" onClick={handleBack}>ย้อนกลับ</Button>
+            ) : null}
+
+            {step < 3 ? (
+                <Button onClick={handleNext} disabled={cartItems.length === 0}>
+                    ดำเนินการต่อ <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+            ) : (
+                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700" disabled={loading}>
+                    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    ยืนยันการสั่งซื้อ
+                </Button>
+            )}
+        </div>
+      )}
     </div>
   );
 }

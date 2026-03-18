@@ -1,4 +1,4 @@
-const { S3Client, DeleteObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, ListObjectsV2Command, CopyObjectCommand } = require('@aws-sdk/client-s3');
 
 const r2 = new S3Client({
   region: 'auto',
@@ -11,9 +11,10 @@ const r2 = new S3Client({
 
 // Public base URLs per bucket (set via env vars after enabling R2.dev subdomain)
 const R2_PUBLIC_URLS = {
-  'design-previews': process.env.R2_PUBLIC_URL_PREVIEWS,
-  'print-files':     process.env.R2_PUBLIC_URL_PRINT,
-  'design-assets':   process.env.R2_PUBLIC_URL_ASSETS,
+  'design-previews':   process.env.R2_PUBLIC_URL_PREVIEWS,
+  'print-files':       process.env.R2_PUBLIC_URL_PRINT,
+  'design-assets':     process.env.R2_PUBLIC_URL_ASSETS,
+  'print-files-ordered': process.env.R2_PUBLIC_URL_PRINT_ORDERED,
 };
 
 /**
@@ -63,4 +64,19 @@ async function listObjects(bucketName, prefix) {
   return res.Contents ?? [];
 }
 
-module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject, listObjects };
+/**
+ * Copies an object between R2 buckets.
+ * @param {string} srcBucket
+ * @param {string} srcKey
+ * @param {string} dstBucket
+ * @param {string} dstKey
+ */
+async function copyObject(srcBucket, srcKey, dstBucket, dstKey) {
+  await r2.send(new CopyObjectCommand({
+    Bucket: dstBucket,
+    CopySource: `${srcBucket}/${encodeURIComponent(srcKey)}`,
+    Key: dstKey,
+  }));
+}
+
+module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject, listObjects, copyObject };

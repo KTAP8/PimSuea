@@ -1,6 +1,7 @@
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 const { calculatePrice } = require('../utils/pricing');
 const { isUUID, isPositiveInt } = require('../utils/validate');
+const { copyObject, getLocationFromUrl, getPublicUrl } = require('../config/r2Client');
 
 const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
@@ -128,67 +129,89 @@ exports.createOrder = async (req, res) => {
 
   try {
     // 1. Server-side price recalculation for each item
-    const pricedItems = await Promise.all(items.map(async (item) => {
+    // Mirrors the frontend's repriceAll: grouped quantities + per-side pricing.
+
+    // Step 1a: Fetch all design data and color names in parallel
+    const itemDesignData = await Promise.all(items.map(async (item) => {
       const designId = (item.designId && item.designId !== 'custom') ? item.designId : null;
-
-      if (!designId) {
-        // No design: cannot verify price, fall back to client-submitted price
-        console.warn(`Order item has no design_id; using client price: ${item.price}`);
-        return { ...item, verifiedUnitPrice: item.price };
-      }
-
-      // Fetch design data needed for pricing
-      const { data: design, error: designError } = await supabaseAdmin
+      if (!designId) return { item, design: null };
+      const { data: design } = await supabaseAdmin
         .from('user_designs')
         .select('print_dimensions, printing_type, base_product_id')
         .eq('id', designId)
         .single();
+      return { item, design: design ?? null };
+    }));
 
-      if (designError || !design) {
-        console.warn(`Could not fetch design ${designId}; using client price`);
+    const colorIds = [...new Set(items.map(i => i.color_id || i.color).filter(Boolean))];
+    const colorEntries = await Promise.all(colorIds.map(async (id) => {
+      const { data } = await supabaseAdmin.from('colors').select('name').eq('id', id).single();
+      return [id, data?.name ?? null];
+    }));
+    const colorMap = new Map(colorEntries);
+
+    // Step 1b: Build grouped quantity maps (same logic as frontend repriceAll)
+    // shirt group: base_product_id:color_id → combined qty
+    // print group: designId → combined qty
+    const shirtGroupQty = new Map();
+    const printGroupQty = new Map();
+    for (const { item, design } of itemDesignData) {
+      if (!design) continue;
+      const colorId = item.color_id || item.color;
+      shirtGroupQty.set(
+        `${design.base_product_id}:${colorId}`,
+        (shirtGroupQty.get(`${design.base_product_id}:${colorId}`) ?? 0) + item.quantity
+      );
+      printGroupQty.set(item.designId, (printGroupQty.get(item.designId) ?? 0) + item.quantity);
+    }
+
+    // Step 1c: Calculate per-item price using grouped quantities and per-side summing
+    const pricedItems = await Promise.all(itemDesignData.map(async ({ item, design }) => {
+      const designId = (item.designId && item.designId !== 'custom') ? item.designId : null;
+
+      if (!designId || !design) {
+        console.warn(`Order item has no design_id; using client price: ${item.price}`);
         return { ...item, verifiedUnitPrice: item.price };
       }
 
-      // Derive max dimensions across all sides
-      const dims = design.print_dimensions;
-      let aabb_w_cm = 0;
-      let aabb_h_cm = 0;
-      if (dims && typeof dims === 'object') {
-        for (const side of Object.values(dims)) {
-          aabb_w_cm = Math.max(aabb_w_cm, side.w ?? 0);
-          aabb_h_cm = Math.max(aabb_h_cm, side.h ?? 0);
-        }
-      }
-
-      if (!aabb_w_cm || !aabb_h_cm || !design.printing_type) {
-        console.warn(`Design ${designId} missing AABB/printing_type; using client price`);
-        return { ...item, verifiedUnitPrice: item.price };
-      }
-
-      // Resolve color_id → color_name
-      const { data: colorRow } = await supabaseAdmin
-        .from('colors')
-        .select('name')
-        .eq('id', item.color_id || item.color)
-        .single();
-
-      const color_name = colorRow?.name;
+      const colorId = item.color_id || item.color;
+      const color_name = colorMap.get(colorId);
       if (!color_name || !['White', 'Black'].includes(color_name)) {
-        console.warn(`Color '${item.color_id || item.color}' not priceable; using client price`);
+        console.warn(`Color '${colorId}' not priceable; using client price`);
         return { ...item, verifiedUnitPrice: item.price };
       }
+
+      const dims = design.print_dimensions;
+      if (!dims || typeof dims !== 'object' || !design.printing_type) {
+        console.warn(`Design ${designId} missing dims/printing_type; using client price`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+
+      const entries = Object.entries(dims).filter(([, d]) => d.w > 0 && d.h > 0);
+      if (entries.length === 0) {
+        console.warn(`Design ${designId} has no valid print sides; using client price`);
+        return { ...item, verifiedUnitPrice: item.price };
+      }
+
+      const shirt_qty = shirtGroupQty.get(`${design.base_product_id}:${colorId}`) ?? item.quantity;
+      const print_qty = printGroupQty.get(designId) ?? item.quantity;
 
       try {
-        const breakdown = await calculatePrice({
+        // Per-side pricing: shirt counted once (from first side), print summed across all sides
+        const sideResults = await Promise.all(entries.map(([, d]) => calculatePrice({
           printingType: design.printing_type,
-          aabb_w_cm,
-          aabb_h_cm,
+          aabb_w_cm: d.w,
+          aabb_h_cm: d.h,
           quantity: item.quantity,
+          shirt_qty,
+          print_qty,
           productId: design.base_product_id,
           color_name,
           size: item.size,
-        });
-        return { ...item, verifiedUnitPrice: breakdown.total_per_unit };
+        })));
+        const verifiedUnitPrice = sideResults[0].shirt_per_unit
+          + sideResults.reduce((s, r) => s + r.print_per_unit, 0);
+        return { ...item, verifiedUnitPrice };
       } catch (priceErr) {
         console.warn(`Pricing lookup failed for design ${designId}: ${priceErr.message}; using client price`);
         return { ...item, verifiedUnitPrice: item.price };
@@ -216,8 +239,35 @@ exports.createOrder = async (req, res) => {
 
     if (orderError) throw orderError;
 
-    // 3. Create Order Items with server-verified unit prices
-    const orderItems = pricedItems.map(item => ({
+    // 3. Copy print files from draft bucket → permanent ordered bucket
+    const itemsWithCopiedFiles = await Promise.all(pricedItems.map(async (item) => {
+      if (!item.print_file_url) return item;
+
+      let urlMap = {};
+      try { urlMap = JSON.parse(item.print_file_url); }
+      catch { urlMap = { front: item.print_file_url }; }
+
+      const copiedMap = {};
+      await Promise.all(Object.entries(urlMap).map(async ([side, url]) => {
+        const loc = getLocationFromUrl(url);
+        if (!loc || loc.bucket !== 'print-files') {
+          copiedMap[side] = url;
+          return;
+        }
+        try {
+          await copyObject(loc.bucket, loc.key, 'print-files-ordered', loc.key);
+          copiedMap[side] = getPublicUrl('print-files-ordered', loc.key);
+        } catch (e) {
+          console.warn('Could not copy print file to ordered bucket:', loc.key, e.message);
+          copiedMap[side] = url;
+        }
+      }));
+
+      return { ...item, print_file_url: JSON.stringify(copiedMap) };
+    }));
+
+    // 4. Create Order Items with server-verified unit prices and permanent print URLs
+    const orderItems = itemsWithCopiedFiles.map(item => ({
       order_id: order.id,
       user_design_id: (item.designId && item.designId !== 'custom') ? item.designId : null,
       size: item.size,
@@ -269,7 +319,7 @@ exports.updateOrder = async (req, res) => {
     }
 
     // 2. Validate Status
-    const editableStatuses = ['pending_payment', 'pending', 'processing'];
+    const editableStatuses = ['pending_payment', 'pending', 'paid_processing'];
     if (!editableStatuses.includes(order.status)) {
         return res.status(400).json({ error: 'Order cannot be edited in its current status' });
     }

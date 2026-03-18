@@ -156,8 +156,20 @@ exports.updateDesign = async (req, res) => {
     }
 
     // 2. Cleanup old print files if a new one is provided
-    // 2. Cleanup old print files: DISABLED by user request.
-    // Old files will remain in storage indefinitely.
+    // 2. Cleanup old draft print files when a new print file is provided
+    if (print_file_url && oldDesign.print_file_url && print_file_url !== oldDesign.print_file_url) {
+      let oldUrls = [];
+      try { oldUrls = Object.values(JSON.parse(oldDesign.print_file_url)); }
+      catch { oldUrls = [oldDesign.print_file_url]; }
+      await Promise.all(oldUrls.map(async (url) => {
+        const loc = getLocationFromUrl(url);
+        if (loc && loc.bucket === 'print-files') {
+          await deleteObject(loc.bucket, loc.key).catch(e =>
+            console.warn('Could not delete old print file:', loc.key, e.message)
+          );
+        }
+      }));
+    }
     
     // 3. Update Record
     const { data, error } = await db

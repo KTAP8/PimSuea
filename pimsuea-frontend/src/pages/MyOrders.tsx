@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Package, Loader2, Eye, MapPin, CreditCard, ShoppingBag } from "lucide-react";
+import { Package, Loader2, Eye, MapPin, CreditCard, ShoppingBag, Copy, Check, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getMyOrders } from "@/services/api";
 import type { Order } from "@/types/api";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 const statusMap: Record<string, { label: string; color: string }> = {
   pending_payment: { label: "รอชำระเงิน", color: "bg-yellow-100 text-yellow-800" },
   pending: { label: "รอดำเนินการ", color: "bg-blue-50 text-blue-800" },
-  processing: { label: "กำลังผลิต", color: "bg-blue-100 text-blue-800" },
+  paid_processing: { label: "ชำระแล้ว & กำลังผลิต", color: "bg-blue-100 text-blue-800" },
   shipped: { label: "จัดส่งแล้ว", color: "bg-purple-100 text-purple-800" },
   delivered: { label: "ส่งถึงปลายทาง", color: "bg-green-100 text-green-800" },
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-800" },
@@ -34,6 +34,8 @@ export default function MyOrders() {
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   
+  const [copiedOrderId, setCopiedOrderId] = useState<number | null>(null);
+
   // Notification State
   const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
 
@@ -101,7 +103,7 @@ export default function MyOrders() {
   };
   
   const canEditAddress = (status: string) => {
-      return ['pending_payment', 'pending', 'processing'].includes(status);
+      return ['pending_payment', 'pending', 'paid_processing'].includes(status);
   };
   
   // ... existing loading/error checks ...
@@ -213,6 +215,48 @@ export default function MyOrders() {
                             <span>{new Date(selectedOrder.created_at).toLocaleString('th-TH', { dateStyle: 'long', timeStyle: 'short' })}</span>
                         </div>
                     </div>
+
+                    {/* LINE Contact Reminder — shown only when pending payment */}
+                    {selectedOrder.status === 'pending_payment' && (
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
+                        <p className="font-semibold text-green-800 flex items-center gap-2">
+                          <MessageCircle className="w-5 h-5" /> ยังไม่ได้แจ้งชำระเงิน? ส่งหมายเลขคำสั่งซื้อหาเราผ่าน LINE
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 bg-white border border-green-200 rounded-lg px-4 py-2 font-mono font-bold text-lg">
+                            #{selectedOrder.id}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 border-green-300 text-green-800 hover:bg-green-100"
+                            onClick={() => {
+                              navigator.clipboard.writeText(String(selectedOrder.id));
+                              setCopiedOrderId(selectedOrder.id);
+                              setTimeout(() => setCopiedOrderId(null), 2000);
+                            }}
+                          >
+                            {copiedOrderId === selectedOrder.id
+                              ? <><Check className="w-4 h-4 mr-1" /> คัดลอกแล้ว</>
+                              : <><Copy className="w-4 h-4 mr-1" /> คัดลอก</>
+                            }
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {import.meta.env.VITE_LINE_QR_URL && (
+                            <img
+                              src={import.meta.env.VITE_LINE_QR_URL}
+                              alt="LINE QR Code"
+                              className="w-20 h-20 object-contain border border-green-200 rounded-lg bg-white p-1"
+                            />
+                          )}
+                          <div>
+                            <p className="text-sm text-green-700">LINE ID:</p>
+                            <p className="text-lg font-bold text-green-700">{import.meta.env.VITE_LINE_ID || '@PimSuea'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Items Section */}
                     {/* ... */}

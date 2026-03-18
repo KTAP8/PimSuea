@@ -1,5 +1,5 @@
 
-const { r2, getPublicUrl, listObjects } = require('../config/r2Client');
+const { r2, getPublicUrl, listObjects, deleteObject } = require('../config/r2Client');
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const { sanitizeFileName } = require('../utils/validate');
 
@@ -79,6 +79,26 @@ exports.uploadFile = async (req, res) => {
   } catch (error) {
     console.error('Upload controller error:', error);
     res.status(500).json({ error: error.message || 'File upload failed' });
+  }
+};
+
+exports.deleteAsset = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { filename } = req.params;
+
+    // Prevent path traversal — filename must not contain slashes
+    if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const key = `uploads/${userId}/${filename}`;
+    await deleteObject('design-assets', key);
+
+    res.json({ message: 'Asset deleted successfully' });
+  } catch (error) {
+    console.error('Delete asset error:', error);
+    res.status(500).json({ error: error.message || 'Failed to delete asset' });
   }
 };
 
