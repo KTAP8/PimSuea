@@ -16,7 +16,7 @@ import WebFont from "webfontloader";
 import { ArrowLeft, Loader2, Upload, Type, Trash2, ZoomIn, ZoomOut, Hand, MousePointer2, RotateCcw, Bold, Italic, Underline, Minus, Plus, Undo2, Redo2, Layers, ChevronUp, ChevronDown, Save, Image as ImageIcon, X, CheckCircle2, AlertCircle, ShoppingCart } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import api, { uploadFile, getPrice } from "@/services/api";
+import api, { uploadFile, getPrice, r2ProxyUrl } from "@/services/api";
 import { exportDesignForProduction, renderSideForMockup } from "@/utils/canvasExporter";
 import { compositeSingleSide, OUTPUT_SCALE } from "@/utils/mockupCompositor";
 import { useCart } from "@/contexts/CartContext";
@@ -39,6 +39,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSearchParams } from "react-router-dom";
+
+// Replace r2.dev URLs in a canvas JSON blob with backend proxy URLs so that
+// Fabric.js can load them with crossOrigin: 'anonymous' without CORS errors.
+function proxyCanvasJson(json: string | object): object {
+  const str = typeof json === 'string' ? json : JSON.stringify(json);
+  const proxied = str.replace(
+    /https?:\/\/[^"\\]*\.r2\.dev\/[^"\\]*/g,
+    (url) => r2ProxyUrl(url),
+  );
+  return JSON.parse(proxied);
+}
 
 export default function DesignCanvas() {
   const { id } = useParams();
@@ -116,9 +127,10 @@ export default function DesignCanvas() {
   const handleColorChange = (colorId: string) => {
       // 1. Save current state first (as normal)
       saveCurrentCanvas();
-      
+
       // 2. Capture current design for persistence if side matches
       const currentSide = currentTemplate?.side;
+      const oldColorId = selectedColorId;
       if (fabricRef.current && currentSide) {
           const json = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
           // Filter out background image since that will change
@@ -128,11 +140,28 @@ export default function DesignCanvas() {
            pendingDesignRef.current = { json, side: currentSide };
       }
 
+      // 3. Copy all other saved sides from old color → new color, so that switching
+      //    sides after a color change doesn't show a blank canvas.
+      //    Skip the current side (handled by pendingDesignRef above) and skip
+      //    any side that already has its own saved design on the target color.
+      if (oldColorId && oldColorId !== colorId) {
+          const oldColorTemplates = templates.filter(t => t.color?.id === oldColorId);
+          for (const oldTmpl of oldColorTemplates) {
+              if (oldTmpl.side === currentSide) continue; // handled by pendingDesignRef
+              const saved = savedDesigns.current[oldTmpl.id];
+              if (!saved) continue;
+              const newTmpl = templates.find(t => t.color?.id === colorId && t.side === oldTmpl.side);
+              if (newTmpl && !savedDesigns.current[newTmpl.id]) {
+                  savedDesigns.current[newTmpl.id] = saved;
+              }
+          }
+      }
+
       setSelectedColorId(colorId);
-      
+
       // Try to find the same side in the new color
       const newTemplate = templates.find(t => t.color?.id === colorId && t.side === currentSide);
-      
+
       // If found, switch to it. If not, switch to first available for that color.
       if (newTemplate) {
           setCurrentTemplate(newTemplate);
@@ -456,7 +485,7 @@ export default function DesignCanvas() {
 
 
 
-    fabric.Image.fromURL(currentTemplate.image_url, (img) => {
+    fabric.Image.fromURL(r2ProxyUrl(currentTemplate.image_url), (img) => {
       if (!img.width || !img.height || !fabricRef.current) return;
 
       // 1. Calculate Scale
@@ -526,7 +555,9 @@ export default function DesignCanvas() {
            // PATH A: Restore (from pending or saved)
            // Deep clone sourceFields because React StrictMode's double-render 
            // causes Fabric.js to mutate the original object in the first pass
-           const clonedSource = typeof sourceFields === 'string' ? sourceFields : JSON.parse(JSON.stringify(sourceFields));
+           const clonedSource = proxyCanvasJson(
+             typeof sourceFields === 'string' ? sourceFields : JSON.parse(JSON.stringify(sourceFields))
+           );
            newCanvas.loadFromJSON(clonedSource, () => {
                // Ensure we remove unwanted bg constraints from JSON if any
                newCanvas.getObjects().forEach(o => {
@@ -1143,7 +1174,7 @@ export default function DesignCanvas() {
   const addImageToCanvas = (url: string) => {
     if (!fabricRef.current) return;
 
-    fabric.Image.fromURL(url, (img) => {
+    fabric.Image.fromURL(r2ProxyUrl(url), (img) => {
         if (!fabricRef.current) return;
 
         // Default to center of print zone
@@ -1283,7 +1314,9 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                     const height = fabricRef.current.getHeight();
                     const staticCanvas = new fabric.StaticCanvas(null, { width, height });
                     
-                    const clonedJson = typeof json === 'string' ? json : JSON.parse(JSON.stringify(json));
+                    const clonedJson = proxyCanvasJson(
+                      typeof json === 'string' ? json : JSON.parse(JSON.stringify(json))
+                    );
                     await new Promise<void>(resolve => staticCanvas.loadFromJSON(clonedJson, () => resolve()));
                     
                     // Determine Bounds
@@ -1292,7 +1325,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                          // Recalculate if missing (same logic as before)
                          try {
                              const img = await new Promise<any>((resolve, reject) => {
-                                 fabric.Image.fromURL(tmpl.image_url, (img) => {
+                                 fabric.Image.fromURL(r2ProxyUrl(tmpl.image_url), (img) => {
                                      if (!img) reject("Failed to load image");
                                      else resolve(img);
                                  }, { crossOrigin: 'anonymous' });
@@ -1403,7 +1436,9 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             if (!json) continue;
 
             const sideCanvas = new fabric.StaticCanvas(null, { width: canvasW, height: canvasH });
-            const clonedSideJson = typeof json === 'string' ? json : JSON.parse(JSON.stringify(json));
+            const clonedSideJson = proxyCanvasJson(
+              typeof json === 'string' ? json : JSON.parse(JSON.stringify(json))
+            );
             await new Promise<void>(resolve => sideCanvas.loadFromJSON(clonedSideJson, () => resolve()));
 
             const sidePz = saved?.bounds || printZoneBoundsRef.current;
@@ -2071,9 +2106,9 @@ const handleManualSave = async () => {
                         >
                             <div className="flex items-center gap-2 overflow-hidden">
                                 {obj.type === 'image' ? (
-                                    <img 
-                                        src={(obj as fabric.Image).getSrc()} 
-                                        alt="layer" 
+                                    <img
+                                        src={(obj as fabric.Image).getSrc() || undefined}
+                                        alt="layer"
                                         className="w-8 h-8 rounded object-cover border bg-gray-100"
                                     />
                                 ) : (

@@ -12,6 +12,11 @@ const upload = multer({
     limits: { fileSize: 50 * 1024 * 1024 } // Limit 50MB
 });
 
+// Route: GET /api/uploads/proxy?url=<r2-public-url>
+// Proxies R2 assets through the backend (works around r2.dev CORS limitations).
+// No auth required — files are already publicly accessible on R2.
+router.get('/proxy', uploadController.proxyAsset);
+
 // Route: POST /api/uploads
 // Expects 'file' field in multipart/form-data
 router.post('/', requireAuth, upload.single('file'), uploadController.uploadFile);

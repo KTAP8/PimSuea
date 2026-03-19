@@ -275,6 +275,7 @@ exports.createOrder = async (req, res) => {
       quantity: item.quantity,
       unit_price: item.verifiedUnitPrice,
       print_file_url: item.print_file_url,
+      annotated_preview_url: item.annotated_preview_url || null,
     }));
 
     const { error: itemsError } = await client

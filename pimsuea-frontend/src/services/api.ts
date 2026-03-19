@@ -163,6 +163,17 @@ export const clearCartInDB = async (): Promise<void> => {
 
 // Public endpoint — no auth token needed
 const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000/api';
+
+/**
+ * Converts a Cloudflare R2 public URL (pub-*.r2.dev) to a backend proxy URL.
+ * This works around CORS limitations on the r2.dev public subdomain — the backend
+ * fetches the asset server-side and returns it with Access-Control-Allow-Origin: *.
+ * Non-R2 URLs are returned unchanged.
+ */
+export function r2ProxyUrl(url: string): string {
+  if (!url || !url.includes('.r2.dev/')) return url;
+  return `${API_BASE}/uploads/proxy?url=${encodeURIComponent(url)}`;
+}
 export const joinWaitlist = async (payload: { name: string; email: string; reason: string }): Promise<{ message: string }> => {
     const response = await axios.post<{ message: string }>(`${API_BASE}/waitlist`, payload);
     return response.data;

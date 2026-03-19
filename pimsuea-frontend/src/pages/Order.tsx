@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice } from "@/services/api";
+import api, { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice } from "@/services/api";
+import { generateAnnotatedMockup } from "@/utils/mockupCompositor";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
@@ -600,12 +601,48 @@ export default function Order() {
       setLoading(true);
       setNotification(null);
       try {
+        // Generate annotated mockup per unique design (non-blocking — failure won't stop the order)
+        const annotatedUrls: Record<string, string> = {};
+        try {
+            const processed = new Set<string>();
+            for (const item of cartItems) {
+                if (processed.has(item.designId) || !item.designImage) continue;
+                processed.add(item.designId);
+
+                const fullDims = (item.print_dimensions as any);
+                const frontDims = fullDims?.front;
+                if (!frontDims || frontDims.px_x === undefined) continue;
+
+                const tmplList = await getProductTemplates(item.productId);
+                const frontTmpl = tmplList.find((t: any) => t.side === 'front' && t.mockup_config);
+                if (!frontTmpl?.mockup_config) continue;
+
+                const annotated = await generateAnnotatedMockup(
+                    item.designImage,
+                    frontDims,
+                    frontTmpl.print_area_config,
+                    frontTmpl.mockup_config.placement,
+                );
+
+                const blob = await (await fetch(annotated)).blob();
+                const fd = new FormData();
+                fd.append('file', blob, 'annotated_preview.png');
+                fd.append('bucket', 'preview');
+                const { data } = await api.post('/uploads', fd);
+                annotatedUrls[item.designId] = data.url;
+            }
+        } catch (annotErr) {
+            console.error('Annotated mockup generation failed (non-blocking):', annotErr);
+        }
+
         const orderPayload = {
-            items: cartItems,
+            items: cartItems.map(item => ({
+                ...item,
+                annotated_preview_url: annotatedUrls[item.designId] ?? null,
+            })),
             shipping: shippingInfo,
             total: totalPrice
         };
-        console.log("SUBMITTING ORDER:", orderPayload);
 
         const result = await createOrder(orderPayload);
 

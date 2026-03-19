@@ -1,6 +1,6 @@
 
-const { r2, getPublicUrl, listObjects, deleteObject } = require('../config/r2Client');
-const { PutObjectCommand } = require('@aws-sdk/client-s3');
+const { r2, getPublicUrl, getLocationFromUrl, listObjects, deleteObject } = require('../config/r2Client');
+const { PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { sanitizeFileName } = require('../utils/validate');
 
 const ALLOWED_MIME = {
@@ -120,5 +120,34 @@ exports.listAssets = async (req, res) => {
   } catch (error) {
     console.error('List assets error:', error);
     res.status(500).json({ error: error.message || 'Failed to list assets' });
+  }
+};
+
+// GET /api/uploads/proxy?url=<encoded-r2-public-url>
+// Proxies R2 assets through the backend so Fabric.js can load them with
+// crossOrigin: 'anonymous' without hitting CORS restrictions on r2.dev.
+// No auth required — files are already publicly accessible on R2.
+exports.proxyAsset = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ error: 'Missing url param' });
+
+    const location = getLocationFromUrl(url);
+    if (!location) return res.status(403).json({ error: 'URL not from a known R2 bucket' });
+
+    const cmd = new GetObjectCommand({ Bucket: location.bucket, Key: location.key });
+    const r2Res = await r2.send(cmd);
+
+    const contentType = r2Res.ContentType || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    // CORS header — Express cors() middleware already sets this globally,
+    // but be explicit so it's always present even if middleware order changes.
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    r2Res.Body.pipe(res);
+  } catch (error) {
+    console.error('Proxy asset error:', error);
+    res.status(500).json({ error: 'Failed to proxy asset' });
   }
 };
