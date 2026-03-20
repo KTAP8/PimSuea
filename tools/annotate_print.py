@@ -23,7 +23,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png"   # ← set this
+INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile.png"   # ← set this
 OUTPUT_PATH   = None                        # None = auto: <input>_annotated.png
 PHYSICAL_W_CM = 30.48                       # 12 inches
 PHYSICAL_H_CM = 40.64                       # 16 inches
@@ -36,18 +36,24 @@ SHIRT_COLOR = "white"   # 'white' or 'black'
 SHIRT_SIDE  = "front"   # 'front' or 'back'
 
 # Override mockup image path (None = auto: tools/mockups/<color>_<side>.png)
-MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png"
+MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png"
 
 # Mockup canvas size and print-area placement (pixels)
 _MOCKUP_W = 752
 _MOCKUP_H = 829
 _PLACEMENTS = {
     "front": {"x": 242, "y": 267, "w": 263, "h": 350},
-    "back":  {"x": 242, "y": 226, "w": 263, "h": 350},
+    "back":  {"x": 242, "y": 191, "w": 263, "h": 350},
 }
 
+# Collar positions in each mockup image (px from the top of the image)
+COLLAR_Y = {"front": 223, "back": 144}
+# Fixed real-world distance from collar to the top of the print area (3 inches)
+COLLAR_TO_PRINT_AREA_CM = 7.62
+
 # Visual style (applied at preview scale)
-ORANGE      = (255, 107, 53, 255)
+ORANGE      = (255, 107, 53, 255)   # dimension measurement lines + labels
+BLUE_MUTED  = (100, 149, 237, 220)  # element bounding box (visually behind)
 DARK_BG     = (0, 0, 0, 165)
 WHITE       = (255, 255, 255, 255)
 DASH_LEN    = 12
@@ -165,44 +171,50 @@ def composite_on_mockup(
     by0 = py_off + int(measurements["y_min"] * sy)
     bx1 = px_off + int(measurements["x_max"] * sx)
     by1 = py_off + int(measurements["y_max"] * sy)
-    cx_m = px_off + int(measurements["center_x"] * sx)
 
     try:
         font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", FONT_SIZE)
     except Exception:
         font = ImageFont.load_default()
 
-    # Print area border
+    # Derived positions
+    collar_x   = px_off + pw // 2          # print-area centre X = shirt centre X
+    collar_y   = measurements["collar_y"]  # top of Y arrow (collar in mockup px)
+    elem_top_y = by0                       # bottom of Y arrow / start of X arrow
+
+    # Print area border (light grey reference rect)
     draw.rectangle([px_off, py_off, px_off + pw - 1, py_off + ph - 1],
                    outline=(180, 180, 180), width=1)
 
-    # Dotted bounding box
+    # Dotted bounding box around element (blue — visually behind orange dimension lines)
     for (ax, ay, bx_, by_) in [
-        (bx0, by0, bx1, by0),
-        (bx1, by0, bx1, by1),
-        (bx1, by1, bx0, by1),
-        (bx0, by1, bx0, by0),
+        (bx0, by0, bx1, by0), (bx1, by0, bx1, by1),
+        (bx1, by1, bx0, by1), (bx0, by1, bx0, by0),
     ]:
-        draw_dashed_line(draw, ax, ay, bx_, by_, color=ORANGE)
+        draw_dashed_line(draw, ax, ay, bx_, by_, color=BLUE_MUTED)
 
-    # Y measurement — vertical line left of the placement area
-    vx = max(8, px_off // 2)
-    draw_dashed_line(draw, vx, py_off, vx, by0, color=ORANGE)
-    draw.line([(vx - TICK, py_off), (vx + TICK, py_off)], fill=ORANGE, width=LINE_W)
-    draw.line([(vx - TICK, by0),    (vx + TICK, by0)],    fill=ORANGE, width=LINE_W)
-    draw_dashed_line(draw, vx, by0, bx0, by0, color=ORANGE)
-    mid_y = (py_off + by0) // 2
-    draw_label(draw, measurements["y_label"], vx, mid_y, font)
+    # ── Y measurement: solid vertical line from collar → element top ─────────
+    draw.line([(collar_x, collar_y), (collar_x, elem_top_y)], fill=ORANGE, width=LINE_W)
+    draw.line([(collar_x - TICK, collar_y),    (collar_x + TICK, collar_y)],    fill=ORANGE, width=LINE_W)
+    draw.line([(collar_x - TICK, elem_top_y),  (collar_x + TICK, elem_top_y)],  fill=ORANGE, width=LINE_W)
+    y_total_label = f"{measurements['collar_to_elem_cm']:.1f} cm"
+    # Y label: hugs the collar tick from below, left side — always above X label
+    draw_label(draw, y_total_label, collar_x - TICK - 30, collar_y + FONT_SIZE // 2 + 4, font)
 
-    # X offset — horizontal line above the placement area
-    hy = max(8, py_off // 2)
-    draw_dashed_line(draw, cx_m, hy, bx0, hy, color=ORANGE)
-    draw.line([(cx_m, hy - TICK), (cx_m, hy + TICK)], fill=ORANGE, width=LINE_W)
-    draw.line([(bx0,  hy - TICK), (bx0,  hy + TICK)], fill=ORANGE, width=LINE_W)
-    draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
-    draw_label(draw, measurements["x_label"], (cx_m + bx0) // 2, hy // 2 + 4, font)
+    # ── X measurement: dashed horizontal line from collar_x → element left ───
+    x_dir = measurements["x_dir"]
+    if x_dir != "centered":
+        draw_dashed_line(draw, collar_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
+        draw.line([(collar_x, elem_top_y - TICK), (collar_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
+        draw.line([(bx0,      elem_top_y - TICK), (bx0,      elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
+        x_label_text = f"{measurements['x_offset_cm']:.1f} cm {x_dir}"
+        mid_h = (collar_x + bx0) // 2
+        # X label: hugs the element-top tick from above — always below Y label
+        draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
+    else:
+        draw_label(draw, "centered", collar_x - TICK - 30, elem_top_y - FONT_SIZE // 2 - 4, font)
 
-    # Size + tier label below the bounding box
+    # ── Size + tier label below element ──────────────────────────────────────
     draw_label(draw, measurements["size_text"], (bx0 + bx1) // 2,
                by1 + PAD + FONT_SIZE // 2, font)
 
@@ -336,6 +348,10 @@ def annotate(input_path: str, output_path: str | None = None):
         "y_label": y_label,
         "x_label": x_label,
         "size_text": size_text,
+        "collar_y": COLLAR_Y.get(SHIRT_SIDE, 223),
+        "collar_to_elem_cm": COLLAR_TO_PRINT_AREA_CM + y_cm,
+        "x_dir": x_dir,
+        "x_offset_cm": x_offset_cm,
     }
     composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements)
 

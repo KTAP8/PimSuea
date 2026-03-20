@@ -395,8 +395,23 @@ export default function DesignCanvas() {
          }
      });
 
-     canvas.on('object:modified', () => {
+     canvas.on('object:modified', (e) => {
        clearGuides(canvas);
+
+       // Normalize text scale → fontSize so the font size display stays accurate.
+       // When the user drags a corner handle, Fabric changes scaleX/Y but keeps
+       // fontSize fixed. We bake the scale into fontSize and reset scale to 1.
+       const obj = e.target;
+       if (obj && obj.type === 'i-text') {
+         const text = obj as fabric.IText;
+         const sx = text.scaleX ?? 1;
+         const sy = text.scaleY ?? 1;
+         if (Math.abs(sx - 1) > 0.001 || Math.abs(sy - 1) > 0.001) {
+           const effectiveSize = Math.max(5, Math.round((text.fontSize ?? 30) * sx));
+           text.set({ fontSize: effectiveSize, scaleX: 1, scaleY: 1 });
+         }
+       }
+
        canvas.renderAll();
      });
   };
