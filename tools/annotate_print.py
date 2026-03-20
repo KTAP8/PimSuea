@@ -15,7 +15,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile.png"   # ← set this
+INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png"   # ← set this
 OUTPUT_PATH   = None                        # None = auto: <input>_annotated.png
 PHYSICAL_W_CM = 30.48                       # 12 inches
 PHYSICAL_H_CM = 40.64                       # 16 inches
@@ -141,17 +141,14 @@ def annotate(input_path: str, output_path: str | None = None):
     scale = 1 / PREVIEW_DIV
     pw, ph = max(1, int(W * scale)), max(1, int(H * scale))
 
-    # Downscale the original image as background
+    # Downscale the original image as background (keep transparency)
     thumb = img_full.resize((pw, ph), Image.LANCZOS).convert("RGBA")
-    bg = Image.new("RGBA", (pw, ph), (255, 255, 255, 255))
-    bg.paste(thumb, mask=thumb)
-    thumb = bg.convert("RGB")
 
     # Expand canvas with margins so annotations always have room
     total_w = pw + MARGIN_LEFT
     total_h = ph + MARGIN_TOP
-    canvas = Image.new("RGB", (total_w, total_h), (255, 255, 255))
-    canvas.paste(thumb, (MARGIN_LEFT, MARGIN_TOP))
+    canvas = Image.new("RGBA", (total_w, total_h), (0, 0, 0, 0))
+    canvas.paste(thumb, (MARGIN_LEFT, MARGIN_TOP), mask=thumb)
 
     draw = ImageDraw.Draw(canvas)
 
