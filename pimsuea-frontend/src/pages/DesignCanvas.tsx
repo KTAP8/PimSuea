@@ -72,6 +72,8 @@ export default function DesignCanvas() {
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const clipPathRef = useRef<fabric.Rect | null>(null); // Store the clipping rect
   const printZoneBoundsRef = useRef<{ left: number, top: number, width: number, height: number } | null>(null); // To center objects
+  const guideLinesRef = useRef<fabric.Line[]>([]);
+  const SNAP_THRESHOLD = 8; // canvas pixels (divided by zoom at runtime)
   
   const [templates, setTemplates] = useState<ProductTemplate[]>([]);
   const [currentTemplate, setCurrentTemplate] = useState<ProductTemplate | null>(null);
@@ -135,7 +137,7 @@ export default function DesignCanvas() {
           const json = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
           // Filter out background image since that will change
           if (json.objects) {
-             json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
+             json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide');
           }
            pendingDesignRef.current = { json, side: currentSide };
       }
@@ -267,6 +269,26 @@ export default function DesignCanvas() {
   const historyIndex = useRef(-1);
   const isHistoryLocked = useRef(false);
 
+  // Smart Guide Helpers
+  const clearGuides = (canvas: fabric.Canvas) => {
+    guideLinesRef.current.forEach(l => canvas.remove(l));
+    guideLinesRef.current = [];
+  };
+
+  const addGuide = (canvas: fabric.Canvas, x1: number, y1: number, x2: number, y2: number) => {
+    const line = new fabric.Line([x1, y1, x2, y2], {
+      stroke: '#3b82f6',
+      strokeWidth: 1,
+      strokeDashArray: [5, 4],
+      selectable: false,
+      evented: false,
+      name: 'smart_guide',
+      opacity: 0.85,
+    });
+    canvas.add(line);
+    guideLinesRef.current.push(line);
+  };
+
   // Constraints Helper
   const applyConstraints = (canvas: fabric.Canvas) => {
      canvas.on('object:moving', (e) => {
@@ -310,6 +332,63 @@ export default function DesignCanvas() {
          }
          
          obj.set({ left, top });
+
+         // ── Smart Guides ──────────────────────────────────────────────────
+         clearGuides(canvas);
+         if (bounds) {
+           const zoom = canvas.getZoom();
+           const thresh = SNAP_THRESHOLD / zoom;
+           const M = 20; // guide extends 20px beyond zone edges
+
+           const zoneCX = bounds.left + bounds.width  / 2;
+           const zoneCY = bounds.top  + bounds.height / 2;
+
+           // All user objects use originX/Y = 'center'
+           const objCX     = obj.left!;
+           const objCY     = obj.top!;
+           const objLeft_  = objCX - objWidth  / 2;
+           const objTop_   = objCY - objHeight / 2;
+           const objRight_ = objLeft_ + objWidth;
+           const objBot_   = objTop_  + objHeight;
+
+           // Center X → vertical guide
+           if (Math.abs(objCX - zoneCX) < thresh) {
+             obj.set({ left: zoneCX });
+             addGuide(canvas, zoneCX, bounds.top - M, zoneCX, bounds.top + bounds.height + M);
+           }
+           // Center Y → horizontal guide
+           if (Math.abs(objCY - zoneCY) < thresh) {
+             obj.set({ top: zoneCY });
+             addGuide(canvas, bounds.left - M, zoneCY, bounds.left + bounds.width + M, zoneCY);
+           }
+           // Left edge
+           if (Math.abs(objLeft_ - bounds.left) < thresh) {
+             obj.set({ left: bounds.left + objWidth / 2 });
+             addGuide(canvas, bounds.left, bounds.top - M, bounds.left, bounds.top + bounds.height + M);
+           }
+           // Right edge
+           if (Math.abs(objRight_ - (bounds.left + bounds.width)) < thresh) {
+             obj.set({ left: bounds.left + bounds.width - objWidth / 2 });
+             addGuide(canvas, bounds.left + bounds.width, bounds.top - M, bounds.left + bounds.width, bounds.top + bounds.height + M);
+           }
+           // Top edge
+           if (Math.abs(objTop_ - bounds.top) < thresh) {
+             obj.set({ top: bounds.top + objHeight / 2 });
+             addGuide(canvas, bounds.left - M, bounds.top, bounds.left + bounds.width + M, bounds.top);
+           }
+           // Bottom edge
+           if (Math.abs(objBot_ - (bounds.top + bounds.height)) < thresh) {
+             obj.set({ top: bounds.top + bounds.height - objHeight / 2 });
+             addGuide(canvas, bounds.left - M, bounds.top + bounds.height, bounds.left + bounds.width + M, bounds.top + bounds.height);
+           }
+
+           canvas.renderAll();
+         }
+     });
+
+     canvas.on('object:modified', () => {
+       clearGuides(canvas);
+       canvas.renderAll();
      });
   };
 
@@ -318,7 +397,7 @@ export default function DesignCanvas() {
           console.log("Saving design for:", currentTemplate.id);
           const json = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
           if (json.objects) {
-              json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
+              json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide');
           }
           // Store JSON AND Bounds for export later
           savedDesigns.current[currentTemplate.id] = { 
@@ -677,7 +756,7 @@ export default function DesignCanvas() {
           // Filter out static_bg AND print_zone
           // We want Top -> Bottom for the UI list
           const objs = newCanvas.getObjects()
-            .filter(o => o.name !== 'static_bg' && o.name !== 'print_zone')
+            .filter(o => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
             .reverse();
           setLayers([...objs]);
       };
@@ -993,7 +1072,7 @@ export default function DesignCanvas() {
       // Better: trigger a custom event or just manually set state.
       
       const canvas = fabricRef.current;
-      const objs = canvas.getObjects().filter(o => o.name !== 'static_bg').reverse();
+      const objs = canvas.getObjects().filter(o => o.name !== 'static_bg' && o.name !== 'smart_guide').reverse();
       setLayers([...objs]);
       
       // Also save history? Layer reordering IS a change.
@@ -1019,7 +1098,7 @@ export default function DesignCanvas() {
       
       fabricRef.current.sendBackwards(obj);
       
-      const objs = canvas.getObjects().filter(o => o.name !== 'static_bg').reverse();
+      const objs = canvas.getObjects().filter(o => o.name !== 'static_bg' && o.name !== 'smart_guide').reverse();
       setLayers([...objs]);
       canvas.fire('object:modified', { target: obj });
   };
@@ -1380,7 +1459,7 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
             imgZoneW: number, // print zone width in original background image pixels
             imgZoneH: number, // print zone height in original background image pixels
         ): { w: number; h: number; x_cm: number; y_cm: number; px_x: number; px_y: number; px_w: number; px_h: number } | null => {
-            const designObjs = objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone');
+            const designObjs = objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide');
             if (designObjs.length === 0) return null;
             const xs: number[] = [];
             const ys: number[] = [];
