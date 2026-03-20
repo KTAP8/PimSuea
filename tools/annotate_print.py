@@ -9,7 +9,7 @@ Usage:
      (or set MOCKUP_IMAGE_PATH directly to override).
   4. Run:  python tools/annotate_print.py
   5. Outputs:
-       <input>_annotated.png   — dotted-line overlays + cm labels
+       <input>_annotated.png   — dotted-line overlays + inch labels
        <input>_mockup_<side>.png — design composited on shirt
 
 Dependencies:
@@ -23,20 +23,20 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile.png"   # ← set this
+INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png"   # ← set this
 OUTPUT_PATH   = None                        # None = auto: <input>_annotated.png
-PHYSICAL_W_CM = 30.48                       # 12 inches
-PHYSICAL_H_CM = 40.64                       # 16 inches
+PHYSICAL_W_IN = 12.0                        # inches
+PHYSICAL_H_IN = 16.0                        # inches
 
 ALPHA_THRESHOLD = 10   # pixels with alpha <= this are treated as empty
 WHITE_THRESHOLD = 245  # for RGB images: channels all above this = background
 
 # ─── MOCKUP CONFIG ───────────────────────────────────────────────────────────
 SHIRT_COLOR = "white"   # 'white' or 'black'
-SHIRT_SIDE  = "front"   # 'front' or 'back'
+SHIRT_SIDE  = "back"   # 'front' or 'back'
 
 # Override mockup image path (None = auto: tools/mockups/<color>_<side>.png)
-MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png"
+MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png"
 
 # Mockup canvas size and print-area placement (pixels)
 _MOCKUP_W = 752
@@ -48,8 +48,8 @@ _PLACEMENTS = {
 
 # Collar positions in each mockup image (px from the top of the image)
 COLLAR_Y = {"front": 223, "back": 144}
-# Fixed real-world distance from collar to the top of the print area (3 inches)
-COLLAR_TO_PRINT_AREA_CM = 7.62
+# Fixed real-world distance from collar to the top of the print area
+COLLAR_TO_PRINT_AREA_IN = 3.0
 
 # Visual style (applied at preview scale)
 ORANGE      = (255, 107, 53, 255)   # dimension measurement lines + labels
@@ -68,13 +68,13 @@ MARGIN_TOP  = 60        # top margin reserved for X offset line + label
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def get_print_tier(w_cm: float, h_cm: float) -> str:
+def get_print_tier(w_in: float, h_in: float) -> str:
     """Mirror of getPrintTier in backend/src/utils/pricing.js."""
-    short, long_ = sorted([w_cm, h_cm])
+    short, long_ = sorted([w_in, h_in])
     # Custom inch-based tiers: 3x4in, A5=6x8in, A4=8x12in, A3=12x16in (catch-all)
-    if short <= 7.62  and long_ <= 10.16: return "3x4in"
-    if short <= 15.24 and long_ <= 20.32: return "A5"
-    if short <= 20.32 and long_ <= 30.48: return "A4"
+    if short <= 3.0 and long_ <= 4.0:  return "3x4in"
+    if short <= 6.0 and long_ <= 8.0:  return "A5"
+    if short <= 8.0 and long_ <= 12.0: return "A4"
     return "A3"
 
 
@@ -121,14 +121,10 @@ def draw_dashed_line(draw, x1, y1, x2, y2, dash=DASH_LEN, gap=GAP_LEN,
 
 
 def draw_label(draw, text, cx, cy, font):
-    """Draw text with a dark pill background, centered at (cx, cy)."""
+    """Draw bold black text centered at (cx, cy), no background."""
     bbox = draw.textbbox((0, 0), text, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    pad = 4
-    rx0, ry0 = cx - tw // 2 - pad, cy - th // 2 - pad
-    rx1, ry1 = cx + tw // 2 + pad, cy + th // 2 + pad
-    draw.rectangle([rx0, ry0, rx1, ry1], fill=DARK_BG)
-    draw.text((cx - tw // 2, cy - th // 2), text, fill=WHITE, font=font)
+    draw.text((cx - tw // 2, cy - th // 2), text, fill=(0, 0, 0, 255), font=font)
 
 
 def composite_on_mockup(
@@ -172,9 +168,19 @@ def composite_on_mockup(
     bx1 = px_off + int(measurements["x_max"] * sx)
     by1 = py_off + int(measurements["y_max"] * sy)
 
-    try:
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", FONT_SIZE)
-    except Exception:
+    font = None
+    for path, idx in [
+        ("/System/Library/Fonts/Helvetica.ttc", 1),   # Helvetica Bold
+        ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
+        ("/Library/Fonts/Arial Bold.ttf", 0),
+        ("/System/Library/Fonts/Helvetica.ttc", 0),   # fallback: regular
+    ]:
+        try:
+            font = ImageFont.truetype(path, FONT_SIZE, index=idx)
+            break
+        except Exception:
+            continue
+    if font is None:
         font = ImageFont.load_default()
 
     # Derived positions
@@ -197,7 +203,7 @@ def composite_on_mockup(
     draw.line([(collar_x, collar_y), (collar_x, elem_top_y)], fill=ORANGE, width=LINE_W)
     draw.line([(collar_x - TICK, collar_y),    (collar_x + TICK, collar_y)],    fill=ORANGE, width=LINE_W)
     draw.line([(collar_x - TICK, elem_top_y),  (collar_x + TICK, elem_top_y)],  fill=ORANGE, width=LINE_W)
-    y_total_label = f"{measurements['collar_to_elem_cm']:.1f} cm"
+    y_total_label = f"{measurements['collar_to_elem_in']:.2f} in"
     # Y label: hugs the collar tick from below, left side — always above X label
     draw_label(draw, y_total_label, collar_x - TICK - 30, collar_y + FONT_SIZE // 2 + 4, font)
 
@@ -207,7 +213,7 @@ def composite_on_mockup(
         draw_dashed_line(draw, collar_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
         draw.line([(collar_x, elem_top_y - TICK), (collar_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
         draw.line([(bx0,      elem_top_y - TICK), (bx0,      elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
-        x_label_text = f"{measurements['x_offset_cm']:.1f} cm {x_dir}"
+        x_label_text = f"{measurements['x_offset_in']:.2f} in {x_dir}"
         mid_h = (collar_x + bx0) // 2
         # X label: hugs the element-top tick from above — always below Y label
         draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
@@ -240,29 +246,29 @@ def annotate(input_path: str, output_path: str | None = None):
         img_full = Image.open(src).convert("RGBA")
         mockup_src_stem = src.stem
     W, H = img_full.size
-    px_to_cm = PHYSICAL_W_CM / W          # cm per pixel (full resolution)
+    px_to_in = PHYSICAL_W_IN / W          # inches per pixel (full resolution)
     center_x = W / 2
 
     x_min, y_min, x_max, y_max = find_content_bbox(img_full)
 
-    elem_w_cm   = (x_max - x_min) * px_to_cm
-    elem_h_cm   = (y_max - y_min) * px_to_cm
-    y_cm        = y_min * px_to_cm
-    x_offset_cm = abs(x_min - center_x) * px_to_cm
+    elem_w_in   = (x_max - x_min) * px_to_in
+    elem_h_in   = (y_max - y_min) * px_to_in
+    y_in        = y_min * px_to_in
+    x_offset_in = abs(x_min - center_x) * px_to_in
     x_dir       = ("right" if x_min > center_x + 1
                    else "left" if x_min < center_x - 1
                    else "centered")
-    tier        = get_print_tier(elem_w_cm, elem_h_cm)
+    tier        = get_print_tier(elem_w_in, elem_h_in)
 
     # ── Console summary ──────────────────────────────────────────────────────
     print(f"\n{'─'*48}")
     print(f"  File       : {src.name}")
-    print(f"  Image size : {W} × {H} px  ({PHYSICAL_W_CM} × {PHYSICAL_H_CM:.2f} cm)")
-    print(f"  1 px       = {px_to_cm*10:.4f} mm")
+    print(f"  Image size : {W} × {H} px  ({PHYSICAL_W_IN} × {PHYSICAL_H_IN:.2f} in)")
+    print(f"  1 px       = {px_to_in:.6f} in")
     print(f"{'─'*48}")
-    print(f"  Element    : {elem_w_cm:.2f} cm × {elem_h_cm:.2f} cm  [{tier}]")
-    print(f"  Y from top : {y_cm:.2f} cm")
-    print(f"  X offset   : {x_offset_cm:.2f} cm {'' if x_dir == 'centered' else x_dir}")
+    print(f"  Element    : {elem_w_in:.2f}\" × {elem_h_in:.2f}\"  [{tier}]")
+    print(f"  Y from top : {y_in:.2f} in")
+    print(f"  X offset   : {x_offset_in:.2f} in {'' if x_dir == 'centered' else x_dir}")
     print(f"{'─'*48}\n")
 
     # ── Build preview canvas at 1/PREVIEW_DIV scale ──────────────────────────
@@ -290,9 +296,19 @@ def annotate(input_path: str, output_path: str | None = None):
     # top of the image area in the expanded canvas
     img_top = oy
 
-    try:
-        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", FONT_SIZE)
-    except Exception:
+    font = None
+    for path, idx in [
+        ("/System/Library/Fonts/Helvetica.ttc", 1),   # Helvetica Bold
+        ("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 0),
+        ("/Library/Fonts/Arial Bold.ttf", 0),
+        ("/System/Library/Fonts/Helvetica.ttc", 0),   # fallback: regular
+    ]:
+        try:
+            font = ImageFont.truetype(path, FONT_SIZE, index=idx)
+            break
+        except Exception:
+            continue
+    if font is None:
         font = ImageFont.load_default()
 
     # 0. Print area border
@@ -315,7 +331,7 @@ def annotate(input_path: str, output_path: str | None = None):
     # Horizontal connector from the left margin line to the element's top edge
     draw_dashed_line(draw, vx, by0, bx0, by0, color=ORANGE)
     mid_y = (img_top + by0) // 2
-    y_label = "0.0 cm from top" if y_cm < 0.05 else f"{y_cm:.1f} cm from top"
+    y_label = "0.00 in from top" if y_in < 0.005 else f"{y_in:.2f} in from top"
     draw_label(draw, y_label, MARGIN_LEFT // 2, mid_y, font)
 
     # 3. X offset — horizontal line in top margin, from area center-x to element left edge
@@ -326,11 +342,11 @@ def annotate(input_path: str, output_path: str | None = None):
     # Vertical connector from top margin line down to element's top-left corner
     draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
     x_label = ("centered" if x_dir == "centered"
-               else f"{x_offset_cm:.1f} cm {x_dir}")
+               else f"{x_offset_in:.2f} in {x_dir}")
     draw_label(draw, x_label, (cx_s + bx0) // 2, hy // 2 + 4, font)
 
     # 4. Size + tier label below the bounding box
-    size_text = f"{elem_w_cm:.1f} × {elem_h_cm:.1f} cm  [{tier}]"
+    size_text = f"{elem_w_in:.2f}\" × {elem_h_in:.2f}\"  [{tier}]"
     draw_label(draw, size_text, (bx0 + bx1) // 2, by1 + PAD + FONT_SIZE // 2, font)
 
     canvas.save(out)
@@ -349,9 +365,9 @@ def annotate(input_path: str, output_path: str | None = None):
         "x_label": x_label,
         "size_text": size_text,
         "collar_y": COLLAR_Y.get(SHIRT_SIDE, 223),
-        "collar_to_elem_cm": COLLAR_TO_PRINT_AREA_CM + y_cm,
+        "collar_to_elem_in": COLLAR_TO_PRINT_AREA_IN + y_in,
         "x_dir": x_dir,
-        "x_offset_cm": x_offset_cm,
+        "x_offset_in": x_offset_in,
     }
     composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements)
 
