@@ -74,6 +74,16 @@ export default function DesignCanvas() {
   const printZoneBoundsRef = useRef<{ left: number, top: number, width: number, height: number } | null>(null); // To center objects
   const guideLinesRef = useRef<fabric.Line[]>([]);
   const SNAP_THRESHOLD = 8; // canvas pixels (divided by zoom at runtime)
+  const PRINT_TIERS = {
+    '3x4': [3,  4 ],
+    'A5':  [6,  8 ],
+    'A4':  [8,  12],
+    'A3':  [12, 16],
+  } as const;
+  type TierKey = keyof typeof PRINT_TIERS;
+  // Safety factor: real image content (shadows, antialiased edges) bleeds ~3-7% beyond
+  // the geometric bounding box. Targeting 97% of the tier ensures actual ink stays within bounds.
+  const TIER_SAFETY_FACTOR = 0.97;
   
   const [templates, setTemplates] = useState<ProductTemplate[]>([]);
   const [currentTemplate, setCurrentTemplate] = useState<ProductTemplate | null>(null);
@@ -90,6 +100,7 @@ export default function DesignCanvas() {
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [activeColorIds, setActiveColorIds] = useState<Set<string>>(new Set()); // User selected colors
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [sizeLockAxis, setSizeLockAxis] = useState<'width' | 'height'>('width');
 
   // Initialize Color on Template Load
   useEffect(() => {
@@ -1313,6 +1324,44 @@ export default function DesignCanvas() {
   }
 
   // Delete Object
+  const applyPresetSize = (tier: TierKey, axis: 'width' | 'height') => {
+    const canvas = fabricRef.current;
+    const obj = canvas?.getActiveObject();
+    if (!obj || !canvas || !printZoneBoundsRef.current) return;
+
+    const physW_in = (currentTemplate?.print_area_config?.physical_w_cm ?? 30.48) / 2.54;
+    const pxPerInch = printZoneBoundsRef.current.width / physW_in;
+
+    const [tierW, tierH] = PRINT_TIERS[tier];
+
+    const curW = (obj.width ?? 1) * (obj.scaleX ?? 1);
+    const curH = (obj.height ?? 1) * (obj.scaleY ?? 1);
+    const ratio = curW / curH;
+
+    let targetW_px: number, targetH_px: number;
+    if (axis === 'width') {
+      targetW_px = tierW * TIER_SAFETY_FACTOR * pxPerInch;
+      targetH_px = targetW_px / ratio;
+    } else {
+      targetH_px = tierH * TIER_SAFETY_FACTOR * pxPerInch;
+      targetW_px = targetH_px * ratio;
+    }
+
+    const newScaleX = targetW_px / (obj.width ?? 1);
+    const newScaleY = targetH_px / (obj.height ?? 1);
+    obj.set({ scaleX: newScaleX, scaleY: newScaleY });
+
+    // Normalize text: fold scale into fontSize (same as object:modified handler)
+    if (obj.type === 'i-text') {
+      const text = obj as fabric.IText;
+      const effectiveSize = Math.max(5, Math.round((text.fontSize ?? 30) * newScaleX));
+      text.set({ fontSize: effectiveSize, scaleX: 1, scaleY: 1 });
+    }
+
+    canvas.renderAll();
+    canvas.fire('object:modified', { target: obj });
+  };
+
   const deleteSelected = () => {
      if (!fabricRef.current || !selectedObject) return;
      
@@ -2046,6 +2095,33 @@ const handleManualSave = async () => {
                             <div className="w-px h-6 bg-gray-200 mx-1" />
                         </>
                     )}
+
+                    <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                    {/* Print Size Presets */}
+                    <span className="text-[10px] text-gray-500 shrink-0">Size</span>
+                    <button
+                        className={`text-[10px] px-1.5 py-0.5 rounded border ${sizeLockAxis === 'width' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-300'}`}
+                        onClick={() => setSizeLockAxis('width')}
+                        title="Lock width to tier"
+                    >W</button>
+                    <button
+                        className={`text-[10px] px-1.5 py-0.5 rounded border ${sizeLockAxis === 'height' ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-300'}`}
+                        onClick={() => setSizeLockAxis('height')}
+                        title="Lock height to tier"
+                    >H</button>
+                    {(['3x4', 'A5', 'A4', 'A3'] as TierKey[]).map(tier => (
+                        <button
+                            key={tier}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 hover:bg-gray-100 text-gray-700"
+                            onClick={() => applyPresetSize(tier, sizeLockAxis)}
+                            title={`Resize to ${tier} (${PRINT_TIERS[tier][0]}×${PRINT_TIERS[tier][1]}")`}
+                        >
+                            {tier === '3x4' ? '3×4' : tier}
+                        </button>
+                    ))}
+
+                    <div className="w-px h-6 bg-gray-200 mx-1" />
 
                     {/* Delete Object (Icon Only) */}
                     <Button variant="destructive" size="icon" onClick={deleteSelected} title="ลบวัตถุ">

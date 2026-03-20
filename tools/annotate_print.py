@@ -23,20 +23,20 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png"   # ← set this
+INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/test_pim2.png"   # ← set this
 OUTPUT_PATH   = None                        # None = auto: <input>_annotated.png
 PHYSICAL_W_IN = 12.0                        # inches
 PHYSICAL_H_IN = 16.0                        # inches
 
-ALPHA_THRESHOLD = 10   # pixels with alpha <= this are treated as empty
+ALPHA_THRESHOLD = 200  # pixels with alpha <= this are treated as empty (higher = ignores antialiased edges)
 WHITE_THRESHOLD = 245  # for RGB images: channels all above this = background
 
 # ─── MOCKUP CONFIG ───────────────────────────────────────────────────────────
 SHIRT_COLOR = "white"   # 'white' or 'black'
-SHIRT_SIDE  = "back"   # 'front' or 'back'
+SHIRT_SIDE  = "front"   # 'front' or 'back'
 
 # Override mockup image path (None = auto: tools/mockups/<color>_<side>.png)
-MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png"
+MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png"
 
 # Mockup canvas size and print-area placement (pixels)
 _MOCKUP_W = 752
