@@ -1,16 +1,24 @@
 """
-annotate_print.py — Admin tool for annotating print files with measurements.
+annotate_print.py — Admin tool for annotating print files with measurements
+                    and compositing them onto shirt mockups.
 
 Usage:
   1. Set INPUT_PATH to your 300 DPI print PNG.
-  2. Run:  python tools/annotate_print.py
-  3. Opens <input>_annotated.png with dotted-line overlays and cm labels.
+  2. Set SHIRT_COLOR ('white' or 'black') and SHIRT_SIDE ('front' or 'back').
+  3. Place mockup images in tools/mockups/ as white_front.png, black_back.png, etc.
+     (or set MOCKUP_IMAGE_PATH directly to override).
+  4. Run:  python tools/annotate_print.py
+  5. Outputs:
+       <input>_annotated.png   — dotted-line overlays + cm labels
+       <input>_mockup_<side>.png — design composited on shirt
 
 Dependencies:
   pip install pillow numpy
 """
 
 from pathlib import Path
+from io import BytesIO
+import urllib.request
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -22,6 +30,21 @@ PHYSICAL_H_CM = 40.64                       # 16 inches
 
 ALPHA_THRESHOLD = 10   # pixels with alpha <= this are treated as empty
 WHITE_THRESHOLD = 245  # for RGB images: channels all above this = background
+
+# ─── MOCKUP CONFIG ───────────────────────────────────────────────────────────
+SHIRT_COLOR = "white"   # 'white' or 'black'
+SHIRT_SIDE  = "front"   # 'front' or 'back'
+
+# Override mockup image path (None = auto: tools/mockups/<color>_<side>.png)
+MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png"
+
+# Mockup canvas size and print-area placement (pixels)
+_MOCKUP_W = 752
+_MOCKUP_H = 829
+_PLACEMENTS = {
+    "front": {"x": 242, "y": 267, "w": 263, "h": 350},
+    "back":  {"x": 242, "y": 226, "w": 263, "h": 350},
+}
 
 # Visual style (applied at preview scale)
 ORANGE      = (255, 107, 53, 255)
@@ -102,15 +125,108 @@ def draw_label(draw, text, cx, cy, font):
     draw.text((cx - tw // 2, cy - th // 2), text, fill=WHITE, font=font)
 
 
+def composite_on_mockup(
+    print_img: Image.Image,
+    mockup_path: str,
+    placement: dict,
+    output_path: Path,
+    measurements: dict,
+) -> None:
+    """Paste the print file onto the shirt mockup and draw annotations at mockup resolution.
+
+    Annotations are drawn directly on the mockup image so text is always crisp,
+    regardless of how small the placement area is.
+
+    measurements keys: x_min, y_min, x_max, y_max, center_x (all in full-res pixels),
+                       y_label, x_label, size_text
+    """
+    mp = Path(mockup_path)
+    if not mp.exists():
+        print(f"  [mockup] Not found: {mockup_path} — skipping mockup output.")
+        return
+
+    px_off, py_off = placement["x"], placement["y"]
+    pw, ph = placement["w"], placement["h"]
+
+    # Scale factors: full-res pixel → mockup placement pixel
+    sx = pw / print_img.width
+    sy = ph / print_img.height
+
+    # 1. Paste print design onto mockup
+    mockup = Image.open(mp).convert("RGBA")
+    design = print_img.convert("RGBA").resize((pw, ph), Image.LANCZOS)
+    mockup.paste(design, (px_off, py_off), mask=design)
+
+    # 2. Draw annotations directly on the mockup at its native resolution
+    draw = ImageDraw.Draw(mockup)
+
+    # Bounding box in mockup coordinates
+    bx0 = px_off + int(measurements["x_min"] * sx)
+    by0 = py_off + int(measurements["y_min"] * sy)
+    bx1 = px_off + int(measurements["x_max"] * sx)
+    by1 = py_off + int(measurements["y_max"] * sy)
+    cx_m = px_off + int(measurements["center_x"] * sx)
+
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", FONT_SIZE)
+    except Exception:
+        font = ImageFont.load_default()
+
+    # Print area border
+    draw.rectangle([px_off, py_off, px_off + pw - 1, py_off + ph - 1],
+                   outline=(180, 180, 180), width=1)
+
+    # Dotted bounding box
+    for (ax, ay, bx_, by_) in [
+        (bx0, by0, bx1, by0),
+        (bx1, by0, bx1, by1),
+        (bx1, by1, bx0, by1),
+        (bx0, by1, bx0, by0),
+    ]:
+        draw_dashed_line(draw, ax, ay, bx_, by_, color=ORANGE)
+
+    # Y measurement — vertical line left of the placement area
+    vx = max(8, px_off // 2)
+    draw_dashed_line(draw, vx, py_off, vx, by0, color=ORANGE)
+    draw.line([(vx - TICK, py_off), (vx + TICK, py_off)], fill=ORANGE, width=LINE_W)
+    draw.line([(vx - TICK, by0),    (vx + TICK, by0)],    fill=ORANGE, width=LINE_W)
+    draw_dashed_line(draw, vx, by0, bx0, by0, color=ORANGE)
+    mid_y = (py_off + by0) // 2
+    draw_label(draw, measurements["y_label"], vx, mid_y, font)
+
+    # X offset — horizontal line above the placement area
+    hy = max(8, py_off // 2)
+    draw_dashed_line(draw, cx_m, hy, bx0, hy, color=ORANGE)
+    draw.line([(cx_m, hy - TICK), (cx_m, hy + TICK)], fill=ORANGE, width=LINE_W)
+    draw.line([(bx0,  hy - TICK), (bx0,  hy + TICK)], fill=ORANGE, width=LINE_W)
+    draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
+    draw_label(draw, measurements["x_label"], (cx_m + bx0) // 2, hy // 2 + 4, font)
+
+    # Size + tier label below the bounding box
+    draw_label(draw, measurements["size_text"], (bx0 + bx1) // 2,
+               by1 + PAD + FONT_SIZE // 2, font)
+
+    mockup.convert("RGB").save(output_path)
+    print(f"  Mockup  → {output_path}\n")
+
+
 def annotate(input_path: str, output_path: str | None = None):
-    src = Path(input_path)
-    if not src.exists():
-        raise FileNotFoundError(f"Not found: {input_path}")
+    is_url = input_path.startswith("http://") or input_path.startswith("https://")
 
-    out = Path(output_path) if output_path else src.with_stem(src.stem + "_annotated")
-
-    # ── Load & measure ──────────────────────────────────────────────────────
-    img_full = Image.open(src).convert("RGBA")
+    if is_url:
+        url_name = Path(urllib.parse.urlparse(input_path).path).stem or "print"
+        with urllib.request.urlopen(input_path) as resp:
+            img_full = Image.open(BytesIO(resp.read())).convert("RGBA")
+        src = Path(output_path).parent if output_path else Path(".")
+        out = Path(output_path) if output_path else src / (url_name + "_annotated.png")
+        mockup_src_stem = url_name
+    else:
+        src = Path(input_path)
+        if not src.exists():
+            raise FileNotFoundError(f"Not found: {input_path}")
+        out = Path(output_path) if output_path else src.with_stem(src.stem + "_annotated")
+        img_full = Image.open(src).convert("RGBA")
+        mockup_src_stem = src.stem
     W, H = img_full.size
     px_to_cm = PHYSICAL_W_CM / W          # cm per pixel (full resolution)
     center_x = W / 2
@@ -206,7 +322,22 @@ def annotate(input_path: str, output_path: str | None = None):
     draw_label(draw, size_text, (bx0 + bx1) // 2, by1 + PAD + FONT_SIZE // 2, font)
 
     canvas.save(out)
-    print(f"  Saved → {out}\n")
+    print(f"  Annotated → {out}")
+
+    # ── Mockup composite ────────────────────────────────────────────────────
+    mockup_path = MOCKUP_IMAGE_PATH or str(
+        Path(__file__).parent / "mockups" / f"{SHIRT_COLOR}_{SHIRT_SIDE}.png"
+    )
+    placement = _PLACEMENTS[SHIRT_SIDE]
+    mockup_out = out.with_stem(mockup_src_stem + f"_mockup_{SHIRT_SIDE}")
+    measurements = {
+        "x_min": x_min, "y_min": y_min, "x_max": x_max, "y_max": y_max,
+        "center_x": center_x,
+        "y_label": y_label,
+        "x_label": x_label,
+        "size_text": size_text,
+    }
+    composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements)
 
 
 if __name__ == "__main__":

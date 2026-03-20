@@ -1713,7 +1713,7 @@ const handleManualSave = async () => {
                 type="text" 
                 value={designName}
                 onChange={(e) => setDesignName(e.target.value)}
-                className="text-lg font-bold border-none focus:ring-0 p-0 h-auto bg-transparent w-full outline-none placeholder-gray-400"
+                className="text-lg font-bold px-3 py-1 -ml-3 rounded-md border border-transparent hover:border-border hover:bg-secondary/30 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all h-auto bg-transparent focus:outline-none placeholder-gray-400 w-full"
                 placeholder="ตั้งชื่อผลงาน..."
             />
 
