@@ -270,12 +270,20 @@ export default function DesignCanvas() {
   const isHistoryLocked = useRef(false);
 
   // Smart Guide Helpers
+  // Lock history during guide add/remove so object:added / object:removed
+  // events don't create spurious history entries. Save & restore the previous
+  // lock state so we don't accidentally unlock while an undo/redo is in flight.
   const clearGuides = (canvas: fabric.Canvas) => {
+    const prev = isHistoryLocked.current;
+    isHistoryLocked.current = true;
     guideLinesRef.current.forEach(l => canvas.remove(l));
     guideLinesRef.current = [];
+    isHistoryLocked.current = prev;
   };
 
   const addGuide = (canvas: fabric.Canvas, x1: number, y1: number, x2: number, y2: number) => {
+    const prev = isHistoryLocked.current;
+    isHistoryLocked.current = true;
     const line = new fabric.Line([x1, y1, x2, y2], {
       stroke: '#3b82f6',
       strokeWidth: 1,
@@ -287,6 +295,7 @@ export default function DesignCanvas() {
     });
     canvas.add(line);
     guideLinesRef.current.push(line);
+    isHistoryLocked.current = prev;
   };
 
   // Constraints Helper
@@ -1015,15 +1024,14 @@ export default function DesignCanvas() {
       if (fabricRef.current) {
           fabricRef.current.loadFromJSON(JSON.parse(json), () => {
               fabricRef.current?.renderAll();
-              
-              // Verify constraints after undo
-              // applyConstraints(fabricRef.current!); // Already applied to canvas instance
-              
-              isHistoryLocked.current = false;
-              
-              // Updates Refs & State
               historyIndex.current = prevIndex;
               setHistoryStep(prevIndex);
+              isHistoryLocked.current = false;
+              // Sync layer panel
+              const objs = fabricRef.current?.getObjects()
+                .filter(o => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
+                .reverse() ?? [];
+              setLayers([...objs]);
           });
       }
   };
@@ -1039,11 +1047,14 @@ export default function DesignCanvas() {
       if (fabricRef.current) {
           fabricRef.current.loadFromJSON(JSON.parse(json), () => {
               fabricRef.current?.renderAll();
-              isHistoryLocked.current = false;
-              
-              // Updates Refs & State
               historyIndex.current = nextIndex;
               setHistoryStep(nextIndex);
+              isHistoryLocked.current = false;
+              // Sync layer panel
+              const objs = fabricRef.current?.getObjects()
+                .filter(o => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
+                .reverse() ?? [];
+              setLayers([...objs]);
           });
       }
   };
