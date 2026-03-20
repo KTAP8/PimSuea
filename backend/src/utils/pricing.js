@@ -4,17 +4,17 @@ const { supabaseAdmin } = require('../config/supabaseClient');
  * Determine print tier from rotated AABB dimensions (in cm).
  * @param {number} w_cm
  * @param {number} h_cm
- * @returns {'3x4in'|'A5'|'A4'|'A3'|'A2'}
+ * @returns {'3x4in'|'A5'|'A4'|'A3'}
  */
 function getPrintTier(w_cm, h_cm) {
   // Normalize to short/long so landscape and portrait are treated identically
   const short = Math.min(w_cm, h_cm);
   const long  = Math.max(w_cm, h_cm);
-  if (short <= 7.62 && long <= 10.16) return '3x4in';
-  if (short <= 14.8  && long <= 21.0)  return 'A5';
-  if (short <= 21.0  && long <= 29.7)  return 'A4';
-  if (short <= 29.7  && long <= 42.0)  return 'A3';
-  return 'A2';
+  // Custom inch-based tiers: 3x4in, A5=6x8in, A4=8x12in, A3=12x16in (catch-all)
+  if (short <= 7.62  && long <= 10.16) return '3x4in';
+  if (short <= 15.24 && long <= 20.32) return 'A5';
+  if (short <= 20.32 && long <= 30.48) return 'A4';
+  return 'A3';
 }
 
 /**

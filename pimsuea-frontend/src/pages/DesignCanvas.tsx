@@ -1146,8 +1146,8 @@ export default function DesignCanvas() {
     e.target.value = '';
 
     // DPI check: measure image pixel dimensions vs print zone physical size
-    const physW = currentTemplate?.print_area_config?.physical_w_cm ?? 29.7;
-    const physH = currentTemplate?.print_area_config?.physical_h_cm ?? 42.0;
+    const physW = currentTemplate?.print_area_config?.physical_w_cm ?? 30.48;
+    const physH = currentTemplate?.print_area_config?.physical_h_cm ?? 40.64;
 
     const effectiveDpi = await new Promise<number>((resolve) => {
         const img = new Image();
@@ -1290,8 +1290,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                 {
                     crop: printZoneBoundsRef.current || undefined,
                     physicalSize: {
-                        w_cm: currentTemplate.print_area_config?.physical_w_cm ?? 29.7,
-                        h_cm: currentTemplate.print_area_config?.physical_h_cm ?? 42.0,
+                        w_cm: currentTemplate.print_area_config?.physical_w_cm ?? 30.48,
+                        h_cm: currentTemplate.print_area_config?.physical_h_cm ?? 40.64,
                     },
                 }
             );
@@ -1353,8 +1353,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
                     const url = await exportDesignForProduction(staticCanvas, {
                         crop: bounds,
                         physicalSize: {
-                            w_cm: tmpl.print_area_config?.physical_w_cm ?? 29.7,
-                            h_cm: tmpl.print_area_config?.physical_h_cm ?? 42.0,
+                            w_cm: tmpl.print_area_config?.physical_w_cm ?? 30.48,
+                            h_cm: tmpl.print_area_config?.physical_h_cm ?? 40.64,
                         },
                     });
                     if (url) {
@@ -1413,8 +1413,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
 
         // Current (active) side
         if (printZoneBoundsRef.current) {
-            const physW    = currentTemplate.print_area_config?.physical_w_cm ?? 29.7;
-            const physH    = currentTemplate.print_area_config?.physical_h_cm ?? 42.0;
+            const physW    = currentTemplate.print_area_config?.physical_w_cm ?? 30.48;
+            const physH    = currentTemplate.print_area_config?.physical_h_cm ?? 40.64;
             const imgZoneW = currentTemplate.print_area_config?.width  ?? printZoneBoundsRef.current.width;
             const imgZoneH = currentTemplate.print_area_config?.height ?? printZoneBoundsRef.current.height;
             const result = computeSideAabb(fabricRef.current.getObjects(), printZoneBoundsRef.current, physW, physH, imgZoneW, imgZoneH);
@@ -1443,8 +1443,8 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
 
             const sidePz = saved?.bounds || printZoneBoundsRef.current;
             if (sidePz) {
-                const physW    = tmpl.print_area_config?.physical_w_cm ?? 29.7;
-                const physH    = tmpl.print_area_config?.physical_h_cm ?? 42.0;
+                const physW    = tmpl.print_area_config?.physical_w_cm ?? 30.48;
+                const physH    = tmpl.print_area_config?.physical_h_cm ?? 40.64;
                 const imgZoneW = tmpl.print_area_config?.width  ?? sidePz.width;
                 const imgZoneH = tmpl.print_area_config?.height ?? sidePz.height;
                 const result = computeSideAabb(sideCanvas.getObjects(), sidePz, physW, physH, imgZoneW, imgZoneH);
@@ -1803,43 +1803,46 @@ const handleManualSave = async () => {
 
         {/* Image Library Panel */}
         {showImageLibrary && (
-            <div className="w-72 bg-white border-r flex flex-col z-40 shadow-2xl animate-in slide-in-from-left-5 absolute left-0 top-0 bottom-0">
-                <div className="p-4 border-b flex items-center justify-between">
-                    <h3 className="font-bold">คลังรูปภาพ</h3>
-                    <Button variant="ghost" size="icon" onClick={() => setShowImageLibrary(false)}>
+            <div className="w-80 bg-white shadow-2xl rounded-2xl border flex flex-col z-40 animate-in slide-in-from-left-2 absolute left-24 top-4 bottom-4 overflow-hidden">
+                <div className="p-5 border-b flex items-center justify-between bg-gray-50/50">
+                    <h3 className="font-bold text-lg">คลังรูปภาพ</h3>
+                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-200" onClick={() => setShowImageLibrary(false)}>
                         <X className="w-4 h-4" />
                     </Button>
                 </div>
                 
-                <div className="p-4 border-b bg-gray-50">
-                    <label className={`w-full h-10 text-white rounded-md flex items-center justify-center cursor-pointer transition-colors gap-2 ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'}`}>
-                         {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                         <span className="text-sm font-medium">{isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่'}</span>
+                <div className="p-5 border-b">
+                    <label className={`w-full h-12 text-white rounded-xl flex items-center justify-center cursor-pointer transition-all gap-2 shadow-sm ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800 hover:shadow-md hover:-translate-y-0.5'}`}>
+                         {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                         <span className="text-sm font-semibold">{isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่'}</span>
                          <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={isUploading} />
                     </label>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-2 content-start">
+                <div className="flex-1 overflow-y-auto p-5 grid grid-cols-2 gap-5 content-start">
                     {loadingUploads ? (
-                        <div className="col-span-2 flex justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                        <div className="col-span-2 flex justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
                         </div>
                     ) : userUploads.length === 0 ? (
-                        <div className="col-span-2 text-center text-sm text-gray-400 py-8">
-                            ไม่มีรูปภาพ
+                        <div className="col-span-2 flex flex-col items-center justify-center text-center text-gray-400 py-12 gap-3">
+                            <ImageIcon className="w-12 h-12 opacity-20" />
+                            <span className="text-sm font-medium">ไม่มีรูปภาพ</span>
                         </div>
                     ) : (
                         userUploads.map((file, i) => (
-                           <div key={i} className="aspect-square border rounded-md overflow-hidden cursor-pointer hover:ring-2 hover:ring-black relative group" onClick={() => addImageToCanvas(file.url)}>
-                               <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
-                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                           <div key={i} className="relative w-full pb-[100%] bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer hover:border-black hover:ring-1 hover:ring-black hover:shadow-lg transition-all group" onClick={() => addImageToCanvas(file.url)}>
+                               <div className="absolute inset-0 p-3 flex items-center justify-center bg-gray-50/50">
+                                   <img src={file.url} alt={file.name} className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105" />
+                               </div>
+                               <div className="absolute inset-0 bg-transparent group-hover:bg-black/5 transition-colors duration-300 rounded-xl" />
                                <Button 
                                    variant="destructive" 
                                    size="icon" 
-                                   className="absolute top-1 right-1 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                   className="absolute top-2 right-2 w-7 h-7 rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                    onClick={(e) => handleDeleteClick(file.name, e)}
                                >
-                                   <Trash2 className="w-3 h-3" />
+                                   <Trash2 className="w-3.5 h-3.5" />
                                </Button>
                            </div>
                         ))
