@@ -75,15 +75,15 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">สร้างบัญชีใหม่</h1>
-          <p className="text-gray-500">สมัครสมาชิกเพื่อเริ่มสั่งทำสินค้า</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-6">
+      <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl">
+        <div className="text-center mb-4">
+          <h1 className="text-2xl font-bold text-primary mb-1">สร้างบัญชีใหม่</h1>
+          <p className="text-gray-500 text-sm">สมัครสมาชิกเพื่อเริ่มสั่งทำสินค้า</p>
         </div>
 
         {error && (
-          <Alert variant="destructive" className="mb-6">
+          <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>เกิดข้อผิดพลาด</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
@@ -105,39 +105,11 @@ export default function Register() {
           <>
             <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
 
-            {/* T&C agreement */}
-            <div className="flex items-start gap-3 mb-6 p-3 rounded-lg border border-gray-200 bg-gray-50">
-              <Checkbox
-                id="terms"
-                checked={agreedToTerms}
-                onCheckedChange={(v) => setAgreedToTerms(!!v)}
-                className="mt-0.5 shrink-0"
-              />
-              <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
-                ฉันได้อ่านและยอมรับ{' '}
-                <button
-                  type="button"
-                  className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
-                  onClick={() => setTermsOpen(true)}
-                >
-                  ข้อตกลงและเงื่อนไขการใช้บริการ
-                </button>
-                {' '}/ I agree to the{' '}
-                <button
-                  type="button"
-                  className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
-                  onClick={() => setTermsOpen(true)}
-                >
-                  Terms of Service
-                </button>
-              </label>
-            </div>
-
             {/* Google OAuth */}
             <Button
               type="button"
               variant="outline"
-              className="w-full py-6 text-base flex items-center gap-3 mb-6"
+              className="w-full py-3 text-base flex items-center gap-3 mb-4"
               onClick={handleGoogleRegister}
               disabled={oauthLoading || loading || !agreedToTerms}
             >
@@ -150,7 +122,7 @@ export default function Register() {
               {oauthLoading ? "กำลังเชื่อมต่อ..." : "สมัครด้วย Google"}
             </Button>
 
-            <div className="relative mb-6">
+            <div className="relative mb-4">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-200" />
               </div>
@@ -159,7 +131,7 @@ export default function Register() {
               </div>
             </div>
 
-            <form onSubmit={handleRegister} className="space-y-5" noValidate>
+            <form onSubmit={handleRegister} className="space-y-3" noValidate>
               {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">อีเมล</Label>
@@ -237,14 +209,42 @@ export default function Register() {
                 {confirmError && <p className="text-xs text-red-500">{confirmError}</p>}
               </div>
 
-              <Button type="submit" className="w-full py-6 text-lg" disabled={loading || oauthLoading}>
+              {/* T&C agreement */}
+              <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
+                <Checkbox
+                  id="terms"
+                  checked={agreedToTerms}
+                  onCheckedChange={(v) => setAgreedToTerms(!!v)}
+                  className="mt-0.5 shrink-0"
+                />
+                <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                  ฉันได้อ่านและยอมรับ{' '}
+                  <button
+                    type="button"
+                    className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
+                    onClick={() => setTermsOpen(true)}
+                  >
+                    ข้อตกลงและเงื่อนไขการใช้บริการ
+                  </button>
+                  {' '}/ I agree to the{' '}
+                  <button
+                    type="button"
+                    className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
+                    onClick={() => setTermsOpen(true)}
+                  >
+                    Terms of Service
+                  </button>
+                </label>
+              </div>
+
+              <Button type="submit" className="w-full py-3 text-base" disabled={loading || oauthLoading || !agreedToTerms}>
                 {loading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
               </Button>
             </form>
           </>
         )}
 
-        <div className="mt-8 text-center text-sm text-gray-500">
+        <div className="mt-4 text-center text-sm text-gray-500">
           มีบัญชีอยู่แล้ว?{" "}
           <Link to="/login" className="text-primary hover:underline font-semibold">
             เข้าสู่ระบบ

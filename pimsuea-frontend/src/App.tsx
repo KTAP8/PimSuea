@@ -38,7 +38,7 @@ function Layout() {
         <Routes>
           {/* Waitlist gate: before launch date only / is accessible */}
           <Route path="/" element={<Landing />} />
-          {new Date() < LAUNCH_DATE ? (
+          {!import.meta.env.DEV && new Date() < LAUNCH_DATE ? (
             <Route path="*" element={<Navigate to="/" replace />} />
           ) : (
             <>
