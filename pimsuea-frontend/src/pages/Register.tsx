@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { AlertCircle, CheckCircle2, Check, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TermsModal } from "@/components/TermsModal";
 
 const PASSWORD_RULES = [
   { label: "อย่างน้อย 8 ตัวอักษร",          test: (p: string) => p.length >= 8 },
@@ -34,10 +36,12 @@ export default function Register() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
 
   const emailError   = touched.email    && !isValidEmail(email)       ? "รูปแบบอีเมลไม่ถูกต้อง" : null;
   const confirmError = touched.confirm  && password !== confirmPassword ? "รหัสผ่านไม่ตรงกัน" : null;
-  const formValid    = isValidEmail(email) && passwordValid(password) && password === confirmPassword;
+  const formValid    = isValidEmail(email) && passwordValid(password) && password === confirmPassword && agreedToTerms;
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,13 +103,43 @@ export default function Register() {
           </div>
         ) : (
           <>
+            <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
+
+            {/* T&C agreement */}
+            <div className="flex items-start gap-3 mb-6 p-3 rounded-lg border border-gray-200 bg-gray-50">
+              <Checkbox
+                id="terms"
+                checked={agreedToTerms}
+                onCheckedChange={(v) => setAgreedToTerms(!!v)}
+                className="mt-0.5 shrink-0"
+              />
+              <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                ฉันได้อ่านและยอมรับ{' '}
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
+                  onClick={() => setTermsOpen(true)}
+                >
+                  ข้อตกลงและเงื่อนไขการใช้บริการ
+                </button>
+                {' '}/ I agree to the{' '}
+                <button
+                  type="button"
+                  className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
+                  onClick={() => setTermsOpen(true)}
+                >
+                  Terms of Service
+                </button>
+              </label>
+            </div>
+
             {/* Google OAuth */}
             <Button
               type="button"
               variant="outline"
               className="w-full py-6 text-base flex items-center gap-3 mb-6"
               onClick={handleGoogleRegister}
-              disabled={oauthLoading || loading}
+              disabled={oauthLoading || loading || !agreedToTerms}
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
