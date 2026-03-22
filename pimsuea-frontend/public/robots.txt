@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /home
+
+Disallow: /dashboard
+Disallow: /design/
+Disallow: /catalog
+Disallow: /product/
+Disallow: /orders
+Disallow: /my-products
+Disallow: /wallet
+Disallow: /order
+Disallow: /settings
+Disallow: /news/
+Disallow: /onboarding
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://pimsuea.com/sitemap.xml

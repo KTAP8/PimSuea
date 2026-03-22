@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { PageSEO } from '@/components/PageSEO';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { joinWaitlist } from '@/services/api';
@@ -424,6 +425,11 @@ export default function Landing() {
 
   return (
     <ReactLenis root>
+      <PageSEO
+        title="PimSuea | เร็วๆ นี้ | Coming Soon"
+        description="PimSuea กำลังจะเปิดตัว — แพลตฟอร์มสั่งพิมพ์เสื้อยืดออนไลน์คุณภาพสูง | Coming soon — Thailand's premium custom t-shirt printing platform."
+        canonical="https://pimsuea.com"
+      />
       <div className="min-h-screen bg-background text-foreground flex flex-col">
 
       {/* ── Navbar ─────────────────────────────────────────────────── */}

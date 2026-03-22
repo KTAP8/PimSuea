@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { PageSEO } from "@/components/PageSEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { getProducts } from "@/services/api";
@@ -569,8 +570,41 @@ export default function NewLanding() {
     document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "PimSuea",
+        "url": "https://pimsuea.com",
+        "logo": "https://pimsuea.com/logo.svg",
+        "description": "Print-on-demand t-shirt platform | แพลตฟอร์มสั่งพิมพ์เสื้อยืดออนไลน์",
+        "sameAs": [],
+      },
+      {
+        "@type": "WebSite",
+        "name": "PimSuea",
+        "url": "https://pimsuea.com",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://pimsuea.com/catalog?q={search_term_string}",
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+
   return (
     <LandingLangContext.Provider value={{ lang, t, setLang }}>
+    <PageSEO
+      title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
+      description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG & DTF printing. Fast delivery across Thailand."
+      canonical="https://pimsuea.com/home"
+    />
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <div className="min-h-screen bg-background text-foreground">
 
       {/* ── Nav ─────────────────────────────────────────────────────── */}
