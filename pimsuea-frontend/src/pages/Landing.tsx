@@ -6,10 +6,10 @@ import { joinWaitlist } from '@/services/api';
 import { CheckCircle2, ChevronDown, ChevronUp, Palette, Zap, MousePointer2, Type, Image as ImageIcon, Layers } from 'lucide-react';
 import { ReactLenis } from 'lenis/react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { LAUNCH_DATE } from '@/App';
 // ---------------------------------------------------------------------------
 // Content (Thai / English)
 // ---------------------------------------------------------------------------
-const LAUNCH_DATE = new Date('2026-03-27T12:00:00+07:00');
 
 const content = {
   th: {

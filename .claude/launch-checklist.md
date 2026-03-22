@@ -1,65 +1,65 @@
-# Launch Checklist — Switch Landing Page from `/` to `/home`
+# Launch Checklist
 
-## Context
-Currently:
-- `/` → `Landing.tsx` (waitlist/coming-soon page) — live and public
-- `/home` → `NewLanding.tsx` (main product landing page) — exists but not the root
+## How pre-launch gating works
 
-At launch, `/` should serve the main landing page (`NewLanding`). The waitlist page can be retired or kept at a different route.
+`LAUNCH_DATE = new Date('2026-03-27T12:00:00+07:00')` is defined in `src/App.tsx` (exported so `Landing.tsx` can import it).
 
----
-
-## Code Changes
-
-### 1. `pimsuea-frontend/src/App.tsx`
-Swap the route assignments:
-
-```tsx
-// BEFORE
-<Route path="/" element={<Landing />} />
-<Route path="/home" element={<NewLanding />} />
-
-// AFTER
-<Route path="/" element={<NewLanding />} />
-// Remove /home, or keep as redirect:
-// <Route path="/home" element={<Navigate to="/" replace />} />
-```
-
-### 2. `pimsuea-frontend/src/pages/NewLanding.tsx`
-Update the `PageSEO` canonical URL from `/home` → `/`:
-
-```tsx
-// BEFORE
-<PageSEO
-  ...
-  canonical="https://pimsuea.com/home"
-/>
-
-// AFTER
-<PageSEO
-  ...
-  canonical="https://pimsuea.com"
-/>
-```
-
-Also update the JSON-LD `WebSite.potentialAction.target` if it referenced `/home`.
-
-### 3. `pimsuea-frontend/src/pages/Landing.tsx` (optional)
-Decide what happens to the waitlist page:
-- **Retire it:** Remove the route entirely from `App.tsx`
-- **Keep it:** Move it to `/waitlist` if you still want it accessible
+**Before launch date:** Every route except `/` redirects to `/` (the waitlist page).
+**On/after launch date:** All routes become accessible automatically — no deploy needed.
 
 ---
 
-## Static File Changes
+## On launch day (2026-03-27)
 
-### 4. `pimsuea-frontend/public/sitemap.xml`
-Make `/` priority 1.0 and remove (or lower) `/home`:
+The gate opens automatically. The only manual step is **swapping the root route** so `/` shows the main landing page instead of the waitlist.
+
+### 1. `src/App.tsx` — swap the root route and remove the gate
+
+```tsx
+// REMOVE the pre-launch gate block entirely.
+// REPLACE with the full route list, with / → NewLanding:
+
+<Routes>
+  <Route path="/" element={<NewLanding />} />
+  <Route path="/login" element={<Login />} />
+  <Route path="/register" element={<Register />} />
+
+  <Route element={<ProtectedRoute />}>
+    <Route path="/onboarding" element={<Onboarding />} />
+    <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/news/:id" element={<NewsDetails />} />
+    <Route path="/catalog" element={<Catalog />} />
+    <Route path="/product/:id" element={<ProductDetails />} />
+    <Route path="/design/:id" element={<DesignCanvas />} />
+    <Route path="/orders" element={<MyOrders />} />
+    <Route path="/my-products" element={<MyProducts />} />
+    <Route path="/wallet" element={<Wallet />} />
+    <Route path="/order" element={<Order />} />
+    <Route path="/settings" element={<Settings />} />
+  </Route>
+</Routes>
+```
+
+- Remove the `LAUNCH_DATE` export and `Navigate` import from `App.tsx`
+- Remove the `Landing` import from `App.tsx`
+- Remove the `Landing.tsx` route entirely (or keep as `/waitlist` if you want to preserve it)
+
+### 2. `src/pages/NewLanding.tsx` — update canonical URL
+
+```tsx
+// BEFORE
+canonical="https://pimsuea.com/home"
+
+// AFTER
+canonical="https://pimsuea.com"
+```
+
+### 3. `public/sitemap.xml` — promote `/` to priority 1.0
 
 ```xml
 <url>
   <loc>https://pimsuea.com/</loc>
-  <lastmod>YYYY-MM-DD</lastmod>   <!-- update to launch date -->
+  <lastmod>2026-03-27</lastmod>
   <changefreq>weekly</changefreq>
   <priority>1.0</priority>
   <xhtml:link rel="alternate" hreflang="th" href="https://pimsuea.com/"/>
@@ -67,27 +67,25 @@ Make `/` priority 1.0 and remove (or lower) `/home`:
 </url>
 ```
 
-### 5. `pimsuea-frontend/public/robots.txt`
-The `/` route is already allowed. If you kept `/home` as a redirect, it can stay or be removed — redirects are harmless for crawlers.
+Remove or lower the `/home` entry (it will no longer exist as a route).
 
-### 6. `pimsuea-frontend/public/og-image.png`
-Create this file before launch if not already done (1200×630px):
-- Logo + "Custom shirts, made simple. | สั่งทำเสื้อ ง่ายกว่าที่เคย"
+### 4. `public/robots.txt` — clean up
+
+Remove `Allow: /home` (route no longer exists after the swap).
 
 ---
 
-## After Deploy
+## After deploy on launch day
 
 - [ ] Visit `https://pimsuea.com` — confirm NewLanding renders
-- [ ] Check `View Source` — confirm `<title>` and meta tags are correct
-- [ ] Test OG preview: paste URL into [opengraph.xyz](https://www.opengraph.xyz/)
+- [ ] Visit `https://pimsuea.com/login` — confirm accessible
+- [ ] Test OG preview: [opengraph.xyz](https://www.opengraph.xyz/) with `https://pimsuea.com`
 - [ ] Google Search Console → URL Inspection → re-index `https://pimsuea.com`
-- [ ] Submit updated sitemap: `https://pimsuea.com/sitemap.xml`
+- [ ] Submit updated sitemap
 
 ---
 
-## Also Update CLAUDE.md
+## Before launch day — what's blocked
 
-In the SEO section, change:
-- `/home` → `/` as the canonical main landing
-- `/` (waitlist) → retired or moved to `/waitlist`
+Any direct URL visit to `/login`, `/register`, `/home`, `/dashboard`, etc. redirects to `/`.
+The only accessible page is the waitlist at `/`.

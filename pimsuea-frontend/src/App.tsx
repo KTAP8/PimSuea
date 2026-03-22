@@ -1,4 +1,7 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+
+// All non-root routes redirect to / until this date
+export const LAUNCH_DATE = new Date('2026-03-27T12:00:00+07:00');
 import { Analytics } from '@vercel/analytics/react';
 import { Sidebar } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -33,26 +36,32 @@ function Layout() {
         {shouldShowSidebar && <div className="h-16 md:hidden"></div>}
         
         <Routes>
-          {/* Public Routes */}
+          {/* Waitlist gate: before launch date only / is accessible */}
           <Route path="/" element={<Landing />} />
-          <Route path="/home" element={<NewLanding />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {new Date() < LAUNCH_DATE ? (
+            <Route path="*" element={<Navigate to="/" replace />} />
+          ) : (
+            <>
+              <Route path="/home" element={<NewLanding />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-             <Route path="/onboarding" element={<Onboarding />} />
-             <Route path="/dashboard" element={<Dashboard />} />
-             <Route path="/news/:id" element={<NewsDetails />} />
-             <Route path="/catalog" element={<Catalog />} />
-             <Route path="/product/:id" element={<ProductDetails />} />
-             <Route path="/design/:id" element={<DesignCanvas />} />
-             <Route path="/orders" element={<MyOrders />} />
-             <Route path="/my-products" element={<MyProducts />} />
-             <Route path="/wallet" element={<Wallet />} />
-             <Route path="/order" element={<Order />} />
-             <Route path="/settings" element={<Settings />} />
-          </Route>
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/news/:id" element={<NewsDetails />} />
+                <Route path="/catalog" element={<Catalog />} />
+                <Route path="/product/:id" element={<ProductDetails />} />
+                <Route path="/design/:id" element={<DesignCanvas />} />
+                <Route path="/orders" element={<MyOrders />} />
+                <Route path="/my-products" element={<MyProducts />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/order" element={<Order />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+            </>
+          )}
         </Routes>
       </main>
     </div>
