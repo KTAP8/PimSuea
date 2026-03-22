@@ -90,3 +90,53 @@ SUPABASE_SECRET_KEY
 - **Design save flow:** Generate canvas preview → hash design JSON → upload preview + print files via `/api/uploads` → upsert `user_designs` record. Skip print file regeneration if `design_hash` is unchanged.
 - **Cart → Order flow:** Cart items carry `design_id`, `print_file_url`, `design_json`, `preview_url`. Creating an order posts cart items to `/api/orders`.
 - **Google Fonts:** Loaded dynamically via `WebFontLoader` + `src/services/googleFonts.ts`. Font picker is a shared component at `src/components/FontPicker`.
+
+## Print Sizing & Pricing
+
+### Print Tiers
+Tiers are defined by **strict** width × height (no rotation normalisation). A landscape design wider than 3" does NOT qualify as 3×4 — it goes to A5.
+
+| Label | Width   | Height  | Backend (cm)         |
+|-------|---------|---------|----------------------|
+| 3×4   | ≤ 3"    | ≤ 4"    | w≤7.62, h≤10.16      |
+| A5    | ≤ 6"    | ≤ 8"    | w≤15.24, h≤20.32     |
+| A4    | ≤ 8"    | ≤ 12"   | w≤20.32, h≤30.48     |
+| A3    | any     | any     | catch-all             |
+
+- **Backend:** `backend/src/utils/pricing.js` → `getPrintTier(w_cm, h_cm)`
+- **Annotation mirror:** `tools/annotate_print.py` → `get_print_tier(w_in, h_in)` (keep in sync)
+
+### Preset Size Buttons (DesignCanvas)
+- Located in the floating context toolbar when an object is selected
+- `PRINT_TIERS` constant and `TIER_SAFETY_FACTOR = 0.97` near line 77 of `DesignCanvas.tsx`
+- Safety factor reduces geometric target by 3% so that real image content (anti-aliased edges, shadows) stays within the tier boundary when printed
+- `applyPresetSize(tier, axis)` resizes the selected object; the other axis scales proportionally
+
+### Print File Annotation (`tools/annotate_print.py`)
+- Admin tool: composites a print PNG onto a shirt mockup and annotates with inch measurements
+- `PHYSICAL_W_IN = 12.0`, `PHYSICAL_H_IN = 16.0` (300 DPI → 3600 × 4800px export)
+- `ALPHA_THRESHOLD = 200` — pixels with alpha ≤ 200 are ignored when measuring content bounds
+- Dimension lines drawn in `ORANGE`; element bounding box in `BLUE_MUTED` (drawn first, behind)
+- All labels: black bold text, no background pill
+
+## SEO
+
+Deployed at **pimsuea.com** on Vercel. Target: Thai + English speakers.
+
+### Public routes (crawlable)
+- `/` — waitlist/coming-soon page (`Landing.tsx`)
+- `/home` — main landing page (`NewLanding.tsx`) — **canonical, priority 1.0**
+
+All other routes are protected (login required) and blocked in `robots.txt`.
+
+### Implementation
+- **`src/components/PageSEO.tsx`** — reusable component; uses React 19 native head hoisting (no library). Props: `title`, `description`, `canonical`, `ogImage?`. Injects OG, Twitter Card, hreflang (th/en/x-default).
+- **`index.html`** — base fallback meta tags (`lang="th"`, description, OG image, twitter:card).
+- **`public/robots.txt`** — allows `/` and `/home`, disallows all protected routes.
+- **`public/sitemap.xml`** — lists `/home` (priority 1.0) and `/` (priority 0.5) with hreflang entries.
+- **JSON-LD** — Organization + WebSite schema rendered in `NewLanding.tsx` via `<script dangerouslySetInnerHTML>`.
+
+### Pending manual steps
+1. Create `public/og-image.png` (1200×630px) — logo + bilingual tagline ("Custom shirts, made simple. | สั่งทำเสื้อ ง่ายกว่าที่เคย")
+2. Register in Google Search Console → submit `https://pimsuea.com/sitemap.xml`
+3. Update `sitemap.xml` `lastmod` date when landing page content changes
