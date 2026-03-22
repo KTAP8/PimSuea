@@ -122,6 +122,7 @@ Tiers are defined by **strict** width × height (no rotation normalisation). A l
 ## SEO
 
 Deployed at **pimsuea.com** on Vercel. Target: Thai + English speakers.
+Domain registered and DNS managed via **Cloudflare**.
 
 ### Public routes (crawlable)
 - `/` — waitlist/coming-soon page (`Landing.tsx`)
