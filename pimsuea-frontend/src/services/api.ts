@@ -174,6 +174,12 @@ export function r2ProxyUrl(url: string): string {
   if (!url || !url.includes('.r2.dev/')) return url;
   return `${API_BASE}/uploads/proxy?url=${encodeURIComponent(url)}`;
 }
+// Public endpoint — no auth required
+export const fetchDeliveryFee = async (qty: number): Promise<{ fee: number; label: string }> => {
+    const response = await axios.get<{ fee: number; label: string }>(`${API_BASE}/delivery-fee?qty=${qty}`);
+    return response.data;
+};
+
 export const joinWaitlist = async (payload: { name: string; email: string; reason: string }): Promise<{ message: string }> => {
     const response = await axios.post<{ message: string }>(`${API_BASE}/waitlist`, payload);
     return response.data;

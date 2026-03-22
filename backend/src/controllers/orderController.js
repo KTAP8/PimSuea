@@ -1,5 +1,5 @@
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
-const { calculatePrice } = require('../utils/pricing');
+const { calculatePrice, getDeliveryFee } = require('../utils/pricing');
 const { isUUID, isPositiveInt } = require('../utils/validate');
 const { copyObject, getLocationFromUrl, getPublicUrl } = require('../config/r2Client');
 
@@ -218,17 +218,23 @@ exports.createOrder = async (req, res) => {
       }
     }));
 
-    const verifiedTotal = pricedItems.reduce(
+    const verifiedItemsTotal = pricedItems.reduce(
       (sum, item) => sum + item.verifiedUnitPrice * item.quantity,
       0
     );
 
-    // 2. Create Order with server-verified total
+    // Calculate delivery fee based on total shirt quantity
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+    const { fee: deliveryFee } = await getDeliveryFee(totalQty);
+    const grandTotal = verifiedItemsTotal + deliveryFee;
+
+    // 2. Create Order with server-verified total (items + delivery)
     const { data: order, error: orderError } = await client
       .from('orders')
       .insert({
         user_id: userId,
-        total_amount: verifiedTotal,
+        total_amount: grandTotal,
+        delivery_fee: deliveryFee,
         status: 'pending_payment',
         shipping_address: shipping,
         created_at: new Date().toISOString(),

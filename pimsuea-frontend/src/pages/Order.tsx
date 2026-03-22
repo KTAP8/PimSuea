@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice } from "@/services/api";
+import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee } from "@/services/api";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
@@ -169,9 +169,22 @@ export default function Order() {
   const [shippingErrors, setShippingErrors] = useState<Partial<Record<keyof ShippingInfo, string>>>({});
   const [touchedFields, setTouchedFields] = useState<Set<keyof ShippingInfo>>(new Set());
 
+  // Delivery fee state
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [deliveryLabel, setDeliveryLabel] = useState('');
+
   // Calculate Total
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  // Fetch delivery fee whenever cart quantity changes
+  useEffect(() => {
+    if (totalItems < 1) return;
+    fetchDeliveryFee(totalItems).then(({ fee, label }) => {
+      setDeliveryFee(fee);
+      setDeliveryLabel(label);
+    }).catch(() => { /* keep previous fee on error */ });
+  }, [totalItems]);
 
   // Phase 1: Initialize Cart
   useEffect(() => {
@@ -605,7 +618,7 @@ export default function Order() {
                 ...item,
             })),
             shipping: shippingInfo,
-            total: totalPrice
+            total: totalPrice + deliveryFee
         };
 
         const result = await createOrder(orderPayload);
@@ -904,9 +917,17 @@ export default function Order() {
                            )}
                        </div>
                    ))}
+                   <div className="flex justify-between text-sm text-gray-600 pt-2 border-t">
+                       <span>ราคาสินค้า</span>
+                       <span>฿{totalPrice.toLocaleString()}</span>
+                   </div>
+                   <div className="flex justify-between text-sm text-gray-600">
+                       <span>ค่าจัดส่ง{deliveryLabel ? ` (${deliveryLabel})` : ''}</span>
+                       <span>{deliveryFee === 0 ? 'ฟรี' : `฿${deliveryFee.toLocaleString()}`}</span>
+                   </div>
                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
                        <span>ยอดรวมสุทธิ</span>
-                       <span>฿{totalPrice.toLocaleString()}</span>
+                       <span>฿{(totalPrice + deliveryFee).toLocaleString()}</span>
                    </div>
                </div>
                
@@ -974,7 +995,7 @@ export default function Order() {
             <div className="p-4 space-y-3">
               <p className="font-semibold">3. ชำระเงินผ่าน PromptPay</p>
               <p className="text-sm text-gray-500">
-                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{totalPrice.toLocaleString()}</span>
+                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{(totalPrice + deliveryFee).toLocaleString()}</span>
               </p>
               {import.meta.env.VITE_PROMPTPAY_QR_URL && (
                 <img

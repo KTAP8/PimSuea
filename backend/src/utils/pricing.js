@@ -99,4 +99,21 @@ async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, sh
   };
 }
 
-module.exports = { getPrintTier, calculatePrice };
+/**
+ * Look up delivery fee based on total shirt quantity in the order.
+ * @param {number} totalQty
+ * @returns {Promise<{ fee: number, label: string }>}
+ */
+async function getDeliveryFee(totalQty) {
+  const { data, error } = await supabaseAdmin
+    .from('delivery_fees')
+    .select('fee_thb, label')
+    .lte('min_qty', totalQty)
+    .or(`max_qty.is.null,max_qty.gte.${totalQty}`)
+    .single();
+
+  if (error || !data) return { fee: 0, label: 'ฟรี' };
+  return { fee: Number(data.fee_thb), label: data.label };
+}
+
+module.exports = { getPrintTier, calculatePrice, getDeliveryFee };
