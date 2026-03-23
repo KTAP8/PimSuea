@@ -66,16 +66,28 @@ PREVIEW_DIV = 6         # downscale divisor: 3600/6 = 600px wide preview
 MARGIN_LEFT = 150       # left margin reserved for Y measurement line + label
 MARGIN_TOP  = 60        # top margin reserved for X offset line + label
 SIDE_PAD_LEFT      = 30   # gap between mockup right edge and side graphic
-SIDE_TARGET_H      = 280  # target height for side graphic in px
+SIDE_PPI           = 30   # display scale for side graphic (px per inch) — keeps all graphics proportional
+SIDE_MIN_PX        = 60   # minimum side graphic dimension in px (prevents tiny logos being unreadable)
 SIDE_MARGIN_RIGHT  = 120  # room for height bracket + label to the right
 SIDE_MARGIN_BOTTOM = 50   # room for width bracket + label below
 
 # ─── COMBINE CONFIG ──────────────────────────────────────────────────────────
 # Set COMBINE_PATHS to a list of mockup image paths to stitch them side-by-side.
 # Leave empty ([]) to run the normal annotate+mockup workflow instead.
-COMBINE_PATHS  = ["/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_2_mockup_front.png", "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile_2_mockup_front.png"]          # e.g. ["..._mockup_front.png", "..._mockup_back.png"]
+COMBINE_PATHS  = []          # e.g. ["..._mockup_front.png", "..._mockup_back.png"]
 COMBINE_OUTPUT = None        # None = auto: <first_stem>_combined.png
 COMBINE_GAP    = 20          # horizontal gap between images in pixels
+
+# ─── BATCH CONFIG ────────────────────────────────────────────────────────────
+# One-shot pipeline: annotate each side, then combine into a single image.
+# Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
+BATCH_SIDES = [
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_2.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png", "side": "front"},
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile_2.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png", "side": "back"}
+    # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
+    # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},
+]
+BATCH_OUTPUT = None          # None = auto: <first_input_stem>_combined.png
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -254,9 +266,12 @@ def composite_on_mockup(
         measurements["x_max"], measurements["y_max"]
     )).convert("RGBA")
 
-    side_gh = SIDE_TARGET_H
-    side_scale_f = side_gh / elem_crop.height
-    side_gw = max(1, int(elem_crop.width * side_scale_f))
+    side_gw = round(measurements['elem_w_in'] * SIDE_PPI)
+    side_gh = round(measurements['elem_h_in'] * SIDE_PPI)
+    if min(side_gw, side_gh) < SIDE_MIN_PX:
+        scale_up = SIDE_MIN_PX / min(side_gw, side_gh)
+        side_gw = round(side_gw * scale_up)
+        side_gh = round(side_gh * scale_up)
     side_img = elem_crop.resize((side_gw, side_gh), Image.LANCZOS)
 
     mw, mh = mockup.width, mockup.height
@@ -283,7 +298,12 @@ def composite_on_mockup(
     print(f"  Mockup  → {output_path}\n")
 
 
-def annotate(input_path: str, output_path: str | None = None):
+def annotate(input_path: str, output_path: str | None = None, *,
+             shirt_side: str | None = None,
+             mockup_image_path: str | None = None) -> Path | None:
+    _side       = shirt_side        if shirt_side        is not None else SHIRT_SIDE
+    _mockup_img = mockup_image_path if mockup_image_path is not None else MOCKUP_IMAGE_PATH
+
     is_url = input_path.startswith("http://") or input_path.startswith("https://")
 
     if is_url:
@@ -408,11 +428,11 @@ def annotate(input_path: str, output_path: str | None = None):
     print(f"  Annotated → {out}")
 
     # ── Mockup composite ────────────────────────────────────────────────────
-    mockup_path = MOCKUP_IMAGE_PATH or str(
-        Path(__file__).parent / "mockups" / f"{SHIRT_COLOR}_{SHIRT_SIDE}.png"
+    mockup_path = _mockup_img or str(
+        Path(__file__).parent / "mockups" / f"{SHIRT_COLOR}_{_side}.png"
     )
-    placement = _PLACEMENTS[SHIRT_SIDE]
-    mockup_out = out.with_stem(mockup_src_stem + f"_mockup_{SHIRT_SIDE}")
+    placement = _PLACEMENTS[_side]
+    mockup_out = out.with_stem(mockup_src_stem + f"_mockup_{_side}")
     measurements = {
         "x_min": x_min, "y_min": y_min, "x_max": x_max, "y_max": y_max,
         "center_x": center_x,
@@ -421,12 +441,13 @@ def annotate(input_path: str, output_path: str | None = None):
         "elem_w_in": elem_w_in,
         "elem_h_in": elem_h_in,
         "tier": tier,
-        "collar_y": COLLAR_Y.get(SHIRT_SIDE, 223),
+        "collar_y": COLLAR_Y.get(_side, 223),
         "collar_to_elem_in": COLLAR_TO_PRINT_AREA_IN + y_in,
         "x_dir": x_dir,
         "x_offset_in": x_offset_in,
     }
     composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements)
+    return mockup_out
 
 
 def combine_mockups(paths, output_path=None, gap=COMBINE_GAP):
@@ -469,8 +490,35 @@ def combine_mockups(paths, output_path=None, gap=COMBINE_GAP):
     print(f"  Combined → {output_path}")
 
 
+def run_batch(sides, output_path=None):
+    """Full pipeline: annotate each side, then combine into one image.
+
+    Each entry in `sides` must have:
+        "input"  — path to the print PNG
+        "mockup" — path to the blank shirt mockup template
+        "side"   — "front" or "back"
+    """
+    mockup_paths = []
+    for entry in sides:
+        mockup_out = annotate(
+            entry["input"],
+            shirt_side=entry["side"],
+            mockup_image_path=entry["mockup"],
+        )
+        if mockup_out:
+            mockup_paths.append(mockup_out)
+
+    if mockup_paths:
+        if output_path is None:
+            first = Path(sides[0]["input"])
+            output_path = first.with_stem(first.stem + "_combined")
+        combine_mockups([str(p) for p in mockup_paths], output_path)
+
+
 if __name__ == "__main__":
-    if COMBINE_PATHS:
+    if BATCH_SIDES:
+        run_batch(BATCH_SIDES, BATCH_OUTPUT)
+    elif COMBINE_PATHS:
         combine_mockups(COMBINE_PATHS, COMBINE_OUTPUT)
     else:
         annotate(INPUT_PATH, OUTPUT_PATH)
