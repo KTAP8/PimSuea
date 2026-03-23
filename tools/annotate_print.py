@@ -23,7 +23,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/test_pim2.png"   # ← set this
+INPUT_PATH    = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_2.png"   # ← set this
 OUTPUT_PATH   = None                        # None = auto: <input>_annotated.png
 PHYSICAL_W_IN = 12.0                        # inches
 PHYSICAL_H_IN = 16.0                        # inches
@@ -65,6 +65,17 @@ TICK        = 8         # tick mark half-length
 PREVIEW_DIV = 6         # downscale divisor: 3600/6 = 600px wide preview
 MARGIN_LEFT = 150       # left margin reserved for Y measurement line + label
 MARGIN_TOP  = 60        # top margin reserved for X offset line + label
+SIDE_PAD_LEFT      = 30   # gap between mockup right edge and side graphic
+SIDE_TARGET_H      = 280  # target height for side graphic in px
+SIDE_MARGIN_RIGHT  = 120  # room for height bracket + label to the right
+SIDE_MARGIN_BOTTOM = 50   # room for width bracket + label below
+
+# ─── COMBINE CONFIG ──────────────────────────────────────────────────────────
+# Set COMBINE_PATHS to a list of mockup image paths to stitch them side-by-side.
+# Leave empty ([]) to run the normal annotate+mockup workflow instead.
+COMBINE_PATHS  = ["/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_2_mockup_front.png", "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile_2_mockup_front.png"]          # e.g. ["..._mockup_front.png", "..._mockup_back.png"]
+COMBINE_OUTPUT = None        # None = auto: <first_stem>_combined.png
+COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -127,6 +138,23 @@ def draw_label(draw, text, cx, cy, font):
     draw.text((cx - tw // 2, cy - th // 2), text, fill=(0, 0, 0, 255), font=font)
 
 
+def draw_dimension_bracket(draw, x1, y1, x2, y2, label, font, orientation, color=ORANGE):
+    """Draw a dimension bracket with tick marks and a centered label.
+
+    orientation: 'horizontal' — horizontal line, vertical ticks, label below
+                 'vertical'   — vertical line, horizontal ticks, label to the right
+    """
+    draw.line([(x1, y1), (x2, y2)], fill=color, width=LINE_W)
+    if orientation == 'horizontal':
+        draw.line([(x1, y1 - TICK), (x1, y1 + TICK)], fill=color, width=LINE_W)
+        draw.line([(x2, y2 - TICK), (x2, y2 + TICK)], fill=color, width=LINE_W)
+        draw_label(draw, label, (x1 + x2) // 2, y1 + PAD + FONT_SIZE // 2, font)
+    else:  # vertical
+        draw.line([(x1 - TICK, y1), (x1 + TICK, y1)], fill=color, width=LINE_W)
+        draw.line([(x2 - TICK, y2), (x2 + TICK, y2)], fill=color, width=LINE_W)
+        draw_label(draw, label, x1 + PAD + FONT_SIZE // 2, (y1 + y2) // 2, font)
+
+
 def composite_on_mockup(
     print_img: Image.Image,
     mockup_path: str,
@@ -140,7 +168,7 @@ def composite_on_mockup(
     regardless of how small the placement area is.
 
     measurements keys: x_min, y_min, x_max, y_max, center_x (all in full-res pixels),
-                       y_label, x_label, size_text
+                       y_label, x_label, elem_w_in, elem_h_in, tier
     """
     mp = Path(mockup_path)
     if not mp.exists():
@@ -203,7 +231,7 @@ def composite_on_mockup(
     draw.line([(collar_x, collar_y), (collar_x, elem_top_y)], fill=ORANGE, width=LINE_W)
     draw.line([(collar_x - TICK, collar_y),    (collar_x + TICK, collar_y)],    fill=ORANGE, width=LINE_W)
     draw.line([(collar_x - TICK, elem_top_y),  (collar_x + TICK, elem_top_y)],  fill=ORANGE, width=LINE_W)
-    y_total_label = f"{measurements['collar_to_elem_in']:.2f} in"
+    y_total_label = f"{measurements['collar_to_elem_in']:.1f} in ({measurements['collar_to_elem_in'] * 2.54:.1f} cm)"
     # Y label: hugs the collar tick from below, left side — always above X label
     draw_label(draw, y_total_label, collar_x - TICK - 30, collar_y + FONT_SIZE // 2 + 4, font)
 
@@ -213,18 +241,45 @@ def composite_on_mockup(
         draw_dashed_line(draw, collar_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
         draw.line([(collar_x, elem_top_y - TICK), (collar_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
         draw.line([(bx0,      elem_top_y - TICK), (bx0,      elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
-        x_label_text = f"{measurements['x_offset_in']:.2f} in {x_dir}"
+        x_label_text = f"{measurements['x_offset_in']:.1f} in ({measurements['x_offset_in'] * 2.54:.1f} cm) {x_dir}"
         mid_h = (collar_x + bx0) // 2
         # X label: hugs the element-top tick from above — always below Y label
         draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
     else:
         draw_label(draw, "centered", collar_x - TICK - 30, elem_top_y - FONT_SIZE // 2 - 4, font)
 
-    # ── Size + tier label below element ──────────────────────────────────────
-    draw_label(draw, measurements["size_text"], (bx0 + bx1) // 2,
-               by1 + PAD + FONT_SIZE // 2, font)
+    # ── Side panel: cropped graphic + dimension brackets ─────────────────────
+    elem_crop = print_img.crop((
+        measurements["x_min"], measurements["y_min"],
+        measurements["x_max"], measurements["y_max"]
+    )).convert("RGBA")
 
-    mockup.convert("RGB").save(output_path)
+    side_gh = SIDE_TARGET_H
+    side_scale_f = side_gh / elem_crop.height
+    side_gw = max(1, int(elem_crop.width * side_scale_f))
+    side_img = elem_crop.resize((side_gw, side_gh), Image.LANCZOS)
+
+    mw, mh = mockup.width, mockup.height
+    sg_x = mw + SIDE_PAD_LEFT
+    sg_y = max(0, (mh - side_gh - SIDE_MARGIN_BOTTOM) // 2)
+    new_w = mw + SIDE_PAD_LEFT + side_gw + SIDE_MARGIN_RIGHT
+    new_h = max(mh, sg_y + side_gh + SIDE_MARGIN_BOTTOM)
+
+    expanded = Image.new("RGBA", (new_w, new_h), (255, 255, 255, 255))
+    expanded.paste(mockup.convert("RGBA"), (0, 0))
+    expanded.paste(side_img, (sg_x, sg_y), mask=side_img)
+
+    draw2 = ImageDraw.Draw(expanded)
+    w_label = f"{measurements['elem_w_in']:.1f} in ({measurements['elem_w_in'] * 2.54:.1f} cm)  [{measurements['tier']}]"
+    h_label = f"{measurements['elem_h_in']:.1f} in ({measurements['elem_h_in'] * 2.54:.1f} cm)"
+    draw_dimension_bracket(draw2, sg_x, sg_y + side_gh + PAD,
+                           sg_x + side_gw, sg_y + side_gh + PAD,
+                           w_label, font, 'horizontal')
+    draw_dimension_bracket(draw2, sg_x + side_gw + PAD, sg_y,
+                           sg_x + side_gw + PAD, sg_y + side_gh,
+                           h_label, font, 'vertical')
+
+    expanded.convert("RGB").save(output_path)
     print(f"  Mockup  → {output_path}\n")
 
 
@@ -331,7 +386,7 @@ def annotate(input_path: str, output_path: str | None = None):
     # Horizontal connector from the left margin line to the element's top edge
     draw_dashed_line(draw, vx, by0, bx0, by0, color=ORANGE)
     mid_y = (img_top + by0) // 2
-    y_label = "0.00 in from top" if y_in < 0.005 else f"{y_in:.2f} in from top"
+    y_label = "0.0 in from top" if y_in < 0.005 else f"{y_in:.1f} in ({y_in * 2.54:.1f} cm) from top"
     draw_label(draw, y_label, MARGIN_LEFT // 2, mid_y, font)
 
     # 3. X offset — horizontal line in top margin, from area center-x to element left edge
@@ -342,11 +397,11 @@ def annotate(input_path: str, output_path: str | None = None):
     # Vertical connector from top margin line down to element's top-left corner
     draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
     x_label = ("centered" if x_dir == "centered"
-               else f"{x_offset_in:.2f} in {x_dir}")
+               else f"{x_offset_in:.1f} in ({x_offset_in * 2.54:.1f} cm) {x_dir}")
     draw_label(draw, x_label, (cx_s + bx0) // 2, hy // 2 + 4, font)
 
     # 4. Size + tier label below the bounding box
-    size_text = f"{elem_w_in:.2f}\" × {elem_h_in:.2f}\"  [{tier}]"
+    size_text = f"{elem_w_in:.1f}\" × {elem_h_in:.1f}\" ({elem_w_in * 2.54:.1f} × {elem_h_in * 2.54:.1f} cm)  [{tier}]"
     draw_label(draw, size_text, (bx0 + bx1) // 2, by1 + PAD + FONT_SIZE // 2, font)
 
     canvas.save(out)
@@ -363,7 +418,9 @@ def annotate(input_path: str, output_path: str | None = None):
         "center_x": center_x,
         "y_label": y_label,
         "x_label": x_label,
-        "size_text": size_text,
+        "elem_w_in": elem_w_in,
+        "elem_h_in": elem_h_in,
+        "tier": tier,
         "collar_y": COLLAR_Y.get(SHIRT_SIDE, 223),
         "collar_to_elem_in": COLLAR_TO_PRINT_AREA_IN + y_in,
         "x_dir": x_dir,
@@ -372,5 +429,48 @@ def annotate(input_path: str, output_path: str | None = None):
     composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements)
 
 
+def combine_mockups(paths, output_path=None, gap=COMBINE_GAP):
+    """Combine multiple mockup images into a two-column grid.
+
+    Each mockup file is split at _MOCKUP_W: the shirt portion goes in the left
+    column and the graphic side panel goes in the right column. Rows are stacked
+    vertically with `gap` pixels between them.
+
+    Layout:
+        [shirt 1]  |  [graphic 1]
+        [shirt 2]  |  [graphic 2]
+        ...
+    """
+    if not paths:
+        raise ValueError("combine_mockups: paths list is empty.")
+    images = [Image.open(p).convert("RGB") for p in paths]
+
+    split_x = _MOCKUP_W
+    shirts = [img.crop((0, 0, min(split_x, img.width), img.height)) for img in images]
+    panels = [img.crop((min(split_x, img.width), 0, img.width, img.height)) for img in images]
+
+    shirt_col_w = max(s.width for s in shirts)
+    panel_col_w = max(p.width for p in panels)
+    row_heights  = [img.height for img in images]
+    total_w = shirt_col_w + gap + panel_col_w
+    total_h = sum(row_heights) + gap * (len(images) - 1)
+
+    combined = Image.new("RGB", (total_w, total_h), (255, 255, 255))
+    y = 0
+    for shirt, panel, row_h in zip(shirts, panels, row_heights):
+        combined.paste(shirt, (0, y))
+        combined.paste(panel, (shirt_col_w + gap, y))
+        y += row_h + gap
+
+    if output_path is None:
+        first = Path(paths[0])
+        output_path = first.with_stem(first.stem + "_combined")
+    combined.save(output_path)
+    print(f"  Combined → {output_path}")
+
+
 if __name__ == "__main__":
-    annotate(INPUT_PATH, OUTPUT_PATH)
+    if COMBINE_PATHS:
+        combine_mockups(COMBINE_PATHS, COMBINE_OUTPUT)
+    else:
+        annotate(INPUT_PATH, OUTPUT_PATH)
