@@ -90,6 +90,8 @@ export interface Product {
     print_methods?: PrintMethod[]; // New field
     size_guide?: any;
     available_sizes?: string[];
+    care_instructions?: string;
+    min_price?: number;
 }
 
 export interface PriceEstimate {
