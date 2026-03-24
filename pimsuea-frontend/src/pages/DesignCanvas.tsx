@@ -334,18 +334,22 @@ export default function DesignCanvas() {
          // Fabric default origin is usually top/left unless changed.
          // In addText/addImage we set originX/Y to 'center'.
          
-         // If origin is center:
+         // Clamp so the object's EDGES stay within the print zone.
+         // For center-origin objects, left/top is the center coordinate, so
+         // we must account for half the object's size on each side.
          if (obj.originX === 'center') {
-             if (left < bounds.left) left = bounds.left;
-             if (left > bounds.left + bounds.width) left = bounds.left + bounds.width;
+             const halfW = objWidth / 2;
+             if (left < bounds.left + halfW) left = bounds.left + halfW;
+             if (left > bounds.left + bounds.width - halfW) left = bounds.left + bounds.width - halfW;
          } else {
              if (left < bounds.left) left = bounds.left;
              if (left + objWidth > bounds.left + bounds.width) left = bounds.left + bounds.width - objWidth;
          }
-         
+
          if (obj.originY === 'center') {
-             if (top < bounds.top) top = bounds.top;
-             if (top > bounds.top + bounds.height) top = bounds.top + bounds.height;
+             const halfH = objHeight / 2;
+             if (top < bounds.top + halfH) top = bounds.top + halfH;
+             if (top > bounds.top + bounds.height - halfH) top = bounds.top + bounds.height - halfH;
          } else {
              if (top < bounds.top) top = bounds.top;
              if (top + objHeight > bounds.top + bounds.height) top = bounds.top + bounds.height - objHeight;
@@ -435,7 +439,9 @@ export default function DesignCanvas() {
           console.log("Saving design for:", currentTemplate.id);
           const json = fabricRef.current.toJSON(['name', 'selectable', 'evented']);
           if (json.objects) {
-              json.objects = json.objects.filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide');
+              json.objects = json.objects
+                  .filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
+                  .map(({ clipPath: _cp, ...rest }: any) => rest); // strip stale clipPath coords
           }
           // Store JSON AND Bounds for export later
           savedDesigns.current[currentTemplate.id] = { 
@@ -660,16 +666,18 @@ export default function DesignCanvas() {
       
       // Check for Pending Design (Color Switch)
       let sourceFields = null;
+      let savedBoundsForRescale: { left: number; top: number; width: number; height: number } | null = null;
       if (pendingDesignRef.current && pendingDesignRef.current.side === currentTemplate.side) {
            console.log("Applying persisted design from previous color");
            sourceFields = pendingDesignRef.current.json;
            pendingDesignRef.current = null; // Clear usage
-      } 
+      }
       // Fallback to Saved Design
       else if (savedDesigns.current[currentTemplate.id]) {
            // Handle legacy (just json) vs new (object with json)
            const saved = savedDesigns.current[currentTemplate.id];
-           sourceFields = saved.json || saved; 
+           sourceFields = saved.json || saved;
+           savedBoundsForRescale = (saved as any).bounds ?? null;
       }
 
       if (sourceFields) {
@@ -703,6 +711,40 @@ export default function DesignCanvas() {
                newCanvas.add(img);
                newCanvas.sendToBack(img);
 
+               // Reapply fresh clipPath to all loaded design objects
+               if (clipPathRef.current) {
+                   newCanvas.getObjects()
+                       .filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
+                       .forEach(o => { o.clipPath = clipPathRef.current!; });
+               }
+
+               // Rescale objects if the canvas scaleFactor changed since the last save
+               // (e.g. browser window was a different size). All coords/sizes are stored
+               // in display pixels, so they must scale with the print zone.
+               if (savedBoundsForRescale && printZoneBoundsRef.current) {
+                   const ratio = printZoneBoundsRef.current.width / savedBoundsForRescale.width;
+                   if (Math.abs(ratio - 1) > 0.001) {
+                       newCanvas.getObjects()
+                           .filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
+                           .forEach(o => {
+                               o.set({
+                                   left: (o.left ?? 0) * ratio,
+                                   top: (o.top ?? 0) * ratio,
+                               });
+                               if (o.type === 'i-text') {
+                                   const text = o as fabric.IText;
+                                   text.set({ fontSize: Math.max(5, Math.round((text.fontSize ?? 12) * ratio)) });
+                               } else {
+                                   o.set({
+                                       scaleX: (o.scaleX ?? 1) * ratio,
+                                       scaleY: (o.scaleY ?? 1) * ratio,
+                                   });
+                               }
+                               o.setCoords();
+                           });
+                   }
+               }
+
                // Re-add Visual Zone (Dotted Line)
                if (printZoneBoundsRef.current) {
                     const visualZone = new fabric.Rect({
@@ -711,12 +753,12 @@ export default function DesignCanvas() {
                       width: printZoneBoundsRef.current.width,
                       height: printZoneBoundsRef.current.height,
                       fill: 'transparent',
-                      stroke: '#ef4444', 
+                      stroke: '#ef4444',
                       strokeWidth: 2,
                       strokeDashArray: [10, 5],
                       selectable: false,
                       evented: false,
-                      name: 'print_zone' 
+                      name: 'print_zone'
                     });
                     newCanvas.add(visualZone);
                }
