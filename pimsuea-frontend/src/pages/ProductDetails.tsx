@@ -141,12 +141,12 @@ export default function ProductDetails() {
         {/* Right: Info */}
         <div className="space-y-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
-            <div className="flex items-baseline gap-2">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-gray-900 tracking-tight">{product.name}</h1>
+            <div className="flex items-baseline gap-2 mt-3">
                 {product.starting_price ? (
                     <>
-                        <p className="text-3xl font-bold text-primary">฿{product.starting_price.toLocaleString()}</p>
-                        <span className="text-gray-500 text-sm">ราคาเริ่มต้น / ชิ้น</span>
+                        <p className="text-4xl font-black text-primary">฿{product.starting_price.toLocaleString()}</p>
+                        <span className="text-gray-500 font-medium">ราคาเริ่มต้น / ชิ้น</span>
                     </>
                 ) : (
                     <p className="text-2xl font-bold text-gray-400">ติดต่อสอบถาม</p>
@@ -154,25 +154,33 @@ export default function ProductDetails() {
             </div>
           </div>
 
-          <div className="space-y-6 border-y py-6">
+          <div className="space-y-8 py-2">
             {/* Print Method Selection */}
-            <div className="space-y-3">
-                <Label className="text-base font-semibold">เลือกรูปแบบการพิมพ์</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-4">
+                <Label className="flex items-center text-lg font-bold text-gray-900 border-l-4 border-primary pl-3">
+                   เลือกรูปแบบการพิมพ์
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
                     {product.print_methods?.map((method) => (
                         <div 
                             key={method.id}
                             onClick={() => setSelectedMethodId(method.id)}
                             className={`
-                                cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:border-primary/50
-                                ${selectedMethodId === method.id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-200 bg-white'}
+                                cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 
+                                ${selectedMethodId === method.id 
+                                    ? 'border-primary bg-primary/5 shadow-md scale-[1.02]' 
+                                    : 'border-gray-100 bg-white hover:border-primary/30 hover:bg-gray-50'}
                             `}
                         >
-                            <div className="flex justify-between items-start mb-1">
-                                <span className="font-semibold">{method.name}</span>
-                                {selectedMethodId === method.id && <Check className="w-4 h-4 text-primary" />}
+                            <div className="flex justify-between items-start mb-2">
+                                <span className={`font-bold ${selectedMethodId === method.id ? 'text-primary' : 'text-gray-800'}`}>
+                                    {method.name}
+                                </span>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${selectedMethodId === method.id ? 'border-primary bg-primary' : 'border-gray-300'}`}>
+                                    {selectedMethodId === method.id && <Check className="w-3 h-3 text-white" />}
+                                </div>
                             </div>
-                            <p className="text-xs text-gray-500 line-clamp-2">{method.description}</p>
+                            <p className="text-sm text-gray-500 leading-relaxed">{method.description}</p>
                         </div>
                     ))}
                 </div>
@@ -181,171 +189,77 @@ export default function ProductDetails() {
 
           </div>
           
-          {/* Price Estimator */}
-          <div className="border border-gray-200 rounded-2xl p-5 space-y-5 bg-white shadow-sm">
-            <div className="flex items-center gap-2 font-semibold text-gray-800">
-              <Calculator className="w-5 h-5 text-primary" />
-              คำนวณราคา & จำนวน
+          {/* Primary Action Area (CTA) */}
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+                <Calculator className="w-32 h-32" />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Quantity */}
-              <div className="space-y-1.5 col-span-2">
-                 <Label className="text-sm font-medium text-gray-700">จำนวนที่ต้องการ (ชิ้น)</Label>
-                 <Input
-                    type="number"
-                    min={1}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="bg-gray-50 border-gray-200 h-11 rounded-xl text-base px-4 focus-visible:ring-primary/20"
-                 />
-              </div>
-
-              {/* Color */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-500">สีเสื้อ</Label>
-                <Select value={estColor} onValueChange={(v) => setEstColor(v as 'White' | 'Black')}>
-                  <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-11"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="White">ขาว (White)</SelectItem>
-                    <SelectItem value="Black">ดำ (Black)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Size */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-500">ไซส์</Label>
-                <Select
-                  value={estSize || product.available_sizes?.[0] || ''}
-                  onValueChange={setEstSize}
-                >
-                  <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-11"><SelectValue placeholder="เลือกไซส์" /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {(product.available_sizes ?? []).map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Front print size */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-500">พิมพ์ด้านหน้า</Label>
-                <Select value={frontTier} onValueChange={setFrontTier}>
-                  <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-11"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="none">ไม่พิมพ์</SelectItem>
-                    {Object.entries(TIER_LABELS).map(([k, label]) => (
-                      <SelectItem key={k} value={k}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Back print size */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-500">พิมพ์ด้านหลัง</Label>
-                <Select value={backTier} onValueChange={setBackTier}>
-                  <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-11"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="none">ไม่พิมพ์</SelectItem>
-                    {Object.entries(TIER_LABELS).map(([k, label]) => (
-                      <SelectItem key={k} value={k}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="relative z-10 w-full">
+                <div className="space-y-3">
+                    <Button
+                        size="lg"
+                        className="w-full text-xl h-16 rounded-2xl shadow-xl shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-1 transition-all duration-300 font-bold"
+                        onClick={handleStartDesign}
+                        disabled={!selectedMethodId}
+                    >
+                      ✨ เริ่มออกแบบสินค้า
+                    </Button>
+                    {!selectedMethodId && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-amber-600 bg-amber-50 py-2 rounded-xl border border-amber-100">
+                            <AlertCircle className="w-4 h-4" /> 
+                            <span>กรุณาเลือกรูปแบบการพิมพ์ (ข้อ 1) ก่อนเริ่มออกแบบ</span>
+                        </div>
+                    )}
+                </div>
             </div>
-
-            {estError && <p className="text-xs text-red-500">{estError}</p>}
-
-            <Button
-              variant="outline"
-              className="w-full h-11 rounded-xl border-gray-200 hover:bg-gray-50 font-medium"
-              onClick={handleEstimate}
-              disabled={estLoading || !selectedMethodId}
-            >
-              {estLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Calculator className="w-4 h-4 mr-2" />}
-              คำนวณราคา ({quantity} ชิ้น)
-            </Button>
-
-            {estResult && (
-              <div className="text-sm space-y-1 pt-1 border-t">
-                <div className="flex justify-between text-gray-600">
-                  <span>ราคาเสื้อ</span>
-                  <span>฿{estResult.shirt_per_unit.toLocaleString()} / ชิ้น</span>
-                </div>
-                {estResult.front_print_per_unit > 0 && (
-                  <div className="flex justify-between text-gray-600">
-                    <span>พิมพ์ด้านหน้า</span>
-                    <span>฿{estResult.front_print_per_unit.toLocaleString()} / ชิ้น</span>
-                  </div>
-                )}
-                {estResult.back_print_per_unit > 0 && (
-                  <div className="flex justify-between text-gray-600">
-                    <span>พิมพ์ด้านหลัง</span>
-                    <span>฿{estResult.back_print_per_unit.toLocaleString()} / ชิ้น</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-semibold border-t pt-1">
-                  <span>รวม / ชิ้น</span>
-                  <span className="text-primary">฿{estResult.total_per_unit.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-bold text-base">
-                  <span>รวมทั้งหมด ({quantity} ชิ้น)</span>
-                  <span className="text-primary">฿{estResult.total.toLocaleString()}</span>
-                </div>
-              </div>
-            )}
           </div>
 
-          <div className="pt-2">
-            <Button
-                size="lg"
-                className="w-full text-lg py-6 rounded-2xl shadow-lg shadow-primary/30 hover:shadow-primary/40 transition-all font-semibold"
-                onClick={handleStartDesign}
-                disabled={!selectedMethodId}
-            >
-              เริ่มออกแบบสินค้า
-            </Button>
-            {!selectedMethodId && (
-                <p className="text-center text-sm text-red-500 mt-2">กรุณาเลือกรูปแบบการพิมพ์ก่อนเริ่มออกแบบ</p>
-            )}
+          <div className="grid grid-cols-2 gap-4 text-sm text-gray-700 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+             <div className="flex items-center gap-3 font-medium">
+                 <div className="bg-green-100 p-2 rounded-full"><Check className="w-5 h-5 text-green-600"/></div>
+                 ผลิตไวใน 2-3 วัน
+             </div>
+             <div className="flex items-center gap-3 font-medium">
+                 <div className="bg-blue-100 p-2 rounded-full"><ShieldCheck className="w-5 h-5 text-blue-600"/></div>
+                 รับประกันคุณภาพ
+             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-700 bg-gray-50/80 p-5 rounded-2xl border border-gray-100">
-             <div className="flex items-center gap-2 font-medium"><Check className="w-5 h-5 text-green-500"/> ผลิตไวใน 2-3 วัน</div>
-             <div className="flex items-center gap-2 font-medium"><ShieldCheck className="w-5 h-5 text-green-500"/> รับประกันคุณภาพ</div>
-          </div>
-
+          {/* Secondary Elements: Details, Size, Estimator */}
+          {/* Secondary Elements: Details, Size, Care, Estimator */}
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="w-full bg-gray-50 p-1 rounded-xl">
-              <TabsTrigger value="details" className="flex-1 rounded-lg">รายละเอียด</TabsTrigger>
-              <TabsTrigger value="size" className="flex-1 rounded-lg">ตารางไซส์</TabsTrigger>
-              <TabsTrigger value="care" className="flex-1 rounded-lg">การดูแล</TabsTrigger>
+            <TabsList className="w-full bg-gray-50/80 p-1.5 rounded-2xl h-14 flex overflow-x-auto no-scrollbar">
+              <TabsTrigger value="details" className="flex-1 min-w-[100px] rounded-xl font-medium text-base h-full data-[state=active]:shadow-sm">รายละเอียด</TabsTrigger>
+              <TabsTrigger value="size" className="flex-1 min-w-[100px] rounded-xl font-medium text-base h-full data-[state=active]:shadow-sm">ตารางไซส์</TabsTrigger>
+              <TabsTrigger value="care" className="flex-1 min-w-[100px] rounded-xl font-medium text-base h-full data-[state=active]:shadow-sm">การดูแล</TabsTrigger>
+              <TabsTrigger value="estimator" className="flex-1 min-w-[120px] rounded-xl font-medium text-base h-full data-[state=active]:bg-primary/5 data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                  <Calculator className="w-4 h-4 mr-2" /> คำนวณราคา
+              </TabsTrigger>
             </TabsList>
-            <TabsContent value="details" className="p-5 border rounded-2xl mt-3 bg-white shadow-sm">
-              <p className="text-gray-600 leading-relaxed">{product.description || "ไม่มีรายละเอียดสินค้า"}</p>
+            
+            <TabsContent value="details" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm">
+              <p className="text-gray-600 leading-relaxed text-lg">{product.description || "ไม่มีรายละเอียดสินค้า"}</p>
             </TabsContent>
-            <TabsContent value="size" className="p-5 border rounded-2xl mt-3 bg-white shadow-sm">
+            
+            <TabsContent value="size" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm overflow-hidden">
               {product.size_guide && Object.keys(product.size_guide).length > 0 ? (() => {
                 const entries = Object.entries(product.size_guide as Record<string, Record<string, number>>);
-                const measureKeys = Object.keys(entries[0][1]);
+                if (entries.length === 0) return <p className="text-sm text-gray-400">ไม่มีข้อมูลตารางไซส์</p>;
+                const measureKeys = Object.keys(entries[0][1] || {});
                 return (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="p-2">Size</th>
-                          {measureKeys.map(k => <th key={k} className="p-2">{k} (นิ้ว)</th>)}
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                          <th className="p-4 font-bold text-gray-700 uppercase">Size</th>
+                          {measureKeys.map(k => <th key={k} className="p-4 font-bold text-gray-700">{k} (นิ้ว)</th>)}
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-gray-100">
                         {entries.map(([size, measures], i) => (
-                          <tr key={size} className={i < entries.length - 1 ? 'border-b' : ''}>
-                            <td className="p-2 font-medium">{size}</td>
-                            {measureKeys.map(k => <td key={k} className="p-2">{measures[k] ?? '-'}</td>)}
+                          <tr key={size} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="p-4 font-semibold">{size}</td>
+                            {measureKeys.map(k => <td key={k} className="p-4">{measures[k] ?? '-'}</td>)}
                           </tr>
                         ))}
                       </tbody>
@@ -353,15 +267,151 @@ export default function ProductDetails() {
                   </div>
                 );
               })() : (
-                <p className="text-sm text-gray-400">ไม่มีข้อมูลตารางไซส์</p>
+                <div className="overflow-x-auto">
+                 <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="bg-gray-50 border-b-2 border-gray-200">
+                            <th className="p-4 font-bold text-gray-700 uppercase">Size</th>
+                            <th className="p-4 font-bold text-gray-700">อก (นิ้ว)</th>
+                            <th className="p-4 font-bold text-gray-700">ยาว (นิ้ว)</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        <tr className="hover:bg-gray-50/50 transition-colors"><td className="p-4 font-semibold">S</td><td className="p-4">32</td><td className="p-4">26</td></tr>
+                        <tr className="hover:bg-gray-50/50 transition-colors"><td className="p-4 font-semibold">M</td><td className="p-4">36</td><td className="p-4">27</td></tr>
+                        <tr className="hover:bg-gray-50/50 transition-colors"><td className="p-4 font-semibold">L</td><td className="p-4">40</td><td className="p-4">28</td></tr>
+                        <tr className="hover:bg-gray-50/50 transition-colors"><td className="p-4 font-semibold">XL</td><td className="p-4">44</td><td className="p-4">29</td></tr>
+                    </tbody>
+                 </table>
+                </div>
               )}
             </TabsContent>
-            <TabsContent value="care" className="p-5 border rounded-2xl mt-3 bg-white shadow-sm">
+
+            <TabsContent value="care" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm">
               {product.care_instructions ? (
                 <p className="text-gray-600 leading-relaxed whitespace-pre-line">{product.care_instructions}</p>
               ) : (
                 <p className="text-sm text-gray-400">ไม่มีข้อมูลการดูแลรักษา</p>
               )}
+            </TabsContent>
+
+            <TabsContent value="estimator" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm space-y-6">
+                <div className="flex items-center gap-2 pb-4 border-b border-gray-100">
+                    <div className="bg-primary/10 p-2 rounded-xl text-primary">
+                        <Calculator className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-900">เครื่องมือประเมินราคาเบื้องต้น</h3>
+                        <p className="text-sm text-gray-500">ช่วยคุณวางแผนงบประมาณ</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2 col-span-1 md:col-span-2">
+                    <Label className="text-sm font-semibold text-gray-700">จำนวนที่ต้องการ (ชิ้น)</Label>
+                    <Input
+                       type="number"
+                       min={1}
+                       value={quantity}
+                       onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                       className="bg-gray-50 border-gray-200 rounded-xl h-12 text-lg focus-visible:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">สีเสื้อ</Label>
+                    <Select value={estColor} onValueChange={(v) => setEstColor(v as 'White' | 'Black')}>
+                      <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="White">ขาว (White)</SelectItem>
+                        <SelectItem value="Black">ดำ (Black)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">ไซส์ประเมินราคา</Label>
+                    <Select value={estSize || product.available_sizes?.[0] || ''} onValueChange={setEstSize}>
+                      <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue placeholder="เลือกไซส์" /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {(product.available_sizes ?? []).map(s => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">พิมพ์ด้านหน้า</Label>
+                    <Select value={frontTier} onValueChange={setFrontTier}>
+                      <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="none">ไม่พิมพ์</SelectItem>
+                        {Object.entries(TIER_LABELS).map(([k, label]) => (
+                          <SelectItem key={k} value={k}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">พิมพ์ด้านหลัง</Label>
+                    <Select value={backTier} onValueChange={setBackTier}>
+                      <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="none">ไม่พิมพ์</SelectItem>
+                        {Object.entries(TIER_LABELS).map(([k, label]) => (
+                          <SelectItem key={k} value={k}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {estError && (
+                    <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-100 flex items-center gap-2 text-sm font-medium">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <p>{estError}</p>
+                    </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  className="w-full h-14 rounded-2xl border-2 border-gray-200 hover:border-primary/50 hover:bg-gray-50 font-bold text-gray-700 transition-all"
+                  onClick={handleEstimate}
+                  disabled={estLoading || !selectedMethodId}
+                >
+                  {estLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Calculator className="w-5 h-5 mr-2" />}
+                  ประเมินราคาสำหรับ {quantity} ชิ้น
+                </Button>
+
+                {estResult && (
+                  <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-3 mt-4">
+                    <div className="flex justify-between text-gray-600">
+                      <span>ราคาเสื้อ</span>
+                      <span className="font-medium">฿{estResult.shirt_per_unit.toLocaleString()} / ชิ้น</span>
+                    </div>
+                    {estResult.front_print_per_unit > 0 && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>สกรีนด้านหน้า</span>
+                        <span className="font-medium">฿{estResult.front_print_per_unit.toLocaleString()} / ชิ้น</span>
+                      </div>
+                    )}
+                    {estResult.back_print_per_unit > 0 && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>สกรีนด้านหลัง</span>
+                        <span className="font-medium">฿{estResult.back_print_per_unit.toLocaleString()} / ชิ้น</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-3 mt-1">
+                      <span>รวมต่อชิ้น</span>
+                      <span className="text-primary text-xl">฿{estResult.total_per_unit.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between font-black text-gray-900 bg-white p-4 rounded-xl shadow-sm border border-gray-100 mt-2 items-center">
+                      <span>ยอดรวมทั้งสิ้น ({quantity} ชิ้น)</span>
+                      <span className="text-primary text-2xl">฿{estResult.total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
             </TabsContent>
           </Tabs>
         </div>

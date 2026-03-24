@@ -44,8 +44,8 @@ export const translations = {
     stage3: "Quality check",
     stage4: "Shipped!",
     daysLeft: "5–14 days",
-    canvasPrintTier: "DTG Print (A4 tier)",
-    canvasGarment: "Garment (White / M)"
+    canvasPrintTier: "DTF Print (3×4\" tier)",
+    canvasGarment: "Garment (White / S)"
   },
   th: {
     navStartDesigning: "เริ่มออกแบบ",
@@ -90,7 +90,7 @@ export const translations = {
     stage3: "ตรวจสอบคุณภาพ",
     stage4: "จัดส่งแล้ว!",
     daysLeft: "5–14 วัน",
-    canvasPrintTier: "พิมพ์ DTG (ขนาด A4)",
-    canvasGarment: "เสื้อยืด (สีขาว / ไซส์ M)"
+    canvasPrintTier: "พิมพ์ DTF (ขนาด 3×4\")",
+    canvasGarment: "เสื้อยืด (สีขาว / ไซส์ S)"
   }
 };

@@ -141,7 +141,7 @@ function CanvasHeroGraphic() {
                 transition={{ delay: 1.4 }}
                 className="h-8 bg-action/20 text-action rounded flex items-center justify-center font-bold text-xs uppercase tracking-wider"
               >
-                ฿145 / pc
+                ฿132 / pc
               </motion.div>
             </div>
           </div>
@@ -156,7 +156,7 @@ function CanvasHeroGraphic() {
         className="absolute -right-4 top-1/4 bg-card border border-border shadow-xl rounded-lg px-3 py-2 flex items-center gap-2 hidden md:flex"
       >
         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-sm font-bold">฿145 / piece</span>
+        <span className="text-sm font-bold">฿132 / piece</span>
       </motion.div>
 
       <motion.div
@@ -217,7 +217,7 @@ function StepVisual2() {
 
   useEffect(() => {
     if (!isInView) return;
-    const target = 145;
+    const target = 132;
     const duration = 1200;
     const start = Date.now();
     const timer = setInterval(() => {
@@ -244,8 +244,8 @@ function StepVisual2() {
         </div>
         <div className="space-y-2 text-sm">
           {[
-            [t.canvasGarment, "฿120"],
-            [t.canvasPrintTier, "฿25"],
+            [t.canvasGarment, "฿110"],
+            [t.canvasPrintTier, "฿22"],
           ].map(([label, price]) => (
             <div key={label} className="flex justify-between text-muted-foreground">
               <span>{label}</span>
@@ -429,43 +429,52 @@ function WhoWeAreSection() {
       <div className="max-w-5xl mx-auto px-6 py-24 lg:py-32">
         <div ref={ref} className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-          {/* Left — Photo placeholder (replace src with real photo before launch) */}
+          {/* Left — 2 Photos placeholder */}
           <motion.div
             initial={{ opacity: 0, x: -32 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="relative order-last lg:order-first"
+            className="relative order-last lg:order-first w-full max-w-lg mx-auto lg:mx-0"
           >
-            <div className="relative aspect-[4/5] w-full max-w-md mx-auto lg:mx-0 overflow-hidden rounded-2xl bg-foreground">
-              {/* Geometric editorial placeholder — swap with <img> on launch */}
-              <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900" />
-              <div
-                className="absolute inset-0 opacity-[0.06]"
-                style={{
-                  backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-                  backgroundSize: "20px 20px",
-                }}
-              />
-              {/* Accent lines */}
-              <div className="absolute top-8 left-8 right-8 h-px bg-white/20" />
-              <div className="absolute bottom-8 left-8 right-8 h-px bg-white/20" />
-              <div className="absolute top-8 bottom-8 left-8 w-px bg-white/20" />
-              <div className="absolute top-8 bottom-8 right-8 w-px bg-white/20" />
-              {/* Center content */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-white/50">
-                <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center">
-                  <img src="/logo.svg" alt="" className="h-7 w-auto opacity-30" />
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 relative z-10">
+              
+              {/* Photo 1 (shifted down - Touch) */}
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
+                <img 
+                  src="/photos/Founder_Touch.jpg" 
+                  alt="Founder Touch" 
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute bottom-5 left-5 right-5 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                  <p className="text-white font-bold text-sm sm:text-base tracking-wide drop-shadow-md">Touch</p>
+                  <p className="text-white/70 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-light mt-0.5">Co-Founder</p>
                 </div>
-                <p className="text-xs font-light tracking-[0.2em] uppercase">Founders Photo</p>
               </div>
-              {/* Location badge */}
-              <div className="absolute bottom-6 left-6 right-6 bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-action animate-pulse shrink-0" />
-                <span className="text-white/80 text-sm font-light tracking-wide">Bangkok, Thailand</span>
+
+              {/* Photo 2 (shifted up - Haka) */}
+              <div className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden rounded-2xl bg-foreground shadow-xl mb-8 md:mb-12 group">
+                <img 
+                  src="/photos/Founder_Haka.jpg" 
+                  alt="Founder Haka" 
+                  className="absolute inset-0 w-full h-full object-cover object-[center_top] group-hover:scale-105 transition-transform duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute bottom-5 left-5 right-5 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                  <p className="text-white font-bold text-sm sm:text-base tracking-wide drop-shadow-md">Haka</p>
+                  <p className="text-white/70 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-light mt-0.5">Co-Founder</p>
+                </div>
               </div>
             </div>
+
+            {/* Location badge overlaying the gap */}
+            <div className="absolute -bottom-6 md:-bottom-2 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:-right-6 bg-white/90 backdrop-blur-md border border-border/50 shadow-xl rounded-xl px-5 py-3 flex items-center gap-3 z-20 w-max">
+              <div className="w-2.5 h-2.5 rounded-full bg-action animate-pulse shrink-0" />
+              <span className="text-foreground text-sm font-semibold tracking-wide">Bangkok, Thailand</span>
+            </div>
+
             {/* Subtle shadow accent */}
-            <div className="absolute -bottom-4 left-4 right-12 h-8 bg-foreground/10 blur-xl rounded-full -z-10" />
+            <div className="absolute -bottom-4 left-4 right-8 h-12 bg-foreground/5 blur-2xl rounded-full -z-10" />
           </motion.div>
 
           {/* Right — Narrative */}
@@ -482,7 +491,7 @@ function WhoWeAreSection() {
 
             {/* Headline */}
             <div className="space-y-2">
-              <h2 className="font-black text-4xl md:text-5xl leading-[1.05] tracking-tight">
+              <h2 className="font-black text-4xl md:text-5xl leading-[1.2] md:leading-[1.15] tracking-tight py-2">
                 {isEn ? (
                   <>Engineered for creators.<br /><span className="text-primary">Built from experience.</span></>
                 ) : (
@@ -504,7 +513,7 @@ function WhoWeAreSection() {
                     and unpredictable pricing.
                   </p>
                   <p>
-                    As Engineering students at Chulalongkorn University, we realized the problem wasn't
+                    As engineering students, we realized the problem wasn't
                     the printing—it was the infrastructure. We built PimSuea to replace the friction of
                     the traditional factory model with the precision of modern software.{" "}
                     <span className="font-medium text-foreground">No middlemen. No guessing. Just your design, engineered flawlessly.</span>
@@ -517,7 +526,7 @@ function WhoWeAreSection() {
                     การต้องง้อขั้นต่ำ รอแอดมินตอบแชท และไม่เคยรู้ราคาที่แท้จริงจนกว่าจะตกลงสั่งทำ
                   </p>
                   <p>
-                    ในฐานะนิสิตวิศวกรรมศาสตร์ จุฬาลงกรณ์มหาวิทยาลัย เรามองเห็นว่าปัญหานี้แก้ได้ด้วยเทคโนโลยี
+                    ในฐานะนิสิตวิศวกรรมศาสตร์ เรามองเห็นว่าปัญหานี้แก้ได้ด้วยเทคโนโลยี
                     เราจึงสร้างแพลตฟอร์มที่เปลี่ยนความยุ่งยากทั้งหมดให้จบได้ในหน้าเว็บเดียว...
                     ลากวางลาย เห็นม็อคอัพจริง และคำนวณราคาเรียลไทม์
                   </p>
@@ -532,7 +541,7 @@ function WhoWeAreSection() {
             <div className="pt-4 border-t border-border space-y-1">
               <p className="font-bold text-base text-foreground">The PimSuea Team</p>
               <p className="text-sm text-muted-foreground font-light">
-                Chulalongkorn University, Faculty of Engineering
+                Engineers by trade, creators by passion.
               </p>
             </div>
           </motion.div>
@@ -644,7 +653,7 @@ export default function NewLanding() {
             transition={{ duration: 0.7 }}
             className="space-y-6"
           >
-            <h1 className="font-black text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight">
+            <h1 className="font-black text-5xl md:text-6xl lg:text-7xl leading-[1.2] md:leading-[1.15] tracking-tight py-2">
               {t.heroTitle1}{" "}
               <span className="text-primary">{t.heroTitle2}</span>
             </h1>
@@ -674,30 +683,6 @@ export default function NewLanding() {
           <div className="order-first lg:order-last">
             <CanvasHeroGraphic />
           </div>
-        </div>
-      </section>
-
-      {/* ── Trust Bar ────────────────────────────────────────────────── */}
-      <section className="border-y border-border py-8 overflow-hidden bg-secondary/20">
-        <p className="text-center text-sm text-muted-foreground mb-6 font-light px-6">
-          {t.trustBar}
-        </p>
-        {/* Scrolling logo strip — replace divs with <img> before launch */}
-        <div className="relative flex overflow-hidden">
-          <motion.div
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="flex gap-8 shrink-0"
-          >
-            {[...Array(12)].map((_, i) => (
-              <div
-                key={i}
-                className="w-28 h-10 bg-muted rounded-md flex items-center justify-center text-[10px] text-muted-foreground/50 font-medium uppercase tracking-widest shrink-0"
-              >
-                Logo
-              </div>
-            ))}
-          </motion.div>
         </div>
       </section>
 

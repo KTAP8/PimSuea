@@ -39,7 +39,7 @@ const content = {
         title: 'ไม่มีขั้นต่ำ',
         desc: 'สั่ง 1 ตัว สั่ง 100 ตัว\nก็ได้ราคาที่แฟร์\nไม่ต้องกังวลเรื่องขั้นต่ำ',
         priceLabel: 'เริ่มต้นเพียง',
-        price: '115 THB',
+        price: '132 THB',
       },
       pricing: {
         title: 'รู้ราคาทันที',
@@ -113,7 +113,7 @@ const content = {
         title: 'No Minimum',
         desc: 'Order 1 or order 100\nyou get a fair price\neither way',
         priceLabel: 'Starting at',
-        price: '115 THB',
+        price: '132 THB',
       },
       pricing: {
         title: 'Instant Pricing',
