@@ -5,19 +5,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Check } from "lucide-react";
+
+const PASSWORD_RULES = [
+  { label: "อย่างน้อย 8 ตัวอักษร",        test: (p: string) => p.length >= 8 },
+  { label: "ตัวอักษรพิมพ์ใหญ่ (A–Z)",      test: (p: string) => /[A-Z]/.test(p) },
+  { label: "ตัวอักษรพิมพ์เล็ก (a–z)",      test: (p: string) => /[a-z]/.test(p) },
+  { label: "ตัวเลข (0–9)",                 test: (p: string) => /[0-9]/.test(p) },
+  { label: "อักขระพิเศษ (!@#$%^&*…)",      test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
+function passwordValid(p: string) {
+  return PASSWORD_RULES.every((r) => r.test(p));
+}
 
 export default function ResetPassword() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [touched, setTouched] = useState({ password: false, confirm: false });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [ready, setReady] = useState(false); // true once Supabase recovery session is active
+  const [ready, setReady] = useState(false);
+
+  const confirmError = touched.confirm && password !== confirm ? "รหัสผ่านไม่ตรงกัน" : null;
+  const formValid = passwordValid(password) && password === confirm;
 
   useEffect(() => {
-    // Supabase parses the #access_token from the URL hash and fires PASSWORD_RECOVERY
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);
@@ -28,14 +45,8 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirm) {
-      setError("รหัสผ่านไม่ตรงกัน");
-      return;
-    }
-    if (password.length < 6) {
-      setError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
-      return;
-    }
+    setTouched({ password: true, confirm: true });
+    if (!formValid) return;
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.updateUser({ password });
@@ -80,29 +91,67 @@ export default function ResetPassword() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              {/* New password */}
               <div className="space-y-2">
                 <Label htmlFor="new-password">รหัสผ่านใหม่</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="อย่างน้อย 6 ตัวอักษร"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Live password rules — always visible */}
+                <ul className="space-y-1 pt-1">
+                    {PASSWORD_RULES.map((rule) => {
+                      const ok = rule.test(password);
+                      return (
+                        <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-green-600" : "text-gray-400"}`}>
+                          <Check className={`w-3 h-3 flex-shrink-0 ${ok ? "opacity-100" : "opacity-30"}`} />
+                          {rule.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
               </div>
+
+              {/* Confirm password */}
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">ยืนยันรหัสผ่านใหม่</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="กรอกรหัสผ่านอีกครั้ง"
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirm ? "text" : "password"}
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    onBlur={() => setTouched((t) => ({ ...t, confirm: true }))}
+                    className={`pr-10 ${confirmError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {confirmError && <p className="text-xs text-red-500">{confirmError}</p>}
               </div>
+
               <Button type="submit" className="w-full py-6 text-lg" disabled={loading}>
                 {loading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
               </Button>
