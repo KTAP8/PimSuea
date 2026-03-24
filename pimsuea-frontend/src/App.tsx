@@ -14,6 +14,7 @@ import Wallet from './pages/Wallet';
 import Order from './pages/Order';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
 import NewsDetails from './pages/NewsDetails';
 import Landing from './pages/Landing';
 import NewLanding from './pages/NewLanding';
@@ -25,7 +26,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
   const location = useLocation();
-  const hideSidebarRoutes = ['/login', '/register', '/', '/onboarding', '/home'];
+  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding', '/home'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname) && !location.pathname.startsWith('/design/');
 
   return (
@@ -45,6 +46,7 @@ function Layout() {
               <Route path="/home" element={<NewLanding />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Protected Routes */}
               <Route element={<ProtectedRoute />}>

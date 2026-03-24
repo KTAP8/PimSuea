@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,6 +14,28 @@ export default function Login() {
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Forgot password state
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    setForgotError(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      setForgotError(error.message);
+    } else {
+      setForgotSent(true);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +70,61 @@ export default function Login() {
     }
     // On success, browser redirects to Google — no further action needed here
   };
+
+  if (forgotMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+          <button
+            onClick={() => { setForgotMode(false); setForgotSent(false); setForgotError(null); }}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
+          >
+            <ArrowLeft className="h-4 w-4" /> กลับไปหน้าเข้าสู่ระบบ
+          </button>
+
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-primary mb-2">ลืมรหัสผ่าน?</h1>
+            <p className="text-gray-500 text-sm">กรอกอีเมลของคุณ เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่</p>
+          </div>
+
+          {forgotSent ? (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertTitle className="text-green-800">ส่งอีเมลแล้ว</AlertTitle>
+              <AlertDescription className="text-green-700">
+                ตรวจสอบอีเมล <strong>{forgotEmail}</strong> แล้วคลิกลิงก์เพื่อตั้งรหัสผ่านใหม่
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              {forgotError && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{forgotError}</AlertDescription>
+                </Alert>
+              )}
+              <form onSubmit={handleForgotPassword} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">อีเมล</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full py-6 text-lg" disabled={forgotLoading}>
+                  {forgotLoading ? "กำลังส่ง..." : "ส่งลิงก์รีเซ็ตรหัสผ่าน"}
+                </Button>
+              </form>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -107,7 +184,13 @@ export default function Login() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <Label htmlFor="password">รหัสผ่าน</Label>
-              <a href="#" className="text-xs text-primary hover:underline">ลืมรหัสผ่าน?</a>
+              <button
+                type="button"
+                onClick={() => { setForgotMode(true); setForgotEmail(email); }}
+                className="text-xs text-primary hover:underline"
+              >
+                ลืมรหัสผ่าน?
+              </button>
             </div>
             <Input
               id="password"

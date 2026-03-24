@@ -279,8 +279,7 @@ export default function Order() {
                 print_file_url: design.print_file_url,
             };
 
-            const repriced = await repriceAll([newItem]);
-            setCartItems(repriced);
+            setCartItems([newItem]);
 
         } catch (error) {
             console.error("Failed to init order:", error);
@@ -289,7 +288,7 @@ export default function Order() {
         }
       }
     };
-    
+
     initCart();
   }, [initialDesignId]);
 
@@ -302,10 +301,15 @@ export default function Order() {
              setLoading(true);
              try {
                  const richItems = await Promise.all(contextCartItems.map(async (cItem) => {
-                     // Fetch Product Logic (Duplicate of above but for each item)
-                     const product = await getProductById(cItem.product_id as string);
-                     const templates = await getProductTemplates(cItem.product_id as string).catch(() => []);
-                     
+                     // Fetch product, templates, and design all in parallel
+                     const [product, templates, design] = await Promise.all([
+                         getProductById(cItem.product_id as string),
+                         getProductTemplates(cItem.product_id as string).catch(() => []),
+                         (cItem.design_id && cItem.design_id !== 'custom')
+                             ? getDesignById(cItem.design_id).catch(() => null)
+                             : Promise.resolve(null),
+                     ]);
+
                      // Size Guide
                      let sizeGuide = {};
                      if (typeof product.size_guide === 'string') {
@@ -313,47 +317,22 @@ export default function Order() {
                      } else {
                           sizeGuide = product.size_guide || {};
                      }
-                     
+
                      // Available Sizes — from shirt_pricing (authoritative)
                      const availableSizes: string[] = product.available_sizes?.length
                          ? product.available_sizes
                          : ['S', 'M', 'L', 'XL', 'XXL'];
-                     
-                     let allProductColors = Array.from(new Map(
+
+                     const availableColors = Array.from(new Map(
                          templates.map((t: any) => [t.color?.id, t.color])
                      ).values()).filter(Boolean);
-                     
-                     // Check if cItem has color constraint? 
-                     // The CartItem in Context has 'color_id'.
-                     // For Order UI, we want to show available colors. 
-                     // Assuming all colors are available unless restricted by design (which we don't strictly have here unless we fetch the original design too).
-                     // But wait, cItem.design_json is generic.
-                     // The Design object might not be readily available if it's a "New" composition?
-                     // Actually, cItem is created from a Template.
-                     // Let's assume all product colors are available.
-                     
-                     const availableColors = allProductColors;
 
-                     // Pricing via new pricing API
                      const colorId = cItem.color_id || availableColors[0]?.id || 'white';
-                     let price = cItem.price || product.starting_price || 500;
-                     let printingType: string | undefined;
-                     let print_dimensions: Record<string, { w: number; h: number }> | undefined;
-                     let priceBreakdown: ItemPriceBreakdown | undefined;
-
-                     // Fetch design for print_dimensions if available
-                     if (cItem.design_id && cItem.design_id !== 'custom') {
-                         const design = await getDesignById(cItem.design_id).catch(() => null);
-                         if (design) {
-                             printingType = design.printing_type;
-                             print_dimensions = design.print_dimensions;
-                         }
-                     }
-
-                     if (print_dimensions && printingType) {
-                         const bd = await calcMultiSidePrice(printingType, print_dimensions, cItem.quantity, String(product.id), colorId, cItem.size).catch(() => null);
-                         if (bd) { priceBreakdown = bd; price = bd.total_per_unit; }
-                     }
+                     const price = cItem.price || product.starting_price || 500;
+                     const printingType: string | undefined = design?.printing_type;
+                     const print_dimensions: Record<string, { w: number; h: number }> | undefined = design?.print_dimensions;
+                     // repriceAll below will compute the correct group-quantity price
+                     const priceBreakdown: ItemPriceBreakdown | undefined = undefined;
 
                      return {
                          id: cItem.id,

@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function MyProducts() {
   const [designs, setDesigns] = useState<any[]>([]);
@@ -53,66 +54,100 @@ export default function MyProducts() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">ผลงานออกแบบของฉัน</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+        <div>
+          <h1 className="text-4xl font-black tracking-tight text-gray-900">ผลงานของฉัน</h1>
+          <p className="text-gray-500 mt-1 font-medium">จัดการ ลบ หรือสั่งผลิตงานออกแบบของคุณ</p>
+        </div>
         <Link to="/catalog">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" /> สร้างงานใหม่
+          <Button className="rounded-full shadow-md shadow-primary/20 hover:shadow-primary/40 font-bold px-6 border-2 border-primary">
+            <Plus className="w-5 h-5 mr-2" /> สร้างงานใหม่
           </Button>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+        
+        {/* Empty State / First Design Prompt */}
+        {designs.length === 0 && (
+          <Link to="/catalog" className="col-span-1 md:col-span-full border-2 border-dashed border-gray-200 bg-gray-50/50 rounded-[2rem] flex flex-col items-center justify-center p-12 text-gray-400 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300 cursor-pointer min-h-[320px] group">
+              <div className="w-20 h-20 bg-white rounded-full shadow-md flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                 <Plus className="w-10 h-10 text-primary/70 group-hover:text-primary transition-colors" />
+              </div>
+              <span className="font-black text-2xl text-gray-700 group-hover:text-primary transition-colors">คุณยังไม่มีผลงานออกแบบ</span>
+              <span className="text-base font-medium mt-3 text-center">คลิกที่นี่เพื่อเริ่มสร้างชิ้นแรกของคุณเลย!</span>
+          </Link>
+        )}
+
         {designs.map((design) => (
-          <div key={design.id} className="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <div className="h-40 bg-gray-50 flex items-center justify-center relative group">
+          <div key={design.id} className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 flex flex-col group hover:-translate-y-1">
+            <Link to={`/design/${design.base_product_id}?designId=${design.id}`} className="block relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
                 <img 
                     src={design.preview_image_url || "https://via.placeholder.com/300?text=No+Preview"} 
                     alt={design.design_name} 
-                    className="h-full w-full object-contain" 
+                    className="h-full w-full object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 ease-out" 
                 />
-                <div className="absolute inset-0 bg-black/40 hidden group-hover:flex items-center justify-center gap-2 transition-all">
-                    <Link to={`/order?initialDesignId=${design.id}`}>
-                        <Button size="icon" variant="default" className="bg-primary hover:bg-primary/90"><ShoppingCart className="w-4 h-4" /></Button>
-                    </Link>
-                    <Link to={`/design/${design.base_product_id}?designId=${design.id}`}>
-                         <Button size="icon" variant="secondary"><Edit2 className="w-4 h-4" /></Button>
-                    </Link>
-                    <Button size="icon" variant="destructive" onClick={() => setDeleteId(design.id)}>
-                        <Trash2 className="w-4 h-4" />
-                    </Button>
+                
+                {/* Badges Floating on Top */}
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                   {design.is_ordered && (
+                       <Badge variant="secondary" className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-lg border shadow-sm bg-green-50 text-green-700 border-green-200">
+                           📦 สั่งผลิตแล้ว (Ordered)
+                       </Badge>
+                   )}
+                   {design.printing_type && (
+                       <Badge variant="outline" className="text-[10px] font-bold bg-white/90 backdrop-blur-sm text-gray-600 border-gray-100 rounded-lg shadow-sm self-start hidden sm:inline-flex">
+                           {design.printing_type}
+                       </Badge>
+                   )}
                 </div>
-            </div>
-            <div className="p-4">
-              <h3 className="font-semibold text-lg mb-1 truncate" title={design.design_name}>{design.design_name}</h3>
-              <p className="text-sm text-gray-500">
-                  {new Date(design.created_at).toLocaleDateString('th-TH', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                  })}
-              </p>
-              <div className="mt-3 pt-3 border-t flex justify-between items-center">
-                 <span className={`text-xs font-medium px-2 py-1 rounded ${design.is_ordered ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-600'}`}>
-                     {design.is_ordered ? 'Ordered' : 'Draft'}
-                 </span>
-                 {design.printing_type && (
-                     <span className="text-xs font-medium px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
-                         {design.printing_type}
-                     </span>
-                 )}
+                
+                {/* Subtle Tap Hint overlay for mobile */}
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            </Link>
+            
+            <div className="p-5 sm:p-6 flex-1 flex flex-col bg-gradient-to-b from-white to-gray-50/30">
+              <div className="mb-4">
+                  <h3 className="font-bold text-lg sm:text-xl text-gray-900 leading-snug line-clamp-1 mb-1.5" title={design.design_name}>{design.design_name || "Untitled Design"}</h3>
+                  <p className="text-xs font-medium text-gray-400">
+                      แก้ไขล่าสุด: {new Date(design.created_at).toLocaleDateString('th-TH', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                      })}
+                  </p>
+              </div>
+
+              {/* Action Buttons Footer (Mobile Accessible) */}
+              <div className="mt-auto grid grid-cols-5 gap-2 pt-4 border-t border-gray-100">
+                  <Link to={`/order?initialDesignId=${design.id}`} className="col-span-3">
+                      <Button variant="default" className="w-full rounded-xl shadow-sm hover:shadow-primary/20 bg-primary font-bold h-11">
+                          <ShoppingCart className="w-4 h-4 mr-2" /> สั่งผลิต
+                      </Button>
+                  </Link>
+                  <Link to={`/design/${design.base_product_id}?designId=${design.id}`} className="col-span-1">
+                      <Button variant="outline" className="w-full rounded-xl border-gray-200 hover:border-primary/50 text-gray-600 px-0 hover:bg-primary/5 h-11">
+                          <Edit2 className="w-4 h-4" />
+                      </Button>
+                  </Link>
+                  <Button variant="outline" onClick={() => setDeleteId(design.id)} className="col-span-1 rounded-xl border-red-100 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 px-0 shadow-sm h-11">
+                      <Trash2 className="w-4 h-4" />
+                  </Button>
               </div>
             </div>
           </div>
         ))}
-        
-        {/* Empty State / Add New Placeholder */}
-        <Link to="/catalog" className="border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center p-6 text-gray-400 hover:border-primary hover:text-primary transition-colors cursor-pointer min-h-[250px]">
-            <Plus className="w-12 h-12 mb-2" />
-            <span className="font-medium">เริ่มออกแบบงานใหม่</span>
-        </Link>
+
+        {designs.length > 0 && (
+          <Link to="/catalog" className="border-2 border-dashed border-gray-200 bg-gray-50/50 rounded-[2rem] flex flex-col items-center justify-center p-6 text-gray-400 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300 cursor-pointer min-h-[320px] group hover:-translate-y-1">
+              <div className="w-14 h-14 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                 <Plus className="w-7 h-7" />
+              </div>
+              <span className="font-bold text-lg text-gray-600 group-hover:text-primary transition-colors">สร้างผลงานใหม่</span>
+          </Link>
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
