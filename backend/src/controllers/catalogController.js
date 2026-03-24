@@ -109,7 +109,7 @@ exports.getProductById = async (req, res) => {
     const startingPrice = product.min_price ?? null;
 
     // Derive available sizes from shirt_pricing (authoritative source)
-    const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL'];
+    const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
     const { data: shirtPricingRows } = await supabase
         .from('shirt_pricing')
         .select('size')
