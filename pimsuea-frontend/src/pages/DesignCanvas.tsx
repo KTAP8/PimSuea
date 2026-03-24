@@ -381,24 +381,27 @@ export default function DesignCanvas() {
              obj.set({ top: zoneCY });
              addGuide(canvas, bounds.left - M, zoneCY, bounds.left + bounds.width + M, zoneCY);
            }
+           // Snap to the inner edge of the zone border stroke (strokeWidth/2 = 1px inset)
+           // so snapped objects sit cleanly inside the print area, not straddling the stroke centre.
+           const S = 1; // half of print zone strokeWidth: 2
            // Left edge
-           if (Math.abs(objLeft_ - bounds.left) < thresh) {
-             obj.set({ left: bounds.left + objWidth / 2 });
+           if (Math.abs(objLeft_ - (bounds.left + S)) < thresh) {
+             obj.set({ left: bounds.left + S + objWidth / 2 });
              addGuide(canvas, bounds.left, bounds.top - M, bounds.left, bounds.top + bounds.height + M);
            }
            // Right edge
-           if (Math.abs(objRight_ - (bounds.left + bounds.width)) < thresh) {
-             obj.set({ left: bounds.left + bounds.width - objWidth / 2 });
+           if (Math.abs(objRight_ - (bounds.left + bounds.width - S)) < thresh) {
+             obj.set({ left: bounds.left + bounds.width - S - objWidth / 2 });
              addGuide(canvas, bounds.left + bounds.width, bounds.top - M, bounds.left + bounds.width, bounds.top + bounds.height + M);
            }
            // Top edge
-           if (Math.abs(objTop_ - bounds.top) < thresh) {
-             obj.set({ top: bounds.top + objHeight / 2 });
+           if (Math.abs(objTop_ - (bounds.top + S)) < thresh) {
+             obj.set({ top: bounds.top + S + objHeight / 2 });
              addGuide(canvas, bounds.left - M, bounds.top, bounds.left + bounds.width + M, bounds.top);
            }
            // Bottom edge
-           if (Math.abs(objBot_ - (bounds.top + bounds.height)) < thresh) {
-             obj.set({ top: bounds.top + bounds.height - objHeight / 2 });
+           if (Math.abs(objBot_ - (bounds.top + bounds.height - S)) < thresh) {
+             obj.set({ top: bounds.top + bounds.height - S - objHeight / 2 });
              addGuide(canvas, bounds.left - M, bounds.top + bounds.height, bounds.left + bounds.width + M, bounds.top + bounds.height);
            }
 
@@ -625,12 +628,16 @@ export default function DesignCanvas() {
             height: scaledHeight 
         };
         
+        // Expand clip by strokeWidth/2 (1px) so objects snapped to the zone edge
+        // are never sitting exactly on the clip boundary, which causes sub-pixel
+        // cropping in the exported print file at high multipliers.
+        const ZONE_STROKE_HALF = 1; // half of the print zone rect's strokeWidth: 2
         const clipRect = new fabric.Rect({
-            left: scaledLeft,
-            top: scaledTop,
-            width: scaledWidth,
-            height: scaledHeight,
-            absolutePositioned: true, 
+            left: scaledLeft - ZONE_STROKE_HALF,
+            top: scaledTop - ZONE_STROKE_HALF,
+            width: scaledWidth + ZONE_STROKE_HALF * 2,
+            height: scaledHeight + ZONE_STROKE_HALF * 2,
+            absolutePositioned: true,
         });
         clipPathRef.current = clipRect;
       }
@@ -750,7 +757,7 @@ export default function DesignCanvas() {
                   strokeDashArray: [10, 5],
                   selectable: false,
                   evented: false,
-                  name: 'static_bg', 
+                  name: 'print_zone',
                 });
                 newCanvas.add(visualZone);
            }
@@ -840,8 +847,8 @@ export default function DesignCanvas() {
       // Toggle Selection
       canvas.selection = !isPanning;
       canvas.forEachObject((obj) => {
-          if (obj.name === 'static_bg') {
-              // Always keep background locked
+          if (obj.name === 'static_bg' || obj.name === 'print_zone') {
+              // Always keep background and print area locked
               obj.selectable = false;
               obj.evented = false;
           } else {
@@ -902,8 +909,8 @@ export default function DesignCanvas() {
           
           // Reset Object Interactability when leaving pan mode
           canvas.forEachObject((obj) => {
-             // Only unlock objects that are NOT static backgrounds
-             if (obj.name !== 'static_bg') {
+             // Only unlock objects that are NOT static backgrounds or print zone
+             if (obj.name !== 'static_bg' && obj.name !== 'print_zone') {
                 obj.selectable = true;
                 obj.evented = true;
              }
