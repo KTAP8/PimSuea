@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { getCategories, getProducts } from "@/services/api";
 import type { Category, Product } from "@/types/api";
 
@@ -50,35 +50,41 @@ export default function Catalog() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">แคตตาล็อกสินค้า</h1>
+      <div className="mb-10 space-y-6">
+        <h1 className="text-4xl font-black tracking-tight text-gray-900">แคตตาล็อกสินค้า</h1>
         
-        <div className="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg">
-          <span className={`text-sm ${isBeginner ? "text-primary font-bold" : "text-gray-500"}`}>สำหรับมือใหม่</span>
-          <Switch checked={isBeginner} onCheckedChange={setIsBeginner} />
-        </div>
-      </div>
+        {/* Unified Filter Bar (Law of Proximity / Hick's Law) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gray-50/80 backdrop-blur-md p-2 rounded-2xl border border-gray-100 shadow-sm sticky top-20 z-40">
+          
+          {/* Categories Pill Container */}
+          <div className="flex overflow-x-auto no-scrollbar gap-2 p-1">
+            <Button
+                variant={activeTab === "all" ? "default" : "ghost"}
+                onClick={() => setActiveTab("all")}
+                className={`rounded-xl px-5 transition-all w-max shrink-0 ${activeTab === 'all' ? 'shadow-sm font-bold' : 'text-gray-500 hover:bg-gray-200/50 hover:text-gray-900'}`}
+            >
+                ทั้งหมด
+            </Button>
+            {categories.map((cat) => (
+              <Button
+                key={cat.id}
+                variant={activeTab === cat.id ? "default" : "ghost"}
+                onClick={() => setActiveTab(cat.id)}
+                className={`rounded-xl px-5 transition-all w-max shrink-0 ${activeTab === cat.id ? 'shadow-sm font-bold' : 'text-gray-500 hover:bg-gray-200/50 hover:text-gray-900'}`}
+              >
+                {cat.name}
+              </Button>
+            ))}
+          </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <Button
-            variant={activeTab === "all" ? "default" : "outline"}
-            onClick={() => setActiveTab("all")}
-            className="rounded-full"
-        >
-            ทั้งหมด
-        </Button>
-        {categories.map((cat) => (
-          <Button
-            key={cat.id}
-            variant={activeTab === cat.id ? "default" : "outline"}
-            onClick={() => setActiveTab(cat.id)}
-            className="rounded-full"
-          >
-            {/* Can use cat.icon if needed later */}
-            {cat.name}
-          </Button>
-        ))}
+          <div className="flex justify-between lg:justify-end items-center space-x-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-100 shrink-0 mx-1 lg:mx-0">
+            <span className={`text-sm tracking-wide ${isBeginner ? "text-primary font-bold" : "text-gray-500 font-medium"}`}>
+                ✨ มือใหม่ (สั่งง่าย)
+            </span>
+            <Switch checked={isBeginner} onCheckedChange={setIsBeginner} className="data-[state=checked]:bg-primary" />
+          </div>
+
+        </div>
       </div>
 
       {/* Loading & Error States */}
@@ -93,36 +99,55 @@ export default function Catalog() {
         </div>
       ) : (
         /* Product Grid */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {products.length === 0 ? (
                 <div className="col-span-full text-center py-10 text-gray-500">
                     ไม่พบสินค้าในหมวดหมู่นี้
                 </div>
             ) : (
                 products.map((product) => (
-                <Link key={product.id} to={`/product/${product.id}`} className="group">
-                    <div className="bg-white border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 h-full flex flex-col">
-                    <div className="aspect-square bg-gray-50 flex items-center justify-center text-8xl group-hover:scale-105 transition-transform overflow-hidden">
-                         {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                         ) : (
-                            <span>👕</span>
-                         )}
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                        <div className="flex justify-between items-start mb-2">
-                            <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
-                            {product.is_beginner_friendly && <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 hover:bg-green-100 shrink-0 ml-2">มือใหม่</Badge>}
-                        </div>
-                        <p className="text-primary font-bold text-xl mt-auto">
-    {product.starting_price 
-        ? `เริ่มต้น ฿${product.starting_price.toLocaleString()}` 
-        : `฿${product.price.toLocaleString()}`}
-</p>
-                        <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button className="w-full">ออกแบบเลย</Button>
-                        </div>
-                    </div>
+                <Link key={product.id} to={`/product/${product.id}`} className="group block h-full outline-primary rounded-[2rem]">
+                    <div className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 h-full flex flex-col group-hover:-translate-y-1">
+                      
+                      {/* Image Container */}
+                      <div className="aspect-[4/5] sm:aspect-square bg-gray-50/50 flex items-center justify-center text-8xl relative overflow-hidden">
+                           {product.image_url ? (
+                              <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                           ) : (
+                              <span>👕</span>
+                           )}
+                           {/* Premium Hover Gradient Overlay */}
+                           <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                      </div>
+
+                      {/* Content Container */}
+                      <div className="p-4 sm:p-6 flex-1 flex flex-col relative bg-gradient-to-b from-white to-gray-50/30">
+                          <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2">
+                              <h3 className="font-bold text-base sm:text-xl text-gray-900 leading-snug line-clamp-2 group-hover:text-primary transition-colors pr-2">
+                                  {product.name}
+                              </h3>
+                              {product.is_beginner_friendly && (
+                                <Badge variant="secondary" className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 shrink-0 rounded-lg whitespace-nowrap hidden sm:inline-flex">
+                                    สั่งสำหรับมือใหม่
+                                </Badge>
+                              )}
+                          </div>
+                          <div className="mt-auto flex items-end justify-between pt-4">
+                            <div>
+                              <p className="text-[10px] sm:text-xs text-gray-400 font-medium mb-0.5 sm:mb-1 uppercase tracking-wider">ราคาเริ่มต้น</p>
+                              <p className="text-primary font-black text-xl sm:text-2xl">
+                                  {product.starting_price 
+                                      ? `฿${product.starting_price.toLocaleString()}` 
+                                      : `฿${product.price.toLocaleString()}`}
+                              </p>
+                            </div>
+                            
+                            {/* Seamless Interaction Arrow (Replacing invalid nested button array) */}
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300 shadow-sm border border-primary/10 shrink-0">
+                              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                          </div>
+                      </div>
                     </div>
                 </Link>
                 ))

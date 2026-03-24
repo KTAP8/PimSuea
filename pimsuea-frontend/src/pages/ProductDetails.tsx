@@ -256,7 +256,7 @@ export default function ProductDetails() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {entries.map(([size, measures], i) => (
+                        {entries.map(([size, measures]) => (
                           <tr key={size} className="hover:bg-gray-50/50 transition-colors">
                             <td className="p-4 font-semibold">{size}</td>
                             {measureKeys.map(k => <td key={k} className="p-4">{measures[k] ?? '-'}</td>)}
