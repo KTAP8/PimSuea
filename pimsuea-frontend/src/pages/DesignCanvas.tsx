@@ -75,7 +75,7 @@ export default function DesignCanvas() {
   const guideLinesRef = useRef<fabric.Line[]>([]);
   const SNAP_THRESHOLD = 8; // canvas pixels (divided by zoom at runtime)
   const PRINT_TIERS = {
-    '3x4': [3,  4 ],
+    '3x4': [4,  3 ],  // W=4", H=3" (landscape)
     'A5':  [6,  8 ],
     'A4':  [8,  12],
     'A3':  [12, 16],

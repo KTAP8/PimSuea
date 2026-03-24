@@ -116,4 +116,30 @@ async function getDeliveryFee(totalQty) {
   return { fee: Number(data.fee_thb), label: data.label };
 }
 
-module.exports = { getPrintTier, calculatePrice, getDeliveryFee };
+/**
+ * Look up the print cost for one side given a known size tier.
+ * Used by the price estimator (user picks tier directly, no dimensions needed).
+ */
+async function lookupPrintPrice({ printingType, size_tier, color_name, quantity }) {
+  let query = supabaseAdmin
+    .from('print_pricing')
+    .select('price_per_unit_thb')
+    .eq('type_code', printingType)
+    .eq('size_tier', size_tier)
+    .lte('min_qty', quantity)
+    .or(`max_qty.is.null,max_qty.gte.${quantity}`);
+
+  if (printingType === 'DTG') {
+    query = query.eq('color_name', color_name);
+  } else {
+    query = query.is('color_name', null);
+  }
+
+  const { data, error } = await query.single();
+  if (error || !data) {
+    throw new Error(`No print pricing found for type=${printingType} tier=${size_tier} qty=${quantity}`);
+  }
+  return Number(data.price_per_unit_thb);
+}
+
+module.exports = { getPrintTier, calculatePrice, getDeliveryFee, lookupPrintPrice };

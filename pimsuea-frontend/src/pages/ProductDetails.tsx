@@ -1,10 +1,12 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Check, ShieldCheck, Loader2, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Check, ShieldCheck, Loader2, AlertCircle, Calculator } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getProductById } from "@/services/api";
+import { getProductById, estimatePrice } from "@/services/api";
 import type { Product } from "@/types/api";
+import type { PriceEstimate } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -18,7 +20,53 @@ export default function ProductDetails() {
   // Configuration State
   const [quantity, setQuantity] = useState(1);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
-  const [calculatedPrice, setCalculatedPrice] = useState<number | null>(null);
+
+  // Price estimator state
+  const [estColor, setEstColor] = useState<'White' | 'Black'>('White');
+  const [estSize, setEstSize] = useState<string>('');
+  const [frontTier, setFrontTier] = useState<string>('none');
+  const [backTier, setBackTier] = useState<string>('none');
+  const [estResult, setEstResult] = useState<PriceEstimate | null>(null);
+  const [estLoading, setEstLoading] = useState(false);
+  const [estError, setEstError] = useState<string | null>(null);
+
+  const TIER_LABELS: Record<string, string> = {
+    '3x4in': '3×4" (เล็ก)',
+    'A5':    'A5 (กลาง)',
+    'A4':    'A4 (ใหญ่)',
+    'A3':    'A3 (ใหญ่มาก)',
+  };
+
+  const handleEstimate = async () => {
+    if (!product || !id || !selectedMethodId) return;
+    const ft = frontTier === 'none' ? undefined : frontTier;
+    const bt = backTier === 'none' ? undefined : backTier;
+    if (!ft && !bt) {
+      setEstError('กรุณาเลือกขนาดพิมพ์อย่างน้อย 1 ด้าน');
+      return;
+    }
+    const size = estSize || product.available_sizes?.[0] || 'M';
+    setEstLoading(true);
+    setEstError(null);
+    setEstResult(null);
+    try {
+      const result = await estimatePrice({
+        productId: id,
+        colorName: estColor,
+        size,
+        quantity,
+        printingType: selectedMethodId.toUpperCase(),
+        frontTier: ft,
+        backTier: bt,
+      });
+      setEstResult(result);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setEstError(msg || 'คำนวณราคาไม่สำเร็จ');
+    } finally {
+      setEstLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -43,43 +91,6 @@ export default function ProductDetails() {
     fetchProduct();
   }, [id]);
 
-  // Pricing Logic
-  useEffect(() => {
-    if (!product || !selectedMethodId || !product.print_methods) {
-        setCalculatedPrice(null);
-        return;
-    }
-
-    const method = product.print_methods.find(m => m.id === selectedMethodId);
-    if (!method || !method.tiers || method.tiers.length === 0) {
-        // Fallback to base price if no tiers? Or handle error.
-        // For now, use product.price if available
-        setCalculatedPrice(product.price);
-        return;
-    }
-
-    // Filter tiers by selected method (product.print_methods already groups them properly)
-    // Find tier where min_quantity <= current_quantity
-    // Sort tiers by min_quantity desc to find the "highest min_quantity" that fits
-    const sortedTiers = [...method.tiers].sort((a, b) => b.min_quantity - a.min_quantity);
-    const applicableTier = sortedTiers.find(t => t.min_quantity <= quantity);
-
-    if (applicableTier) {
-        // unit_price is "Total Final Price per unit" as per instructions
-        setCalculatedPrice(applicableTier.unit_price * quantity);
-    } else {
-        // If undefined (quantity lower than lowest tier? Should use lowest tier price?)
-        // Usually assume lowest tier applies to 1?
-        // Let's assume the last one (smallest min_quantity) applies
-        const lowestTier = sortedTiers[sortedTiers.length - 1];
-        if (lowestTier) {
-            setCalculatedPrice(lowestTier.unit_price * quantity);
-        } else {
-             setCalculatedPrice(product.price * quantity);
-        }
-    }
-
-  }, [quantity, selectedMethodId, product]);
 
   const handleStartDesign = () => {
     if (!selectedMethodId) return;
@@ -87,7 +98,6 @@ export default function ProductDetails() {
         state: {
             printMethodId: selectedMethodId,
             quantity: quantity,
-            totalPrice: calculatedPrice
         }
     });
   };
@@ -132,16 +142,15 @@ export default function ProductDetails() {
         <div className="space-y-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
-            {/* Show Unit Price or Total Price? Usually easier to show Total here if configured, or Unit if list. */}
             <div className="flex items-baseline gap-2">
-                 {calculatedPrice !== null ? (
-                     <>
-                        <p className="text-3xl font-bold text-primary">฿{calculatedPrice.toLocaleString()}</p>
-                        <span className="text-gray-500 text-sm">(ราคารวม {quantity} ชิ้น)</span>
-                     </>
-                 ) : (
-                    <p className="text-2xl font-bold text-gray-400">กรุณาเลือกรูปแบบ</p>
-                 )}
+                {product.starting_price ? (
+                    <>
+                        <p className="text-3xl font-bold text-primary">฿{product.starting_price.toLocaleString()}</p>
+                        <span className="text-gray-500 text-sm">ราคาเริ่มต้น / ชิ้น</span>
+                    </>
+                ) : (
+                    <p className="text-2xl font-bold text-gray-400">ติดต่อสอบถาม</p>
+                )}
             </div>
           </div>
 
@@ -172,27 +181,126 @@ export default function ProductDetails() {
             {/* Quantity Input */}
             <div className="space-y-3">
                  <Label className="text-base font-semibold">จำนวน (ชิ้น)</Label>
-                 <div className="flex items-center gap-4">
-                     <Input 
-                        type="number" 
-                        min={1} 
-                        value={quantity} 
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-32 text-lg"
-                     />
-                     <div className="text-sm text-gray-500">
-                        {/* Price Breakdown Helper */}
-                        {calculatedPrice && (
-                             <span>เฉลี่ยชิ้นละ ฿{(calculatedPrice / quantity).toFixed(2)}</span>
-                        )}
-                     </div>
-                 </div>
+                 <Input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-32 text-lg"
+                 />
             </div>
           </div>
           
+          {/* Price Estimator */}
+          <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+            <div className="flex items-center gap-2 font-semibold text-sm">
+              <Calculator className="w-4 h-4" />
+              คำนวณราคาโดยประมาณ
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {/* Color */}
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">สีเสื้อ</Label>
+                <Select value={estColor} onValueChange={(v) => setEstColor(v as 'White' | 'Black')}>
+                  <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="White">ขาว (White)</SelectItem>
+                    <SelectItem value="Black">ดำ (Black)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Size */}
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">ไซส์</Label>
+                <Select
+                  value={estSize || product.available_sizes?.[0] || ''}
+                  onValueChange={setEstSize}
+                >
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="เลือกไซส์" /></SelectTrigger>
+                  <SelectContent>
+                    {(product.available_sizes ?? []).map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Front print size */}
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">พิมพ์ด้านหน้า</Label>
+                <Select value={frontTier} onValueChange={setFrontTier}>
+                  <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">ไม่พิมพ์</SelectItem>
+                    {Object.entries(TIER_LABELS).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Back print size */}
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">พิมพ์ด้านหลัง</Label>
+                <Select value={backTier} onValueChange={setBackTier}>
+                  <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">ไม่พิมพ์</SelectItem>
+                    {Object.entries(TIER_LABELS).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {estError && <p className="text-xs text-red-500">{estError}</p>}
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleEstimate}
+              disabled={estLoading || !selectedMethodId}
+            >
+              {estLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Calculator className="w-4 h-4 mr-2" />}
+              คำนวณราคา ({quantity} ชิ้น)
+            </Button>
+
+            {estResult && (
+              <div className="text-sm space-y-1 pt-1 border-t">
+                <div className="flex justify-between text-gray-600">
+                  <span>ราคาเสื้อ</span>
+                  <span>฿{estResult.shirt_per_unit.toLocaleString()} / ชิ้น</span>
+                </div>
+                {estResult.front_print_per_unit > 0 && (
+                  <div className="flex justify-between text-gray-600">
+                    <span>พิมพ์ด้านหน้า</span>
+                    <span>฿{estResult.front_print_per_unit.toLocaleString()} / ชิ้น</span>
+                  </div>
+                )}
+                {estResult.back_print_per_unit > 0 && (
+                  <div className="flex justify-between text-gray-600">
+                    <span>พิมพ์ด้านหลัง</span>
+                    <span>฿{estResult.back_print_per_unit.toLocaleString()} / ชิ้น</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-semibold border-t pt-1">
+                  <span>รวม / ชิ้น</span>
+                  <span className="text-primary">฿{estResult.total_per_unit.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-bold text-base">
+                  <span>รวมทั้งหมด ({quantity} ชิ้น)</span>
+                  <span className="text-primary">฿{estResult.total.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="pt-2">
-            <Button 
-                size="lg" 
+            <Button
+                size="lg"
                 className="w-full text-lg py-6 shadow-lg shadow-primary/20"
                 onClick={handleStartDesign}
                 disabled={!selectedMethodId}

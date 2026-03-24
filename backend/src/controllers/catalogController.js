@@ -21,19 +21,17 @@ exports.getProducts = async (req, res) => {
 
   try {
     // Select columns and join images, filtering by is_active instead of is_published
-    // Map DB columns to Frontend names: title->name, base_price->price, details->description
-    // Also fetch print_pricing_tiers to calculate starting price
     let query = supabase
       .from('products')
       .select(`
         id,
         name:title,
         price:base_price,
+        min_price,
         description:details,
         is_beginner_friendly,
         category_id,
-        product_images (image_url),
-        print_pricing_tiers (unit_price)
+        product_images (image_url)
       `)
       .eq('is_active', true);
 
@@ -49,21 +47,12 @@ exports.getProducts = async (req, res) => {
 
     if (error) throw error;
 
-    const formattedProducts = products.map(p => {
-        // Find lowest price from tiers
-        let startingPrice = null;
-        if (p.print_pricing_tiers && p.print_pricing_tiers.length > 0) {
-            startingPrice = Math.min(...p.print_pricing_tiers.map(t => t.unit_price));
-        }
-
-        return {
-            ...p,
-            image_url: p.product_images && p.product_images.length > 0 ? p.product_images[0].image_url : null,
-            starting_price: startingPrice,
-            // Keep price as fallback if needed, or if startingPrice is null
-            price: startingPrice || p.price
-        };
-    });
+    const formattedProducts = products.map(p => ({
+        ...p,
+        image_url: p.product_images && p.product_images.length > 0 ? p.product_images[0].image_url : null,
+        starting_price: p.min_price ?? null,
+        price: p.min_price ?? p.price,
+    }));
 
     res.json(formattedProducts);
   } catch (error) {
@@ -86,6 +75,7 @@ exports.getProductById = async (req, res) => {
         id,
         name:title,
         price:base_price,
+        min_price,
         description:details,
         care_instructions,
         size_guide,
@@ -99,11 +89,6 @@ exports.getProductById = async (req, res) => {
             name,
             description
           )
-        ),
-        print_pricing_tiers (
-          print_method_id,
-          min_quantity,
-          unit_price
         )
       `)
       .eq('id', id)
@@ -118,24 +103,10 @@ exports.getProductById = async (req, res) => {
 
     // Process print methods and their associated pricing tiers
     const printMethods = product.product_print_methods
-      ? product.product_print_methods.map(ppm => {
-          const method = ppm.print_method;
-          const tiers = product.print_pricing_tiers
-            ?.filter(tier => tier.print_method_id === method.id)
-            .sort((a, b) => a.min_quantity - b.min_quantity) || []; // Sort by quantity asc
-            
-          return {
-            ...method,
-            tiers
-          };
-      })
+      ? product.product_print_methods.map(ppm => ppm.print_method)
       : [];
 
-    // Calculate starting price (lowest unit price across all methods/tiers)
-    let startingPrice = null;
-    if (product.print_pricing_tiers && product.print_pricing_tiers.length > 0) {
-        startingPrice = Math.min(...product.print_pricing_tiers.map(t => t.unit_price));
-    }
+    const startingPrice = product.min_price ?? null;
 
     // Derive available sizes from shirt_pricing (authoritative source)
     const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -164,9 +135,7 @@ exports.getProductById = async (req, res) => {
         available_sizes,
     };
 
-    // Remove raw join data to keep response clean
     delete formattedProduct.product_print_methods;
-    delete formattedProduct.print_pricing_tiers;
 
     res.json(formattedProduct);
   } catch (error) {

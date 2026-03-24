@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
-const { calculatePrice } = require('../utils/pricing');
+const { calculatePrice, lookupPrintPrice } = require('../utils/pricing');
 const { supabaseAdmin } = require('../config/supabaseClient');
 
 const VALID_PRINTING_TYPES = ['DTG', 'DTF'];
-const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
 const VALID_COLORS = ['White', 'Black'];
+const VALID_TIERS = ['3x4in', 'A5', 'A4', 'A3'];
 
 router.post('/', requireAuth, async (req, res) => {
   const { printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_id, size } = req.body;
@@ -72,6 +73,65 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Pricing lookup failed';
     return res.status(422).json({ error: message });
+  }
+});
+
+// Price estimator — lets users see a price breakdown before designing.
+// Requires auth to prevent blank-shirt price leakage (front/back both null is rejected).
+router.get('/estimate', requireAuth, async (req, res) => {
+  const { productId, colorName, size, quantity: qtyStr, printingType, frontTier, backTier } = req.query;
+
+  const quantity = parseInt(qtyStr, 10);
+  if (!Number.isInteger(quantity) || quantity < 1)
+    return res.status(400).json({ error: 'quantity must be a positive integer' });
+  if (!productId)
+    return res.status(400).json({ error: 'productId is required' });
+  if (!VALID_COLORS.includes(colorName))
+    return res.status(400).json({ error: 'colorName must be White or Black' });
+  if (!VALID_SIZES.includes(size))
+    return res.status(400).json({ error: 'Invalid size' });
+  if (!VALID_PRINTING_TYPES.includes(printingType))
+    return res.status(400).json({ error: 'printingType must be DTG or DTF' });
+  if (!frontTier && !backTier)
+    return res.status(400).json({ error: 'At least one of frontTier or backTier is required' });
+  if (frontTier && !VALID_TIERS.includes(frontTier))
+    return res.status(400).json({ error: 'Invalid frontTier' });
+  if (backTier && !VALID_TIERS.includes(backTier))
+    return res.status(400).json({ error: 'Invalid backTier' });
+
+  try {
+    const { data: shirtRow, error: shirtError } = await supabaseAdmin
+      .from('shirt_pricing')
+      .select('price_per_unit_thb')
+      .eq('product_id', productId)
+      .eq('color_name', colorName)
+      .eq('size', size)
+      .lte('min_qty', quantity)
+      .or(`max_qty.is.null,max_qty.gte.${quantity}`)
+      .single();
+
+    if (shirtError || !shirtRow)
+      return res.status(422).json({ error: `ไม่พบราคาเสื้อสำหรับ สี=${colorName} ไซส์=${size} จำนวน=${quantity}` });
+
+    const shirt_per_unit = Number(shirtRow.price_per_unit_thb);
+    const front_print_per_unit = frontTier
+      ? await lookupPrintPrice({ printingType, size_tier: frontTier, color_name: colorName, quantity })
+      : 0;
+    const back_print_per_unit = backTier
+      ? await lookupPrintPrice({ printingType, size_tier: backTier, color_name: colorName, quantity })
+      : 0;
+
+    const total_per_unit = shirt_per_unit + front_print_per_unit + back_print_per_unit;
+    return res.json({
+      shirt_per_unit,
+      front_print_per_unit,
+      back_print_per_unit,
+      total_per_unit,
+      total: total_per_unit * quantity,
+      quantity,
+    });
+  } catch (err) {
+    return res.status(422).json({ error: err instanceof Error ? err.message : 'Pricing lookup failed' });
   }
 });
 

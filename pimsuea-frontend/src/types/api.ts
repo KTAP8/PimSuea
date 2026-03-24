@@ -90,7 +90,15 @@ export interface Product {
     print_methods?: PrintMethod[]; // New field
     size_guide?: any;
     available_sizes?: string[];
-    print_pricing_tiers?: any[];
+}
+
+export interface PriceEstimate {
+    shirt_per_unit: number;
+    front_print_per_unit: number;
+    back_print_per_unit: number;
+    total_per_unit: number;
+    total: number;
+    quantity: number;
 }
 
 export interface News {

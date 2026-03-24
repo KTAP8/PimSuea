@@ -185,4 +185,28 @@ export const joinWaitlist = async (payload: { name: string; email: string; reaso
     return response.data;
 };
 
+export interface PriceEstimate {
+  shirt_per_unit: number;
+  front_print_per_unit: number;
+  back_print_per_unit: number;
+  total_per_unit: number;
+  total: number;
+  quantity: number;
+}
+
+export const estimatePrice = async (params: {
+  productId: string;
+  colorName: 'White' | 'Black';
+  size: string;
+  quantity: number;
+  printingType: string;
+  frontTier?: string;
+  backTier?: string;
+}): Promise<PriceEstimate> => {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== undefined) qs.set(k, String(v)); });
+  const { data } = await api.get<PriceEstimate>(`/pricing/estimate?${qs}`);
+  return data;
+};
+
 export default api;
