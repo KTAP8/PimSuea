@@ -4,44 +4,29 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light (300) */
-@font-face {
-  font-family: "vision";
-  src: url("/fonts/fc-vision-light.otf") format("opentype");
-  font-weight: 300;
-  font-style: normal;
-}
-/* Normal (400) - Mapping to Light as fallback */
-@font-face {
-  font-family: "vision";
-  src: url("/fonts/fc-vision-light.otf") format("opentype");
-  font-weight: 400;
-  font-style: normal;
-}
-
-/* Medium (500) - Mapping to Bold as fallback */
-@font-face {
-  font-family: "vision";
-  src: url("/fonts/fc-vision-bold.otf") format("opentype");
-  font-weight: 500;
-  font-style: normal;
-}
-
-/* Bold (700) */
-@font-face {
-  font-family: "vision";
-  src: url("/fonts/fc-vision-bold.otf") format("opentype");
-  font-weight: 700;
-  font-style: normal;
-}
-
-/* Heavy (900) - Merged into main family */
-@font-face {
-  font-family: "vision";
-  src: url("/fonts/fc-vision-heavy.otf") format("opentype");
-  font-weight: 900;
-  font-style: normal;
-}
+/* ── FC Vision — full licensed family ───────────────────────────────────── */
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Thin.otf") format("opentype");            font-weight:100; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-ThinItalic.otf") format("opentype");      font-weight:100; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-ExtraLight.otf") format("opentype");      font-weight:200; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-ExtraLightItalic.otf") format("opentype");font-weight:200; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Light.otf") format("opentype");           font-weight:300; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-LightItalic.otf") format("opentype");     font-weight:300; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Regular.otf") format("opentype");         font-weight:400; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Italic.otf") format("opentype");          font-weight:400; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Medium.otf") format("opentype");          font-weight:500; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-MediumItalic.otf") format("opentype");    font-weight:500; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-SemiBold.otf") format("opentype");        font-weight:600; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-SemiBoldItalic.otf") format("opentype");  font-weight:600; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Bold.otf") format("opentype");            font-weight:700; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-BoldItalic.otf") format("opentype");      font-weight:700; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-ExtraBold.otf") format("opentype");       font-weight:800; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-ExtraBoldItalic.otf") format("opentype"); font-weight:800; font-style:italic; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-Black.otf") format("opentype");           font-weight:900; font-style:normal; }
+@font-face { font-family:"vision"; src:url("/fonts/FCVision-BlackItalic.otf") format("opentype");     font-weight:900; font-style:italic; }
+/* Heavy (above Black) — exposed as a separate family for explicit use */
+@font-face { font-family:"vision-heavy"; src:url("/fonts/FCVision-Heavy.otf") format("opentype");       font-weight:900; font-style:normal; }
+@font-face { font-family:"vision-heavy"; src:url("/fonts/FCVision-HeavyItalic.otf") format("opentype"); font-weight:900; font-style:italic; }
+/* ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
   font-family: "vision", system-ui, sans-serif;
