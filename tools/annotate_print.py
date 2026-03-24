@@ -82,7 +82,7 @@ COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # One-shot pipeline: annotate each side, then combine into a single image.
 # Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
 BATCH_SIDES = [
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_2.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png", "side": "front"},
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_4.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png", "side": "front"},
     {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png", "side": "back"}
     # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
     # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},

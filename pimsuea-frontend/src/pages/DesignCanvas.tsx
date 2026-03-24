@@ -1346,12 +1346,24 @@ export default function DesignCanvas() {
     const ratio = curW / curH;
 
     let targetW_px: number, targetH_px: number;
+    const maxW_px = tierW * TIER_SAFETY_FACTOR * pxPerInch;
+    const maxH_px = tierH * TIER_SAFETY_FACTOR * pxPerInch;
     if (axis === 'width') {
-      targetW_px = tierW * TIER_SAFETY_FACTOR * pxPerInch;
+      targetW_px = maxW_px;
       targetH_px = targetW_px / ratio;
+      // If height still exceeds the tier, constrain by height instead
+      if (targetH_px > maxH_px) {
+        targetH_px = maxH_px;
+        targetW_px = targetH_px * ratio;
+      }
     } else {
-      targetH_px = tierH * TIER_SAFETY_FACTOR * pxPerInch;
+      targetH_px = maxH_px;
       targetW_px = targetH_px * ratio;
+      // If width still exceeds the tier, constrain by width instead
+      if (targetW_px > maxW_px) {
+        targetW_px = maxW_px;
+        targetH_px = targetW_px / ratio;
+      }
     }
 
     const newScaleX = targetW_px / (obj.width ?? 1);
