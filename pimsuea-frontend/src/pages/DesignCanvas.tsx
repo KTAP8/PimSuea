@@ -1406,19 +1406,39 @@ const saveDesign = async (silent = false): Promise<{ targetId: string | null, pr
         // 1. Prepare Data: Update current view
         saveCurrentCanvas();
         
-        // 2. Generate Preview
-        const previewDataUrl = fabricRef.current.toDataURL({
-            format: 'png',
-            multiplier: 0.5,
-        });
-        
-        const res = await fetch(previewDataUrl);
-        const blob = await res.blob();
-        
-        // 3. Upload to Backend (which proxies to Supabase)
-        // We pass 'preview' type and let backend handle path/timestamp
-        const previewFilename = `${currentTemplate.side}.png`; 
-        const previewUrl = await uploadFile(blob, 'preview', previewFilename);
+        // 2. Generate Preview (per active color)
+        const captureCurrentPreview = async (colorId: string): Promise<string> => {
+            const dataUrl = fabricRef.current!.toDataURL({ format: 'png', multiplier: 0.5 });
+            const previewBlob = await fetch(dataUrl).then(r => r.blob());
+            return uploadFile(previewBlob, 'preview', `preview_${colorId}.png`);
+        };
+
+        const previewMap: Record<string, string> = {};
+        const bgObj = fabricRef.current.getObjects().find((o: any) => o.name === 'static_bg') as fabric.Image | undefined;
+        const currentColorId = selectedColorId ?? Array.from(activeColorIds)[0] ?? 'default';
+
+        // Capture current color from live canvas
+        previewMap[currentColorId] = await captureCurrentPreview(currentColorId);
+
+        // For each other active color: swap background → capture → continue
+        for (const colorId of Array.from(activeColorIds).filter(id => id !== currentColorId)) {
+            const tpl = templates.find(t => t.color?.id === colorId && t.side === currentTemplate.side)
+                     ?? templates.find(t => t.color?.id === colorId && t.side === 'front');
+            if (!tpl || !bgObj) continue;
+            await new Promise<void>(res =>
+                bgObj.setSrc(r2ProxyUrl(tpl.image_url), () => { fabricRef.current!.renderAll(); res(); }, { crossOrigin: 'anonymous' })
+            );
+            previewMap[colorId] = await captureCurrentPreview(colorId);
+        }
+
+        // Restore original background
+        if (bgObj) {
+            await new Promise<void>(res =>
+                bgObj.setSrc(r2ProxyUrl(currentTemplate.image_url), () => { fabricRef.current!.renderAll(); res(); }, { crossOrigin: 'anonymous' })
+            );
+        }
+
+        const previewUrl = JSON.stringify(previewMap);
       
       let targetId = designId;
 

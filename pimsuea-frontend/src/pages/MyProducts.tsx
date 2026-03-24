@@ -15,6 +15,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 
+function getFirstPreview(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    const m = JSON.parse(raw);
+    if (m && typeof m === 'object' && !Array.isArray(m)) {
+      const first = Object.values(m)[0];
+      if (typeof first === 'string') return first;
+    }
+  } catch { /* not JSON */ }
+  return raw;
+}
+
 export default function MyProducts() {
   const [designs, setDesigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,8 +94,8 @@ export default function MyProducts() {
         {designs.map((design) => (
           <div key={design.id} className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 flex flex-col group hover:-translate-y-1">
             <Link to={`/design/${design.base_product_id}?designId=${design.id}`} className="block relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
-                <img 
-                    src={design.preview_image_url || "https://via.placeholder.com/300?text=No+Preview"} 
+                <img
+                    src={getFirstPreview(design.preview_image_url) || "https://via.placeholder.com/300?text=No+Preview"}
                     alt={design.design_name} 
                     className="h-full w-full object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 ease-out" 
                 />

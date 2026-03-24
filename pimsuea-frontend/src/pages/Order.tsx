@@ -19,11 +19,26 @@ interface ItemPriceBreakdown {
   total_per_unit: number;
 }
 
+function parsePreviewUrls(raw: string | null | undefined): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+  } catch { /* not JSON */ }
+  return { __legacy: raw }; // old single-URL design
+}
+
+function resolvePreview(map: Record<string, string> | undefined, colorId: string, fallback: string): string {
+  if (!map) return fallback;
+  return map[colorId] ?? map['__legacy'] ?? fallback;
+}
+
 interface CartItem {
   id: string; // unique ID for cart row
   designId: string;
   designName: string;
   designImage: string;
+  previewUrls?: Record<string, string>; // color_id → preview URL
   productId: string;
   productName: string;
   size: string;
@@ -258,11 +273,13 @@ export default function Order() {
                 design_name: design.design_name,
             });
 
+            const previewUrls = parsePreviewUrls(design.preview_image_url);
             const newItem: CartItem = {
                 id: ctxId,
                 designId: design.id,
                 designName: design.design_name,
-                designImage: design.preview_image_url,
+                designImage: resolvePreview(previewUrls, initialColorId, design.preview_image_url),
+                previewUrls,
                 productId: String(product.id),
                 productName: product.name,
                 size: initialSize,
@@ -334,11 +351,13 @@ export default function Order() {
                      // repriceAll below will compute the correct group-quantity price
                      const priceBreakdown: ItemPriceBreakdown | undefined = undefined;
 
+                     const previewUrls = parsePreviewUrls(design?.preview_image_url);
                      return {
                          id: cItem.id,
                          designId: cItem.design_id || "custom",
                          designName: cItem.design_name || "Custom Design",
-                         designImage: cItem.preview_url || "https://via.placeholder.com/150",
+                         designImage: resolvePreview(previewUrls, colorId, cItem.preview_url || ''),
+                         previewUrls,
                          productId: String(product.id),
                          productName: product.name,
                          size: cItem.size,
@@ -431,11 +450,13 @@ export default function Order() {
                 design_name: design.design_name,
             });
 
+            const previewUrls = parsePreviewUrls(design.preview_image_url);
             const newItem: CartItem = {
                 id: ctxId,
                 designId: design.id,
                 designName: design.design_name,
-                designImage: design.preview_image_url,
+                designImage: resolvePreview(previewUrls, initialColorId, design.preview_image_url),
+                previewUrls,
                 productId: String(product.id),
                 productName: product.name,
                 size: initialSize,
@@ -545,7 +566,10 @@ export default function Order() {
               const next = { ...item, [field]: value } as CartItem;
               if (field === 'color') {
                   const colorObj = item.availableColors.find((c: any) => c.name === value);
-                  if (colorObj) next.color_id = colorObj.id;
+                  if (colorObj) {
+                      next.color_id = colorObj.id;
+                      next.designImage = resolvePreview(item.previewUrls, colorObj.id, item.designImage);
+                  }
               }
               return next;
           });
@@ -735,31 +759,32 @@ export default function Order() {
              <div className="flex justify-between pt-4 border-t mt-4">
                  <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
                      <SheetTrigger asChild>
-                         <Button variant="outline" className="border-border rounded-none font-bold uppercase tracking-widest hover:bg-secondary/80 text-foreground transition-all duration-300">
-                             <Plus className="w-4 h-4 mr-2"/> ซื้อสินค้าเพิ่ม
+                         <Button variant="outline" className="h-12 px-6 rounded-2xl border-gray-200 text-gray-700 font-bold hover:bg-gray-50 hover:border-gray-300 shadow-sm transition-all duration-300">
+                             <Plus className="w-5 h-5 mr-2"/> ซื้อสินค้าเพิ่ม
                          </Button>
                      </SheetTrigger>
-                     <SheetContent side="right" className="w-[400px] sm:w-[540px] bg-background border-l border-border pt-12">
-                         <SheetHeader className="mb-6">
-                             <SheetTitle className="font-bold uppercase tracking-wider text-xl text-foreground flex items-center gap-2">
-                                <Plus className="w-5 h-5 text-action" /> เลือกผลงานออกแบบของฉัน
+                     <SheetContent side="right" className="w-[400px] sm:w-[540px] bg-gray-50 border-l border-gray-100 pt-12 shadow-2xl">
+                         <SheetHeader className="mb-6 px-2">
+                             <SheetTitle className="font-bold text-2xl text-gray-900 flex items-center gap-3">
+                                <span className="bg-primary/10 p-2 rounded-xl text-primary"><Plus className="w-5 h-5" /></span>
+                                เลือกผลงานออกแบบ
                              </SheetTitle>
                          </SheetHeader>
-                         <ScrollArea className="h-[calc(100vh-120px)] pr-6">
+                         <ScrollArea className="h-[calc(100vh-120px)] px-2 pb-6">
                              {loadingDesigns ? (
-                                 <div className="flex justify-center p-12"><Loader2 className="animate-spin text-muted-foreground w-8 h-8"/></div>
+                                 <div className="flex justify-center py-20 px-4"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>
                              ) : myDesigns.length === 0 ? (
-                                 <div className="text-center p-12 border border-border bg-secondary/20 rounded-none mt-4">
-                                     <p className="text-muted-foreground font-light">ยังไม่มีผลงานออกแบบ</p>
+                                 <div className="text-center p-12 bg-white border border-dashed border-gray-200 rounded-3xl mt-4">
+                                     <p className="text-gray-500 font-medium">ยังไม่มีผลงานออกแบบ</p>
                                  </div>
                              ) : (
-                                 <div className="grid grid-cols-2 gap-6 pb-8">
+                                 <div className="grid grid-cols-2 gap-4 pb-8">
                                      {myDesigns.map(design => (
                                          <div key={design.id} 
-                                            className={`relative bg-secondary/20 border border-border p-4 cursor-pointer transition-all duration-300 group overflow-hidden ${
+                                            className={`relative bg-white border border-gray-100 p-3 rounded-2xl cursor-pointer transition-all duration-300 group overflow-hidden ${
                                                 addingDesignId === design.id 
-                                                ? "opacity-70 pointer-events-none" 
-                                                : "hover:border-primary/50 hover:bg-secondary/40 shadow-sm"
+                                                ? "opacity-70 pointer-events-none scale-[0.98]" 
+                                                : "hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
                                             }`}
                                             onClick={() => {
                                                 if (addingDesignId !== design.id) {
@@ -767,20 +792,24 @@ export default function Order() {
                                                 }
                                             }}
                                          >
-                                             {/* Accent Bar */}
-                                             <div className="absolute top-0 left-0 w-full h-1 bg-border group-hover:bg-primary/50 transition-colors duration-300" />
-
                                              {addingDesignId === design.id && (
-                                                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 border border-primary">
-                                                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                 <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10 rounded-2xl">
+                                                     <div className="bg-white p-3 rounded-xl shadow-lg border border-gray-100">
+                                                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                                     </div>
                                                  </div>
                                              )}
                                              
-                                             <div className="bg-secondary/50 border border-border p-2 mb-4 group-hover:border-primary/30 transition-colors">
-                                                 <img src={design.preview_image_url || "https://via.placeholder.com/150"} alt={design.design_name} className="w-full aspect-square object-contain" />
+                                             <div className="bg-gray-50 rounded-xl mb-3 overflow-hidden aspect-square flex items-center justify-center">
+                                                 <img src={Object.values(parsePreviewUrls(design.preview_image_url))[0] || "https://via.placeholder.com/150"} alt={design.design_name} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
                                              </div>
                                              
-                                             <p className="font-bold uppercase tracking-widest text-xs text-center text-foreground truncate px-2">{design.design_name}</p>
+                                             <div className="px-1 text-center">
+                                                <p className="font-bold text-sm text-gray-900 truncate">{design.design_name}</p>
+                                                <div className="inline-flex items-center text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1">
+                                                    <Plus className="w-3 h-3 mr-1" /> เพิ่มลงตะกร้า
+                                                </div>
+                                             </div>
                                          </div>
                                      ))}
                                  </div>
