@@ -51,6 +51,16 @@ COLLAR_Y = {"front": 223, "back": 144}
 # Fixed real-world distance from collar to the top of the print area
 COLLAR_TO_PRINT_AREA_IN = 3.0
 
+# ─── LOGO TAG CONFIG ──────────────────────────────────────────────────────────
+# Woven/printed brand tag overlaid on the front collar of every mockup.
+# Set TAG_IMAGE_PATH to your tag PNG; set to None to skip.
+TAG_IMAGE_PATH     = "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/Tag.png"                   # e.g. "tools/assets/tag.png"
+TAG_PHYS_W_IN      = 1.5                   # physical width of the tag (inches)
+TAG_SRC_W, TAG_SRC_H = 2400, 1212            # source image px — gives aspect ratio
+TAG_COLLAR_Y_FRONT = 134                   # px from top of front mockup where collar sits
+TAG_OFFSET_IN      = 0.5                   # inches below collar to place tag top edge
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Visual style (applied at preview scale)
 ORANGE      = (255, 107, 53, 255)   # dimension measurement lines + labels
 BLUE_MUTED  = (100, 149, 237, 220)  # element bounding box (visually behind)
@@ -82,8 +92,8 @@ COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # One-shot pipeline: annotate each side, then combine into a single image.
 # Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
 BATCH_SIDES = [
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_4.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png", "side": "front"},
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/back_white_mock_template.png", "side": "back"}
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_5.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/front_white_mock_template.png", "side": "front"},
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/back_white_mock_template.png", "side": "back"}
     # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
     # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},
 ]
@@ -173,6 +183,7 @@ def composite_on_mockup(
     placement: dict,
     output_path: Path,
     measurements: dict,
+    side: str = "front",
 ) -> None:
     """Paste the print file onto the shirt mockup and draw annotations at mockup resolution.
 
@@ -198,6 +209,20 @@ def composite_on_mockup(
     mockup = Image.open(mp).convert("RGBA")
     design = print_img.convert("RGBA").resize((pw, ph), Image.LANCZOS)
     mockup.paste(design, (px_off, py_off), mask=design)
+
+    # 1b. Logo tag overlay (front only) — compute geometry always, paste if image available
+    _tag_info = None
+    if side == "front":
+        px_per_in = pw / PHYSICAL_W_IN                          # mockup px per physical inch
+        tag_w_px  = round(TAG_PHYS_W_IN * px_per_in)           # e.g. 3.0" → 66 px
+        tag_h_px  = round(tag_w_px * TAG_SRC_H / TAG_SRC_W)    # preserve source aspect ratio
+        tag_x     = px_off + pw // 2 - tag_w_px // 2           # centred on print area
+        tag_y     = TAG_COLLAR_Y_FRONT + round(TAG_OFFSET_IN * px_per_in)
+        _tag_info = (tag_x, tag_y, tag_w_px, tag_h_px)
+        if TAG_IMAGE_PATH and Path(TAG_IMAGE_PATH).exists():
+            tag_src = Image.open(TAG_IMAGE_PATH).convert("RGBA")
+            tag_img = tag_src.resize((tag_w_px, tag_h_px), Image.LANCZOS)
+            mockup.paste(tag_img, (tag_x, tag_y), mask=tag_img)
 
     # 2. Draw annotations directly on the mockup at its native resolution
     draw = ImageDraw.Draw(mockup)
@@ -260,39 +285,118 @@ def composite_on_mockup(
     else:
         draw_label(draw, "centered", collar_x - TICK - 30, elem_top_y - FONT_SIZE // 2 - 4, font)
 
-    # ── Side panel: cropped graphic + dimension brackets ─────────────────────
+    # ── Tag annotations (front only) ─────────────────────────────────────────
+    if _tag_info is not None:
+        tx, ty, tw, th = _tag_info
+        # Dotted bounding box (blue — same style as print element)
+        for (ax, ay, bx_, by_) in [
+            (tx,      ty,      tx + tw, ty     ),
+            (tx + tw, ty,      tx + tw, ty + th),
+            (tx + tw, ty + th, tx,      ty + th),
+            (tx,      ty + th, tx,      ty     ),
+        ]:
+            draw_dashed_line(draw, ax, ay, bx_, by_, color=BLUE_MUTED)
+        # Y measurement: collar top → tag top  (drawn right of collar_x to avoid overlap)
+        tag_line_x = collar_x + TICK + 4
+        draw.line([(tag_line_x, TAG_COLLAR_Y_FRONT), (tag_line_x, ty)], fill=ORANGE, width=LINE_W)
+        draw.line([(tag_line_x - TICK, TAG_COLLAR_Y_FRONT), (tag_line_x + TICK, TAG_COLLAR_Y_FRONT)], fill=ORANGE, width=LINE_W)
+        draw.line([(tag_line_x - TICK, ty),                 (tag_line_x + TICK, ty)],                 fill=ORANGE, width=LINE_W)
+        tag_y_label = f"{TAG_OFFSET_IN:.1f} in ({TAG_OFFSET_IN * 2.54:.1f} cm)"
+        draw_label(draw, tag_y_label, tag_line_x + TICK + 35, (TAG_COLLAR_Y_FRONT + ty) // 2, font)
+        # X: tag is always centered
+        draw_label(draw, "centered", tx + tw // 2, ty + th + FONT_SIZE // 2 + 4, font)
+
+    # ── Side panel: compute raw sizes at SIDE_PPI for all items ──────────────
     elem_crop = print_img.crop((
         measurements["x_min"], measurements["y_min"],
         measurements["x_max"], measurements["y_max"]
     )).convert("RGBA")
 
-    side_gw = round(measurements['elem_w_in'] * SIDE_PPI)
-    side_gh = round(measurements['elem_h_in'] * SIDE_PPI)
-    if min(side_gw, side_gh) < SIDE_MIN_PX:
-        scale_up = SIDE_MIN_PX / min(side_gw, side_gh)
-        side_gw = round(side_gw * scale_up)
-        side_gh = round(side_gh * scale_up)
+    side_gw_raw = measurements['elem_w_in'] * SIDE_PPI
+    side_gh_raw = measurements['elem_h_in'] * SIDE_PPI
+
+    tag_panel_img  = None
+    tag_panel_w    = tag_panel_h = 0
+    tag_panel_w_in = tag_panel_h_in = 0.0
+    tag_panel_w_raw = tag_panel_h_raw = 0.0
+    if side == "front" and _tag_info is not None:
+        tag_panel_w_in  = TAG_PHYS_W_IN
+        tag_panel_h_in  = TAG_PHYS_W_IN * TAG_SRC_H / TAG_SRC_W
+        tag_panel_w_raw = tag_panel_w_in * SIDE_PPI
+        tag_panel_h_raw = tag_panel_h_in * SIDE_PPI
+
+    # One shared scale_up so all items stay proportional to each other
+    all_dims = [side_gw_raw, side_gh_raw]
+    if tag_panel_w_raw:
+        all_dims += [tag_panel_w_raw, tag_panel_h_raw]
+    min_dim  = min(all_dims)
+    scale_up = max(1.0, SIDE_MIN_PX / min_dim)
+
+    side_gw  = round(side_gw_raw  * scale_up)
+    side_gh  = round(side_gh_raw  * scale_up)
     side_img = elem_crop.resize((side_gw, side_gh), Image.LANCZOS)
 
-    mw, mh = mockup.width, mockup.height
-    sg_x = mw + SIDE_PAD_LEFT
-    sg_y = max(0, (mh - side_gh - SIDE_MARGIN_BOTTOM) // 2)
-    new_w = mw + SIDE_PAD_LEFT + side_gw + SIDE_MARGIN_RIGHT
-    new_h = max(mh, sg_y + side_gh + SIDE_MARGIN_BOTTOM)
+    if tag_panel_w_raw:
+        tag_panel_w = round(tag_panel_w_raw * scale_up)
+        tag_panel_h = round(tag_panel_h_raw * scale_up)
+        if TAG_IMAGE_PATH and Path(TAG_IMAGE_PATH).exists():
+            tag_panel_img = Image.open(TAG_IMAGE_PATH).convert("RGBA") \
+                                 .resize((tag_panel_w, tag_panel_h), Image.LANCZOS)
+        else:
+            # Placeholder: light grey rectangle so layout is visible without the file
+            tag_panel_img = Image.new("RGBA", (tag_panel_w, tag_panel_h), (210, 210, 210, 200))
+
+    # ── Layout: size the expanded canvas ─────────────────────────────────────
+    mw, mh    = mockup.width, mockup.height
+    col_w     = max(side_gw, tag_panel_w)          # column wide enough for both items
+    tag_gap   = SIDE_MARGIN_BOTTOM                  # vertical gap between elem and tag sections
+
+    # Total height of side content (elem + optional tag below)
+    side_content_h = side_gh
+    if tag_panel_img is not None:
+        side_content_h += tag_gap + tag_panel_h + SIDE_MARGIN_BOTTOM  # include tag bracket room
+
+    sg_x  = mw + SIDE_PAD_LEFT
+    sg_y  = max(0, (mh - side_content_h) // 2)
+
+    # Print element centred in column
+    elem_x = sg_x + (col_w - side_gw) // 2
+
+    # Tag centred in column, below elem + bracket space
+    tag_x = sg_x + (col_w - tag_panel_w) // 2 if tag_panel_img else 0
+    tag_y = sg_y + side_gh + tag_gap            if tag_panel_img else 0
+
+    new_w = mw + SIDE_PAD_LEFT + col_w + SIDE_MARGIN_RIGHT
+    new_h = max(mh, sg_y + side_content_h + SIDE_MARGIN_BOTTOM)
 
     expanded = Image.new("RGBA", (new_w, new_h), (255, 255, 255, 255))
     expanded.paste(mockup.convert("RGBA"), (0, 0))
-    expanded.paste(side_img, (sg_x, sg_y), mask=side_img)
+    expanded.paste(side_img, (elem_x, sg_y), mask=side_img)
+    if tag_panel_img is not None:
+        expanded.paste(tag_panel_img, (tag_x, tag_y), mask=tag_panel_img)
 
     draw2 = ImageDraw.Draw(expanded)
+
+    # Brackets for print element
     w_label = f"{measurements['elem_w_in']:.1f} in ({measurements['elem_w_in'] * 2.54:.1f} cm)  [{measurements['tier']}]"
     h_label = f"{measurements['elem_h_in']:.1f} in ({measurements['elem_h_in'] * 2.54:.1f} cm)"
-    draw_dimension_bracket(draw2, sg_x, sg_y + side_gh + PAD,
-                           sg_x + side_gw, sg_y + side_gh + PAD,
+    draw_dimension_bracket(draw2, elem_x, sg_y + side_gh + PAD,
+                           elem_x + side_gw, sg_y + side_gh + PAD,
                            w_label, font, 'horizontal')
-    draw_dimension_bracket(draw2, sg_x + side_gw + PAD, sg_y,
-                           sg_x + side_gw + PAD, sg_y + side_gh,
+    draw_dimension_bracket(draw2, elem_x + side_gw + PAD, sg_y,
+                           elem_x + side_gw + PAD, sg_y + side_gh,
                            h_label, font, 'vertical')
+
+    # Brackets for tag
+    if tag_panel_img is not None:
+        tw_label = f"{tag_panel_w_in:.1f} in ({tag_panel_w_in * 2.54:.1f} cm)"
+        th_label = f"{tag_panel_h_in:.1f} in ({tag_panel_h_in * 2.54:.1f} cm)"
+        draw_dimension_bracket(draw2, tag_x, tag_y + tag_panel_h + PAD,
+                               tag_x + tag_panel_w, tag_y + tag_panel_h + PAD,
+                               tw_label, font, 'horizontal')
+        draw_dimension_bracket(draw2, tag_x + tag_panel_w + PAD, tag_y,
+                               tag_x + tag_panel_w + PAD, tag_y + tag_panel_h,
+                               th_label, font, 'vertical')
 
     expanded.convert("RGB").save(output_path)
     print(f"  Mockup  → {output_path}\n")
@@ -446,7 +550,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
         "x_dir": x_dir,
         "x_offset_in": x_offset_in,
     }
-    composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements)
+    composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements, side=_side)
     return mockup_out
 
 
