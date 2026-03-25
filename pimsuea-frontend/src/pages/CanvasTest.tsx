@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from 'react-konva';
 import Konva from 'konva';
-import { Upload, ImageIcon, X, Trash2, Loader2 } from 'lucide-react';
+import { Upload, ImageIcon, X, Trash2, Loader2, Save } from 'lucide-react';
+import { MD5 } from 'crypto-js';
 import api, { getProductTemplates, uploadFile, r2ProxyUrl } from '../services/api';
 import { injectPngDpi } from '../utils/canvasExporter';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +12,7 @@ import type { ProductTemplate, Color } from '../types/api';
 interface CanvasImage {
     id: string;
     image: HTMLImageElement;
+    src: string;   // original URL (for serialization)
     x: number;
     y: number;
     width: number;
@@ -23,8 +25,9 @@ export default function CanvasTest() {
     const stageRef = useRef<Konva.Stage>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const sidebarUploadRef = useRef<HTMLInputElement>(null);
     const transformerRef = useRef<Konva.Transformer>(null);
+    const bgNodeRef = useRef<Konva.Image>(null);
+    const printZoneNodeRef = useRef<Konva.Rect>(null);
 
     // Canvas state
     const [templates, setTemplates] = useState<ProductTemplate[]>([]);
@@ -38,6 +41,12 @@ export default function CanvasTest() {
     const [liveSizeIn, setLiveSizeIn] = useState<{ w: number; h: number } | null>(null);
     const [isExporting, setIsExporting] = useState(false);
     const [exportedUrl, setExportedUrl] = useState<string | null>(null);
+
+    // Save state
+    const [designId, setDesignId] = useState<string | null>(null);
+    const [designName, setDesignName] = useState('Untitled Design');
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
     // Sidebar / library state
     const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -73,12 +82,7 @@ export default function CanvasTest() {
             setStageSize({ width: img.width * sf, height: img.height * sf });
             setBgImage(img);
             const pz = currentTemplate.print_area_config;
-            setPrintZone({
-                left: pz.x * sf,
-                top: pz.y * sf,
-                width: pz.width * sf,
-                height: pz.height * sf,
-            });
+            setPrintZone({ left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf });
         };
         img.onerror = () => console.error('[CanvasTest] image load failed:', currentTemplate.image_url);
         img.src = r2ProxyUrl(currentTemplate.image_url);
@@ -98,7 +102,7 @@ export default function CanvasTest() {
         setLiveSizeIn(null);
     }, [selectedId]);
 
-    // ── Fetch user uploads when library opens ────────────────────────────────
+    // ── Fetch user uploads ────────────────────────────────────────────────────
     const fetchUserUploads = async () => {
         if (!user) return;
         setLoadingUploads(true);
@@ -134,14 +138,13 @@ export default function CanvasTest() {
         new Map(templates.map(t => [t.color?.id, t.color])).values()
     ).filter((c): c is Color => !!c);
 
-    // ── Handlers ──────────────────────────────────────────────────────────────
+    // ── Canvas image helpers ──────────────────────────────────────────────────
     const handleColorSelect = (colorId: string) => {
         setSelectedColorId(colorId);
         const first = templates.find(t => t.color?.id === colorId);
         if (first) setCurrentTemplate(first);
     };
 
-    /** Add an image from a URL (used by library click + after server upload) */
     const addImageFromUrl = (url: string) => {
         if (!printZone) return;
         const img = new window.Image();
@@ -153,13 +156,12 @@ export default function CanvasTest() {
             const x = printZone.left + (printZone.width - w) / 2;
             const y = printZone.top + (printZone.height - h) / 2;
             const newId = Math.random().toString(36).substring(7);
-            setCanvasImages(prev => [...prev, { id: newId, image: img, x, y, width: w, height: h }]);
+            setCanvasImages(prev => [...prev, { id: newId, image: img, src: url, x, y, width: w, height: h }]);
             setSelectedId(newId);
         };
         img.src = r2ProxyUrl(url);
     };
 
-    /** Local file picker (no server upload) */
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !printZone) return;
@@ -172,15 +174,15 @@ export default function CanvasTest() {
             const x = printZone.left + (printZone.width - w) / 2;
             const y = printZone.top + (printZone.height - h) / 2;
             const newId = Math.random().toString(36).substring(7);
-            setCanvasImages(prev => [...prev, { id: newId, image: img, x, y, width: w, height: h }]);
+            // Keep objectUrl alive (not revoked) so img.src remains valid
+            setCanvasImages(prev => [...prev, { id: newId, image: img, src: objectUrl, x, y, width: w, height: h }]);
             setSelectedId(newId);
-            URL.revokeObjectURL(objectUrl);
         };
         img.src = objectUrl;
         e.target.value = '';
     };
 
-    /** Sidebar upload: DPI check → server upload → add to canvas */
+    // ── Sidebar upload ────────────────────────────────────────────────────────
     const handleSidebarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -193,18 +195,13 @@ export default function CanvasTest() {
             const url = URL.createObjectURL(file);
             img.onload = () => {
                 URL.revokeObjectURL(url);
-                const dpiW = img.naturalWidth / (physW_cm / 2.54);
-                const dpiH = img.naturalHeight / (physH_cm / 2.54);
-                resolve(Math.min(dpiW, dpiH));
+                resolve(Math.min(img.naturalWidth / (physW_cm / 2.54), img.naturalHeight / (physH_cm / 2.54)));
             };
             img.onerror = () => { URL.revokeObjectURL(url); resolve(Infinity); };
             img.src = url;
         });
 
-        if (dpi < 150) {
-            setDpiWarningFile({ file, dpi: Math.round(dpi) });
-            return;
-        }
+        if (dpi < 150) { setDpiWarningFile({ file, dpi: Math.round(dpi) }); return; }
         await proceedWithUpload(file);
     };
 
@@ -234,36 +231,51 @@ export default function CanvasTest() {
         }
     };
 
+    // ── Capture print file (imperative hide/show — no React re-render needed) ─
+    const capturePrintBlob = async (): Promise<Blob | null> => {
+        if (!stageRef.current || !printZone || !currentTemplate) return null;
+
+        const pz = currentTemplate.print_area_config;
+        const physW_cm = pz.physical_w_cm ?? 30.48;
+        const pixelRatio = (physW_cm / 2.54 * 300) / printZone.width;
+
+        // Imperatively hide bg, print zone, and transformer handles
+        const tr = transformerRef.current;
+        const prevNodes = tr?.nodes() ?? [];
+        tr?.nodes([]);
+        bgNodeRef.current?.hide();
+        printZoneNodeRef.current?.hide();
+        stageRef.current.getLayers()[0]?.batchDraw();
+
+        const dataURL = stageRef.current.toDataURL({
+            x: printZone.left,
+            y: printZone.top,
+            width: printZone.width,
+            height: printZone.height,
+            pixelRatio,
+            mimeType: 'image/png',
+        });
+
+        // Restore visibility
+        bgNodeRef.current?.show();
+        printZoneNodeRef.current?.show();
+        if (prevNodes.length) tr?.nodes(prevNodes);
+        stageRef.current.getLayers()[0]?.batchDraw();
+
+        const base64 = dataURL.replace(/^data:image\/png;base64,/, '');
+        const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        const pngWithDpi = injectPngDpi(raw, 300);
+        return new Blob([new Uint8Array(pngWithDpi)], { type: 'image/png' });
+    };
+
+    // ── Export (download / upload print file only) ────────────────────────────
     const handleExport = async () => {
-        if (!stageRef.current || !printZone || !currentTemplate) return;
-        setSelectedId(null);
+        if (!currentTemplate || !printZone) return;
         setIsExporting(true);
         setExportedUrl(null);
         try {
-            const pz = currentTemplate.print_area_config;
-            const physW_cm = pz.physical_w_cm ?? 30.48;
-            const TARGET_DPI = 300;
-            const pixelRatio = (physW_cm / 2.54 * TARGET_DPI) / printZone.width;
-
-            await new Promise(r => setTimeout(r, 50));
-
-            const dataURL = stageRef.current.toDataURL({
-                x: printZone.left,
-                y: printZone.top,
-                width: printZone.width,
-                height: printZone.height,
-                pixelRatio,
-                mimeType: 'image/png',
-            });
-
-            const base64 = dataURL.replace(/^data:image\/png;base64,/, '');
-            const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-            const pngWithDpi = injectPngDpi(raw, TARGET_DPI);
-            const blob = new Blob(
-                [pngWithDpi.buffer.slice(pngWithDpi.byteOffset, pngWithDpi.byteOffset + pngWithDpi.byteLength)],
-                { type: 'image/png' }
-            );
-
+            const blob = await capturePrintBlob();
+            if (!blob) return;
             const suffix = Math.random().toString(36).substring(7);
             const url = await uploadFile(blob, 'print', `${suffix}_konva_test.png`);
             setExportedUrl(url);
@@ -271,6 +283,84 @@ export default function CanvasTest() {
             console.error('[CanvasTest] Export failed:', err);
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    // ── Save design to user_designs ───────────────────────────────────────────
+    const handleSave = async () => {
+        if (!currentTemplate || !printZone || !stageRef.current) return;
+        setIsSaving(true);
+        setSaveStatus('idle');
+        try {
+            // 1. Build serializable canvas data
+            const canvasData = {
+                renderer: 'konva',
+                version: '1',
+                templateId: currentTemplate.id,
+                bounds: printZone,
+                images: canvasImages.map(ci => ({
+                    id: ci.id,
+                    src: ci.src,
+                    x: ci.x,
+                    y: ci.y,
+                    width: ci.width,
+                    height: ci.height,
+                })),
+            };
+            const canvasDataStr = JSON.stringify(canvasData);
+            const hash = MD5(canvasDataStr).toString();
+
+            // 2. Preview — full stage at 0.5x (bg visible)
+            const previewDataUrl = stageRef.current.toDataURL({ pixelRatio: 0.5 });
+            const previewBlob = await fetch(previewDataUrl).then(r => r.blob());
+            const colorKey = selectedColorId ?? 'default';
+            const previewUrl = await uploadFile(previewBlob, 'preview', `preview_${colorKey}_${Date.now()}.png`);
+            const previewMap = JSON.stringify({ [colorKey]: previewUrl });
+
+            // 3. Print file — transparent bg, 300 DPI
+            let printFileUrl: string | null = null;
+            // Skip regenerating if hash hasn't changed
+            if (designId) {
+                const { data: existing } = await api.get(`/designs/${designId}`);
+                if (existing?.design_hash === hash && existing?.print_file_url) {
+                    printFileUrl = existing.print_file_url;
+                }
+            }
+            if (!printFileUrl) {
+                const printBlob = await capturePrintBlob();
+                if (printBlob) {
+                    const suffix = Math.random().toString(36).substring(7);
+                    const url = await uploadFile(printBlob, 'print', `print_${suffix}.png`);
+                    printFileUrl = JSON.stringify({ [currentTemplate.side]: url });
+                }
+            }
+
+            // 4. Upsert design
+            const payload = {
+                design_name: designName,
+                canvas_data: canvasData,
+                preview_image_url: previewMap,
+                print_file_url: printFileUrl,
+                design_hash: hash,
+                available_colors: selectedColorId ? [selectedColorId] : [],
+                printing_type: 'DTG',
+                base_product_id: currentTemplate.product_id,
+            };
+
+            if (designId) {
+                await api.put(`/designs/${designId}`, payload);
+            } else {
+                const { data } = await api.post('/designs', payload);
+                if (data?.design?.id) setDesignId(data.design.id);
+            }
+
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2500);
+        } catch (err) {
+            console.error('[CanvasTest] Save failed:', err);
+            setSaveStatus('error');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -314,9 +404,29 @@ export default function CanvasTest() {
                     </button>
                 )}
 
+                {/* Design name input */}
+                <input
+                    value={designName}
+                    onChange={e => setDesignName(e.target.value)}
+                    className="ml-auto border border-gray-200 rounded px-2 py-1 text-sm w-40 focus:outline-none focus:border-blue-400"
+                    placeholder="Design name"
+                />
+
+                {/* Save button */}
+                <button onClick={handleSave} disabled={isSaving || !currentTemplate}
+                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50 ${
+                        saveStatus === 'saved' ? 'bg-green-600 text-white' :
+                        saveStatus === 'error' ? 'bg-red-500 text-white' :
+                        'bg-gray-800 text-white hover:bg-black'
+                    }`}>
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save'}
+                </button>
+
+                {/* Export button */}
                 <button onClick={handleExport} disabled={isExporting || !currentTemplate}
-                    className="ml-auto px-4 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50 hover:bg-blue-700">
-                    {isExporting ? 'Exporting…' : 'Export 300 DPI & Upload'}
+                    className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50 hover:bg-blue-700">
+                    {isExporting ? 'Exporting…' : 'Export 300 DPI'}
                 </button>
             </div>
 
@@ -325,16 +435,14 @@ export default function CanvasTest() {
 
                 {/* Left sidebar */}
                 <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 shrink-0">
-                    {/* Direct upload */}
                     <div className="flex flex-col items-center gap-1 cursor-pointer">
                         <label className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isUploading ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
                             {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-gray-500" /> : <Upload className="w-5 h-5" />}
-                            <input ref={sidebarUploadRef} type="file" className="hidden" accept="image/*" onChange={handleSidebarUpload} disabled={isUploading} />
+                            <input type="file" className="hidden" accept="image/*" onChange={handleSidebarUpload} disabled={isUploading} />
                         </label>
                         <span className="text-[10px] text-gray-500 font-medium">{isUploading ? '...' : 'อัปโหลด'}</span>
                     </div>
 
-                    {/* Image library toggle */}
                     <div className={`flex flex-col items-center gap-1 cursor-pointer w-full ${showImageLibrary ? 'bg-slate-100 border-r-4 border-black' : ''}`}
                         onClick={() => setShowImageLibrary(v => !v)}>
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${showImageLibrary ? 'bg-black text-white' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
@@ -354,7 +462,6 @@ export default function CanvasTest() {
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
-
                         <div className="p-4 border-b">
                             <label className={`w-full h-11 text-white rounded-xl flex items-center justify-center cursor-pointer gap-2 transition-all ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'}`}>
                                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -362,7 +469,6 @@ export default function CanvasTest() {
                                 <input type="file" className="hidden" accept="image/*" onChange={handleSidebarUpload} disabled={isUploading} />
                             </label>
                         </div>
-
                         <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start">
                             {loadingUploads ? (
                                 <div className="col-span-2 flex justify-center py-10">
@@ -400,7 +506,8 @@ export default function CanvasTest() {
                         onTouchStart={e => { if (e.target === e.target.getStage() || e.target.name() === 'bg') setSelectedId(null); }}>
                         <Layer>
                             {bgImage && (
-                                <KonvaImage name="bg" image={bgImage} width={stageSize.width} height={stageSize.height} visible={!isExporting} />
+                                <KonvaImage ref={bgNodeRef} name="bg" image={bgImage}
+                                    width={stageSize.width} height={stageSize.height} visible={!isExporting} />
                             )}
                             {canvasImages.map(ci => (
                                 <KonvaImage
@@ -418,9 +525,10 @@ export default function CanvasTest() {
                                     onTransform={e => {
                                         if (!pxPerInch) return;
                                         const node = e.target;
-                                        const w = Math.max(10, node.width() * node.scaleX());
-                                        const h = Math.max(10, node.height() * node.scaleY());
-                                        setLiveSizeIn({ w: w / pxPerInch, h: h / pxPerInch });
+                                        setLiveSizeIn({
+                                            w: Math.max(10, node.width() * node.scaleX()) / pxPerInch,
+                                            h: Math.max(10, node.height() * node.scaleY()) / pxPerInch,
+                                        });
                                     }}
                                     onTransformEnd={e => {
                                         const node = e.target;
@@ -428,10 +536,13 @@ export default function CanvasTest() {
                                         const scaleY = node.scaleY();
                                         node.scaleX(1);
                                         node.scaleY(1);
-                                        const newW = Math.max(10, node.width() * scaleX);
-                                        const newH = Math.max(10, node.height() * scaleY);
                                         setCanvasImages(prev => prev.map(item =>
-                                            item.id === ci.id ? { ...item, x: node.x(), y: node.y(), width: newW, height: newH } : item
+                                            item.id === ci.id ? {
+                                                ...item,
+                                                x: node.x(), y: node.y(),
+                                                width: Math.max(10, node.width() * scaleX),
+                                                height: Math.max(10, node.height() * scaleY),
+                                            } : item
                                         ));
                                         setLiveSizeIn(null);
                                     }}
@@ -440,7 +551,9 @@ export default function CanvasTest() {
                             <Transformer ref={transformerRef} rotateEnabled={false} keepRatio={true}
                                 boundBoxFunc={(oldBox, newBox) => newBox.width < 10 || newBox.height < 10 ? oldBox : newBox} />
                             {printZone && (
-                                <Rect x={printZone.left} y={printZone.top} width={printZone.width} height={printZone.height}
+                                <Rect ref={printZoneNodeRef}
+                                    x={printZone.left} y={printZone.top}
+                                    width={printZone.width} height={printZone.height}
                                     stroke="red" strokeWidth={1} visible={!isExporting} dash={[4, 4]} listening={false} />
                             )}
                         </Layer>
@@ -451,28 +564,26 @@ export default function CanvasTest() {
             {/* Export result */}
             {exportedUrl && (
                 <div className="p-2 text-xs bg-green-50 border-t break-all shrink-0">
-                    <span className="font-medium text-green-700 mr-1">Uploaded:</span>
+                    <span className="font-medium text-green-700 mr-1">Exported:</span>
                     <a href={exportedUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{exportedUrl}</a>
                 </div>
             )}
 
-            {/* Delete confirmation dialog */}
+            {/* Delete confirmation */}
             {deleteImageName && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
                         <h3 className="font-bold text-base mb-2">ลบรูปภาพ?</h3>
                         <p className="text-sm text-gray-500 mb-5">รูปภาพนี้จะถูกลบออกจากคลัง ไม่สามารถกู้คืนได้</p>
                         <div className="flex gap-2 justify-end">
-                            <button onClick={() => setDeleteImageName(null)}
-                                className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">ยกเลิก</button>
-                            <button onClick={confirmDeleteImage}
-                                className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">ลบ</button>
+                            <button onClick={() => setDeleteImageName(null)} className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">ยกเลิก</button>
+                            <button onClick={confirmDeleteImage} className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600">ลบ</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* DPI warning dialog */}
+            {/* DPI warning */}
             {dpiWarningFile && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
@@ -481,10 +592,8 @@ export default function CanvasTest() {
                             รูปภาพนี้มีความละเอียดเพียง <span className="font-semibold text-orange-500">{dpiWarningFile.dpi} DPI</span> ซึ่งอาจทำให้งานพิมพ์ไม่คมชัด (แนะนำ 150+ DPI)
                         </p>
                         <div className="flex gap-2 justify-end">
-                            <button onClick={() => setDpiWarningFile(null)}
-                                className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">ยกเลิก</button>
-                            <button onClick={() => proceedWithUpload(dpiWarningFile.file)}
-                                className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600">อัปโหลดต่อ</button>
+                            <button onClick={() => setDpiWarningFile(null)} className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50">ยกเลิก</button>
+                            <button onClick={() => proceedWithUpload(dpiWarningFile.file)} className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600">อัปโหลดต่อ</button>
                         </div>
                     </div>
                 </div>
