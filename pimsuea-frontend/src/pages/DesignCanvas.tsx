@@ -75,7 +75,7 @@ export default function DesignCanvas() {
   const guideLinesRef = useRef<fabric.Line[]>([]);
   const SNAP_THRESHOLD = 8; // canvas pixels (divided by zoom at runtime)
   const PRINT_TIERS = {
-    '3x4': [4,  3 ],  // W=4", H=3" (landscape)
+    '3x4': [3,  4 ],  // W=3", H=4" (portrait ≤3"×≤4")
     'A5':  [6,  8 ],
     'A4':  [8,  12],
     'A3':  [12, 16],
@@ -309,53 +309,55 @@ export default function DesignCanvas() {
     isHistoryLocked.current = prev;
   };
 
+  // Clamp a single object so its bounding-box edges stay within bounds.
+  // Works for both center-origin objects (all user objects) and top-left-origin objects.
+  const clampObjectToBounds = (
+      obj: fabric.Object,
+      bounds: { left: number; top: number; width: number; height: number }
+  ) => {
+      const objWidth  = (obj.width  ?? 0) * (obj.scaleX ?? 1);
+      const objHeight = (obj.height ?? 0) * (obj.scaleY ?? 1);
+      let left = obj.left ?? 0;
+      let top  = obj.top  ?? 0;
+
+      if (obj.originX === 'center') {
+          const halfW = objWidth / 2;
+          if (left < bounds.left + halfW)                  left = bounds.left + halfW;
+          if (left > bounds.left + bounds.width  - halfW)  left = bounds.left + bounds.width  - halfW;
+      } else {
+          if (left < bounds.left)                           left = bounds.left;
+          if (left + objWidth > bounds.left + bounds.width) left = bounds.left + bounds.width  - objWidth;
+      }
+
+      if (obj.originY === 'center') {
+          const halfH = objHeight / 2;
+          if (top < bounds.top + halfH)                    top  = bounds.top + halfH;
+          if (top > bounds.top + bounds.height - halfH)    top  = bounds.top + bounds.height - halfH;
+      } else {
+          if (top < bounds.top)                             top  = bounds.top;
+          if (top + objHeight > bounds.top + bounds.height) top  = bounds.top + bounds.height - objHeight;
+      }
+
+      obj.set({ left, top });
+      obj.setCoords();
+  };
+
   // Constraints Helper
   const applyConstraints = (canvas: fabric.Canvas) => {
      canvas.on('object:moving', (e) => {
          const obj = e.target;
          if (!obj || !printZoneBoundsRef.current) return;
-         
+
          // Ignore if static background
          if (obj.name === 'static_bg') return;
 
          const bounds = printZoneBoundsRef.current;
-         const objWidth = (obj.width || 0) * (obj.scaleX || 1);
+
+         clampObjectToBounds(obj, bounds);
+
+         // objWidth/objHeight needed by smart guide calculations below
+         const objWidth  = (obj.width  || 0) * (obj.scaleX || 1);
          const objHeight = (obj.height || 0) * (obj.scaleY || 1);
-
-         // Basic clamping logic - keep center within bounds (or edges, depending on preference)
-         // Strict: Keep the entire object inside
-         // Loose: Keep center inside
-         // Let's go with "Center must be inside" for better UX, or "Edges clamped"
-         // Implementing Edge Clamping:
-         let left = obj.left || 0;
-         let top = obj.top || 0;
-         
-         // Adjust based on origin (assuming center origin for simplicity in logic, but Fabric defaults vary)
-         // Fabric default origin is usually top/left unless changed.
-         // In addText/addImage we set originX/Y to 'center'.
-         
-         // Clamp so the object's EDGES stay within the print zone.
-         // For center-origin objects, left/top is the center coordinate, so
-         // we must account for half the object's size on each side.
-         if (obj.originX === 'center') {
-             const halfW = objWidth / 2;
-             if (left < bounds.left + halfW) left = bounds.left + halfW;
-             if (left > bounds.left + bounds.width - halfW) left = bounds.left + bounds.width - halfW;
-         } else {
-             if (left < bounds.left) left = bounds.left;
-             if (left + objWidth > bounds.left + bounds.width) left = bounds.left + bounds.width - objWidth;
-         }
-
-         if (obj.originY === 'center') {
-             const halfH = objHeight / 2;
-             if (top < bounds.top + halfH) top = bounds.top + halfH;
-             if (top > bounds.top + bounds.height - halfH) top = bounds.top + bounds.height - halfH;
-         } else {
-             if (top < bounds.top) top = bounds.top;
-             if (top + objHeight > bounds.top + bounds.height) top = bounds.top + bounds.height - objHeight;
-         }
-         
-         obj.set({ left, top });
 
          // ── Smart Guides ──────────────────────────────────────────────────
          clearGuides(canvas);
@@ -743,6 +745,15 @@ export default function DesignCanvas() {
                                o.setCoords();
                            });
                    }
+               }
+
+               // One-time clamp: ensure all design objects are within the print zone.
+               // Corrects positions from old designs saved with the broken clamping
+               // (center at zone edge) and handles window-size drift on reload.
+               if (printZoneBoundsRef.current) {
+                   newCanvas.getObjects()
+                       .filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
+                       .forEach(o => clampObjectToBounds(o, printZoneBoundsRef.current!));
                }
 
                // Re-add Visual Zone (Dotted Line)

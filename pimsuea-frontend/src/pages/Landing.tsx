@@ -253,10 +253,10 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 function CountBlock({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center gap-1">
-      <span className="font-heavy text-5xl md:text-7xl text-white tabular-nums leading-none drop-shadow-md">
+      <span className="font-heavy text-3xl sm:text-5xl md:text-7xl text-white tabular-nums leading-none drop-shadow-md">
         {String(value).padStart(2, '0')}
       </span>
-      <span className="text-xs font-bold uppercase tracking-widest text-white/60">{label}</span>
+      <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/60">{label}</span>
     </div>
   );
 }
@@ -503,13 +503,13 @@ export default function Landing() {
             <h2 className="font-heavy text-3xl md:text-5xl text-white mb-14 drop-shadow-md">
               {t.countdown.title}
             </h2>
-            <div className="flex items-start justify-center gap-6 md:gap-14 bg-background/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 md:p-10 shadow-2xl">
+            <div className="flex items-start justify-center gap-2 sm:gap-6 md:gap-14 bg-background/5 backdrop-blur-sm border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-6 md:p-10 shadow-2xl">
               <CountBlock value={countdown.days}    label={t.countdown.days} />
-              <span className="font-heavy text-4xl md:text-6xl text-white/30 leading-none select-none mt-1 md:mt-2">:</span>
+              <span className="font-heavy text-2xl sm:text-4xl md:text-6xl text-white/30 leading-none select-none mt-0.5 sm:mt-1 md:mt-2">:</span>
               <CountBlock value={countdown.hours}   label={t.countdown.hours} />
-              <span className="font-heavy text-4xl md:text-6xl text-white/30 leading-none select-none mt-1 md:mt-2">:</span>
+              <span className="font-heavy text-2xl sm:text-4xl md:text-6xl text-white/30 leading-none select-none mt-0.5 sm:mt-1 md:mt-2">:</span>
               <CountBlock value={countdown.minutes} label={t.countdown.minutes} />
-              <span className="font-heavy text-4xl md:text-6xl text-white/30 leading-none select-none mt-1 md:mt-2">:</span>
+              <span className="font-heavy text-2xl sm:text-4xl md:text-6xl text-white/30 leading-none select-none mt-0.5 sm:mt-1 md:mt-2">:</span>
               <CountBlock value={countdown.seconds} label={t.countdown.seconds} />
             </div>
           </RevealWrapper>
