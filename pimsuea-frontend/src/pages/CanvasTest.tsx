@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from 'react-konva';
 import Konva from 'konva';
 import { Upload, ImageIcon, X, Trash2, Loader2, Save } from 'lucide-react';
@@ -21,6 +21,8 @@ interface CanvasImage {
 
 export default function CanvasTest() {
     const { id } = useParams<{ id: string }>();
+    const [searchParams] = useSearchParams();
+    const designIdParam = searchParams.get('designId');
     const { user } = useAuth();
     const stageRef = useRef<Konva.Stage>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,9 @@ export default function CanvasTest() {
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
+    // Pending design to restore once printZone is ready
+    const [pendingDesignData, setPendingDesignData] = useState<{ images: { id: string; src: string; x: number; y: number; width: number; height: number }[] } | null>(null);
+
     // Sidebar / library state
     const [showImageLibrary, setShowImageLibrary] = useState(false);
     const [userUploads, setUserUploads] = useState<{ name: string; url: string }[]>([]);
@@ -59,16 +64,35 @@ export default function CanvasTest() {
     // ── Template loading ──────────────────────────────────────────────────────
     useEffect(() => {
         if (!id) return;
-        getProductTemplates(id).then(data => {
+        getProductTemplates(id).then(async data => {
             setTemplates(data);
             const firstColorId = data[0]?.color?.id ?? null;
-            setSelectedColorId(firstColorId);
-            const first = (firstColorId != null
+            let targetTemplate = (firstColorId != null
                 ? data.find(t => t.color?.id === firstColorId)
                 : data[0]) ?? data[0] ?? null;
-            setCurrentTemplate(first);
+
+            if (designIdParam) {
+                try {
+                    const { data: design } = await api.get(`/designs/${designIdParam}`);
+                    setDesignId(designIdParam);
+                    if (design.design_name) setDesignName(design.design_name);
+                    const canvasData = design.canvas_data;
+                    if (canvasData?.renderer === 'konva' && canvasData?.templateId) {
+                        const savedTemplate = data.find(t => t.id === canvasData.templateId);
+                        if (savedTemplate) {
+                            targetTemplate = savedTemplate;
+                            setSelectedColorId(savedTemplate.color?.id ?? null);
+                        }
+                        if (canvasData.images?.length) setPendingDesignData(canvasData);
+                    }
+                } catch (err) {
+                    console.error('[CanvasTest] Failed to load design:', err);
+                }
+            }
+
+            setCurrentTemplate(targetTemplate);
         });
-    }, [id]);
+    }, [id, designIdParam]);
 
     // ── Background image ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -87,6 +111,21 @@ export default function CanvasTest() {
         img.onerror = () => console.error('[CanvasTest] image load failed:', currentTemplate.image_url);
         img.src = r2ProxyUrl(currentTemplate.image_url);
     }, [currentTemplate]);
+
+    // ── Restore saved design images once printZone is ready ───────────────────
+    useEffect(() => {
+        if (!pendingDesignData || !printZone) return;
+        const { images } = pendingDesignData;
+        setPendingDesignData(null);
+        Promise.all(images.map(imgData => new Promise<CanvasImage>((resolve, reject) => {
+            const img = new window.Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve({ id: imgData.id, image: img, src: imgData.src, x: imgData.x, y: imgData.y, width: imgData.width, height: imgData.height });
+            img.onerror = reject;
+            img.src = r2ProxyUrl(imgData.src);
+        }))).then(loaded => setCanvasImages(loaded))
+           .catch(err => console.error('[CanvasTest] Failed to restore images:', err));
+    }, [pendingDesignData, printZone]);
 
     // ── Transformer attachment ────────────────────────────────────────────────
     useEffect(() => {
