@@ -50,8 +50,13 @@ export default function CanvasTest() {
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-    // Pending design to restore once printZone is ready
-    const [pendingDesignData, setPendingDesignData] = useState<{ images: { id: string; src: string; x: number; y: number; width: number; height: number }[] } | null>(null);
+    // Per-side image storage (keyed by template ID, mirrors DesignCanvas savedDesigns pattern)
+    const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
+    // Per-side scaled print zone (populated when each template's bg image loads)
+    const sideZones = useRef<Record<string, { left: number; top: number; width: number; height: number }>>({});
+    // Serializable pending side data to load once the background image renders (keyed by template ID)
+    type SerializableImage = { id: string; src: string; x: number; y: number; width: number; height: number };
+    const pendingSideData = useRef<Record<string, SerializableImage[]>>({});
 
     // Sidebar / library state
     const [showImageLibrary, setShowImageLibrary] = useState(false);
@@ -77,13 +82,19 @@ export default function CanvasTest() {
                     setDesignId(designIdParam);
                     if (design.design_name) setDesignName(design.design_name);
                     const canvasData = design.canvas_data;
-                    if (canvasData?.renderer === 'konva' && canvasData?.templateId) {
-                        const savedTemplate = data.find(t => t.id === canvasData.templateId);
-                        if (savedTemplate) {
-                            targetTemplate = savedTemplate;
-                            setSelectedColorId(savedTemplate.color?.id ?? null);
+                    if (canvasData?.renderer === 'konva') {
+                        // New multi-side format: { sides: { [templateId]: SerializableImage[] } }
+                        if (canvasData.sides) {
+                            pendingSideData.current = canvasData.sides;
+                            const activeId = canvasData.activeTemplateId;
+                            const savedTemplate = data.find(t => t.id === activeId) ?? data.find(t => canvasData.sides[t.id]);
+                            if (savedTemplate) { targetTemplate = savedTemplate; setSelectedColorId(savedTemplate.color?.id ?? null); }
+                        // Old single-side format: { templateId, images: [] }
+                        } else if (canvasData.templateId && canvasData.images?.length) {
+                            pendingSideData.current = { [canvasData.templateId]: canvasData.images };
+                            const savedTemplate = data.find(t => t.id === canvasData.templateId);
+                            if (savedTemplate) { targetTemplate = savedTemplate; setSelectedColorId(savedTemplate.color?.id ?? null); }
                         }
-                        if (canvasData.images?.length) setPendingDesignData(canvasData);
                     }
                 } catch (err) {
                     console.error('[CanvasTest] Failed to load design:', err);
@@ -94,9 +105,10 @@ export default function CanvasTest() {
         });
     }, [id, designIdParam]);
 
-    // ── Background image ──────────────────────────────────────────────────────
+    // ── Background image + side restore ──────────────────────────────────────
     useEffect(() => {
         if (!currentTemplate) return;
+        const template = currentTemplate; // capture to avoid stale closure
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -105,27 +117,34 @@ export default function CanvasTest() {
             const sf = Math.min(containerW / img.width, containerH / img.height, 1) * 0.95;
             setStageSize({ width: img.width * sf, height: img.height * sf });
             setBgImage(img);
-            const pz = currentTemplate.print_area_config;
-            setPrintZone({ left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf });
-        };
-        img.onerror = () => console.error('[CanvasTest] image load failed:', currentTemplate.image_url);
-        img.src = r2ProxyUrl(currentTemplate.image_url);
-    }, [currentTemplate]);
+            const pz = template.print_area_config;
+            const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
+            setPrintZone(pzScaled);
+            sideZones.current[template.id] = pzScaled;
+            setSelectedId(null);
 
-    // ── Restore saved design images once printZone is ready ───────────────────
-    useEffect(() => {
-        if (!pendingDesignData || !printZone) return;
-        const { images } = pendingDesignData;
-        setPendingDesignData(null);
-        Promise.all(images.map(imgData => new Promise<CanvasImage>((resolve, reject) => {
-            const img = new window.Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => resolve({ id: imgData.id, image: img, src: imgData.src, x: imgData.x, y: imgData.y, width: imgData.width, height: imgData.height });
-            img.onerror = reject;
-            img.src = r2ProxyUrl(imgData.src);
-        }))).then(loaded => setCanvasImages(loaded))
-           .catch(err => console.error('[CanvasTest] Failed to restore images:', err));
-    }, [pendingDesignData, printZone]);
+            // If there's pending serializable data for this side, load it now
+            const pending = pendingSideData.current[template.id];
+            if (pending) {
+                delete pendingSideData.current[template.id];
+                Promise.all(pending.map(d => new Promise<CanvasImage>((resolve, reject) => {
+                    const i = new window.Image();
+                    i.crossOrigin = 'anonymous';
+                    i.onload = () => resolve({ id: d.id, image: i, src: d.src, x: d.x, y: d.y, width: d.width, height: d.height });
+                    i.onerror = reject;
+                    i.src = r2ProxyUrl(d.src);
+                }))).then(loaded => {
+                    sideCanvasImages.current[template.id] = loaded;
+                    setCanvasImages(loaded);
+                }).catch(err => console.error('[CanvasTest] Failed to restore side images:', err));
+            } else {
+                // Restore previously saved images for this side (in-session switch)
+                setCanvasImages(sideCanvasImages.current[template.id] ?? []);
+            }
+        };
+        img.onerror = () => console.error('[CanvasTest] image load failed:', template.image_url);
+        img.src = r2ProxyUrl(template.image_url);
+    }, [currentTemplate]);
 
     // ── Transformer attachment ────────────────────────────────────────────────
     useEffect(() => {
@@ -177,10 +196,31 @@ export default function CanvasTest() {
         new Map(templates.map(t => [t.color?.id, t.color])).values()
     ).filter((c): c is Color => !!c);
 
+    // ── Save current side before switching ───────────────────────────────────
+    const saveCurrentSide = () => {
+        if (currentTemplate) sideCanvasImages.current[currentTemplate.id] = canvasImages;
+    };
+
     // ── Canvas image helpers ──────────────────────────────────────────────────
     const handleColorSelect = (colorId: string) => {
+        saveCurrentSide();
+        const oldColorId = selectedColorId;
+        // Copy designs from old color → new color for all other sides (same as DesignCanvas)
+        if (oldColorId && oldColorId !== colorId) {
+            const oldSideTemplates = templates.filter(t => t.color?.id === oldColorId);
+            for (const oldTmpl of oldSideTemplates) {
+                if (oldTmpl.id === currentTemplate?.id) continue; // current side handled by saveCurrentSide
+                const saved = sideCanvasImages.current[oldTmpl.id];
+                if (!saved) continue;
+                const newTmpl = templates.find(t => t.color?.id === colorId && t.side === oldTmpl.side);
+                if (newTmpl && !sideCanvasImages.current[newTmpl.id]) {
+                    sideCanvasImages.current[newTmpl.id] = saved;
+                }
+            }
+        }
         setSelectedColorId(colorId);
-        const first = templates.find(t => t.color?.id === colorId);
+        const sameSide = templates.find(t => t.color?.id === colorId && t.side === currentTemplate?.side);
+        const first = sameSide ?? templates.find(t => t.color?.id === colorId);
         if (first) setCurrentTemplate(first);
     };
 
@@ -270,6 +310,56 @@ export default function CanvasTest() {
         }
     };
 
+    // ── Compute per-side AABB for print_dimensions ────────────────────────────
+    const computeSideAabb = (
+        images: CanvasImage[],
+        pzScaled: { left: number; top: number; width: number; height: number },
+        physW_cm: number,
+        physH_cm: number,
+        imgZoneW: number,
+        imgZoneH: number,
+    ): { w: number; h: number; x_cm: number; y_cm: number; px_x: number; px_y: number; px_w: number; px_h: number } | null => {
+        if (!images.length) return null;
+
+        // Union AABB of all images in canvas (scaled) coords
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const ci of images) {
+            minX = Math.min(minX, ci.x);
+            minY = Math.min(minY, ci.y);
+            maxX = Math.max(maxX, ci.x + ci.width);
+            maxY = Math.max(maxY, ci.y + ci.height);
+        }
+
+        // Clamp to print zone
+        const cx = Math.max(minX, pzScaled.left);
+        const cy = Math.max(minY, pzScaled.top);
+        const cx2 = Math.min(maxX, pzScaled.left + pzScaled.width);
+        const cy2 = Math.min(maxY, pzScaled.top + pzScaled.height);
+        if (cx2 <= cx || cy2 <= cy) return null;
+
+        // Relative to print zone origin
+        const rx = cx - pzScaled.left;
+        const ry = cy - pzScaled.top;
+        const rw = cx2 - cx;
+        const rh = cy2 - cy;
+
+        const w_cm = rw * physW_cm / pzScaled.width;
+        const h_cm = rh * physH_cm / pzScaled.height;
+        const x_cm = rx * physW_cm / pzScaled.width;
+        const y_cm = ry * physH_cm / pzScaled.height;
+
+        const sfW = imgZoneW / pzScaled.width;
+        const sfH = imgZoneH / pzScaled.height;
+
+        return {
+            w: w_cm, h: h_cm, x_cm, y_cm,
+            px_x: Math.round(rx * sfW),
+            px_y: Math.round(ry * sfH),
+            px_w: Math.round(rw * sfW),
+            px_h: Math.round(rh * sfH),
+        };
+    };
+
     // ── Capture print file (imperative hide/show — no React re-render needed) ─
     const capturePrintBlob = async (): Promise<Blob | null> => {
         if (!stageRef.current || !printZone || !currentTemplate) return null;
@@ -307,6 +397,42 @@ export default function CanvasTest() {
         return new Blob([new Uint8Array(pngWithDpi)], { type: 'image/png' });
     };
 
+    // ── Capture a non-active side off-screen ─────────────────────────────────
+    const captureOffScreenBlob = async (tmpl: ProductTemplate, images: CanvasImage[]): Promise<Blob | null> => {
+        if (!images.length) return null;
+
+        // Use same sizing logic as the background image effect
+        const bgImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const i = new window.Image();
+            i.crossOrigin = 'anonymous';
+            i.onload = () => resolve(i);
+            i.onerror = reject;
+            i.src = r2ProxyUrl(tmpl.image_url);
+        });
+        const containerW = containerRef.current?.clientWidth || window.innerWidth - 80;
+        const containerH = (containerRef.current?.clientHeight || window.innerHeight) - 48;
+        const sf = Math.min(containerW / bgImg.width, containerH / bgImg.height, 1) * 0.95;
+        const pz = tmpl.print_area_config;
+        const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
+        const physW_cm = pz.physical_w_cm ?? 30.48;
+        const pixelRatio = (physW_cm / 2.54 * 300) / pzScaled.width;
+
+        // Draw directly onto an HTML canvas — synchronous, no batchDraw/RAF race condition
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(pzScaled.width * pixelRatio);
+        canvas.height = Math.round(pzScaled.height * pixelRatio);
+        const ctx = canvas.getContext('2d')!;
+        ctx.scale(pixelRatio, pixelRatio);
+        ctx.translate(-pzScaled.left, -pzScaled.top);
+        images.forEach(ci => ctx.drawImage(ci.image, ci.x, ci.y, ci.width, ci.height));
+
+        const dataURL = canvas.toDataURL('image/png');
+        const base64 = dataURL.replace(/^data:image\/png;base64,/, '');
+        const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        const pngWithDpi = injectPngDpi(raw, 300);
+        return new Blob([new Uint8Array(pngWithDpi)], { type: 'image/png' });
+    };
+
     // ── Export (download / upload print file only) ────────────────────────────
     const handleExport = async () => {
         if (!currentTemplate || !printZone) return;
@@ -331,50 +457,92 @@ export default function CanvasTest() {
         setIsSaving(true);
         setSaveStatus('idle');
         try {
-            // 1. Build serializable canvas data
+            // 1. Sync current side into ref, then build multi-side canvas data
+            sideCanvasImages.current[currentTemplate.id] = canvasImages;
+            const sides = Object.fromEntries(
+                Object.entries(sideCanvasImages.current)
+                    .filter(([, imgs]) => imgs.length > 0)
+                    .map(([tid, imgs]) => [tid, imgs.map(ci => ({ id: ci.id, src: ci.src, x: ci.x, y: ci.y, width: ci.width, height: ci.height }))])
+            );
             const canvasData = {
                 renderer: 'konva',
-                version: '1',
-                templateId: currentTemplate.id,
-                bounds: printZone,
-                images: canvasImages.map(ci => ({
-                    id: ci.id,
-                    src: ci.src,
-                    x: ci.x,
-                    y: ci.y,
-                    width: ci.width,
-                    height: ci.height,
-                })),
+                version: '2',
+                activeTemplateId: currentTemplate.id,
+                sides,
             };
             const canvasDataStr = JSON.stringify(canvasData);
             const hash = MD5(canvasDataStr).toString();
 
-            // 2. Preview — full stage at 0.5x (bg visible)
+            // 2. Fetch existing design once (for hash check + existing print URLs)
+            let existingDesign: any = null;
+            if (designId) {
+                try { ({ data: existingDesign } = await api.get(`/designs/${designId}`)); } catch {}
+            }
+
+            // 3. Preview — full stage at 0.5x (bg visible)
             const previewDataUrl = stageRef.current.toDataURL({ pixelRatio: 0.5 });
             const previewBlob = await fetch(previewDataUrl).then(r => r.blob());
             const colorKey = selectedColorId ?? 'default';
             const previewUrl = await uploadFile(previewBlob, 'preview', `preview_${colorKey}_${Date.now()}.png`);
             const previewMap = JSON.stringify({ [colorKey]: previewUrl });
 
-            // 3. Print file — transparent bg, 300 DPI
+            // 4. Print files — all sides, transparent bg, 300 DPI
             let printFileUrl: string | null = null;
-            // Skip regenerating if hash hasn't changed
-            if (designId) {
-                const { data: existing } = await api.get(`/designs/${designId}`);
-                if (existing?.design_hash === hash && existing?.print_file_url) {
-                    printFileUrl = existing.print_file_url;
+            if (existingDesign?.design_hash === hash && existingDesign?.print_file_url) {
+                printFileUrl = existingDesign.print_file_url;
+            } else {
+                const printFiles: Record<string, string> = {};
+
+                // Current side — use live stage (most reliable)
+                const currentBlob = await capturePrintBlob();
+                if (currentBlob) {
+                    const url = await uploadFile(currentBlob, 'print', `print_${Math.random().toString(36).substring(7)}.png`);
+                    printFiles[currentTemplate.side.toLowerCase()] = url;
                 }
-            }
-            if (!printFileUrl) {
-                const printBlob = await capturePrintBlob();
-                if (printBlob) {
-                    const suffix = Math.random().toString(36).substring(7);
-                    const url = await uploadFile(printBlob, 'print', `print_${suffix}.png`);
-                    printFileUrl = JSON.stringify({ [currentTemplate.side]: url });
+
+                // Other sides — render off-screen
+                for (const [tid, imgs] of Object.entries(sideCanvasImages.current)) {
+                    if (tid === currentTemplate.id || !imgs.length) continue;
+                    const tmpl = templates.find(t => t.id === tid);
+                    if (!tmpl) continue;
+                    const blob = await captureOffScreenBlob(tmpl, imgs);
+                    if (blob) {
+                        const url = await uploadFile(blob, 'print', `print_${Math.random().toString(36).substring(7)}.png`);
+                        printFiles[tmpl.side.toLowerCase()] = url;
+                    }
                 }
+
+                printFileUrl = JSON.stringify(printFiles);
             }
 
-            // 4. Upsert design
+            // 5. Compute print_dimensions (AABB per side in cm + original image px)
+            const print_dimensions: Record<string, ReturnType<typeof computeSideAabb>> = {};
+            // Current side
+            if (printZone) {
+                const pz = currentTemplate.print_area_config;
+                const aabb = computeSideAabb(
+                    canvasImages, printZone,
+                    pz.physical_w_cm ?? 30.48, pz.physical_h_cm ?? 40.64,
+                    pz.width, pz.height,
+                );
+                if (aabb) print_dimensions[currentTemplate.side.toLowerCase()] = aabb;
+            }
+            // Other sides
+            for (const [tid, imgs] of Object.entries(sideCanvasImages.current)) {
+                if (tid === currentTemplate.id || !imgs.length) continue;
+                const tmpl = templates.find(t => t.id === tid);
+                const zone = sideZones.current[tid];
+                if (!tmpl || !zone) continue;
+                const pz = tmpl.print_area_config;
+                const aabb = computeSideAabb(
+                    imgs, zone,
+                    pz.physical_w_cm ?? 30.48, pz.physical_h_cm ?? 40.64,
+                    pz.width, pz.height,
+                );
+                if (aabb) print_dimensions[tmpl.side.toLowerCase()] = aabb;
+            }
+
+            // 6. Upsert design
             const payload = {
                 design_name: designName,
                 canvas_data: canvasData,
@@ -384,6 +552,7 @@ export default function CanvasTest() {
                 available_colors: selectedColorId ? [selectedColorId] : [],
                 printing_type: 'DTG',
                 base_product_id: currentTemplate.product_id,
+                print_dimensions: Object.keys(print_dimensions).length > 0 ? print_dimensions : undefined,
             };
 
             if (designId) {
@@ -411,7 +580,7 @@ export default function CanvasTest() {
             <div className="flex items-center gap-2 p-2 bg-white border-b flex-wrap shrink-0">
                 <span className="text-xs font-medium text-gray-500 mr-1">Side:</span>
                 {currentSides.map(t => (
-                    <button key={t.id} onClick={() => setCurrentTemplate(t)}
+                    <button key={t.id} onClick={() => { saveCurrentSide(); setCurrentTemplate(t); }}
                         className={`px-3 py-1 rounded border text-sm ${t.id === currentTemplate?.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
                         {t.side}
                     </button>
@@ -436,10 +605,10 @@ export default function CanvasTest() {
                     + Add Image
                 </button>
 
-                {canvasImages.length > 0 && (
-                    <button onClick={() => { setCanvasImages([]); setSelectedId(null); }}
+                {selectedId && (
+                    <button onClick={() => { setCanvasImages(prev => prev.filter(ci => ci.id !== selectedId)); setSelectedId(null); }}
                         className="px-3 py-1.5 text-red-600 border border-red-200 rounded text-sm hover:bg-red-50">
-                        Clear
+                        Remove
                     </button>
                 )}
 
