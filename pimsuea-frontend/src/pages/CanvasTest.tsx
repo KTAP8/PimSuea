@@ -23,6 +23,7 @@ export default function CanvasTest() {
     const { id } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
     const designIdParam = searchParams.get('designId');
+    const printingTypeParam = (searchParams.get('printingType') || searchParams.get('printing_type'))?.toUpperCase();
     const { user } = useAuth();
     const stageRef = useRef<Konva.Stage>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -44,9 +45,13 @@ export default function CanvasTest() {
     const [isExporting, setIsExporting] = useState(false);
     const [exportedUrl, setExportedUrl] = useState<string | null>(null);
 
+    // Color selection
+    const [activeColorIds, setActiveColorIds] = useState<Set<string>>(new Set());
+
     // Save state
     const [designId, setDesignId] = useState<string | null>(null);
     const [designName, setDesignName] = useState('Untitled Design');
+    const [printingType, setPrintingType] = useState<string>(printingTypeParam ?? 'DTG');
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
@@ -72,16 +77,23 @@ export default function CanvasTest() {
         if (!id) return;
         getProductTemplates(id).then(async data => {
             setTemplates(data);
-            const firstColorId = data[0]?.color?.id ?? null;
-            let targetTemplate = (firstColorId != null
-                ? data.find(t => t.color?.id === firstColorId)
-                : data[0]) ?? data[0] ?? null;
+            // Prefer the template marked is_default (same as DesignCanvas), else first
+            const defaultTemplate = data.find(t => t.is_default) ?? data[0] ?? null;
+            let targetTemplate = defaultTemplate;
+            if (defaultTemplate?.color?.id) {
+                setSelectedColorId(defaultTemplate.color.id);
+                setActiveColorIds(new Set([defaultTemplate.color.id]));
+            }
 
             if (designIdParam) {
                 try {
                     const { data: design } = await api.get(`/designs/${designIdParam}`);
                     setDesignId(designIdParam);
                     if (design.design_name) setDesignName(design.design_name);
+                    if (design.printing_type) setPrintingType(design.printing_type);
+                    if (Array.isArray(design.available_colors) && design.available_colors.length > 0) {
+                        setActiveColorIds(new Set(design.available_colors));
+                    }
                     const canvasData = design.canvas_data;
                     if (canvasData?.renderer === 'konva') {
                         // New multi-side format: { sides: { [templateId]: SerializableImage[] } }
@@ -571,8 +583,8 @@ export default function CanvasTest() {
                 preview_image_url: previewMap,
                 print_file_url: printFileUrl,
                 design_hash: hash,
-                available_colors: selectedColorId ? [selectedColorId] : [],
-                printing_type: 'DTG',
+                available_colors: Array.from(activeColorIds),
+                printing_type: printingType,
                 base_product_id: currentTemplate.product_id,
                 print_dimensions: Object.keys(print_dimensions).length > 0 ? print_dimensions : undefined,
             };
@@ -609,11 +621,39 @@ export default function CanvasTest() {
                 ))}
 
                 <span className="text-xs font-medium text-gray-500 ml-3 mr-1">Color:</span>
-                {uniqueColors.map(color => (
-                    <button key={color.id} onClick={() => handleColorSelect(color.id)} title={color.name}
-                        className={`w-6 h-6 rounded-full border-2 transition-all ${color.id === selectedColorId ? 'border-blue-600 scale-110' : 'border-gray-300'}`}
-                        style={{ backgroundColor: color.hex_code ?? '#ccc' }} />
-                ))}
+                {uniqueColors.map(color => {
+                    const isViewing = color.id === selectedColorId;
+                    const isActive = activeColorIds.has(color.id);
+                    return (
+                        <div key={color.id} className="relative group">
+                            {/* Swatch: click to view + activate */}
+                            <button
+                                title={color.name}
+                                onClick={() => {
+                                    setActiveColorIds(prev => new Set([...prev, color.id]));
+                                    handleColorSelect(color.id);
+                                }}
+                                className={`w-6 h-6 rounded-full border-2 transition-all ${isViewing ? 'border-blue-600 scale-110' : 'border-gray-300'} ${isActive ? '' : 'opacity-35'}`}
+                                style={{ backgroundColor: color.hex_code ?? '#ccc' }}
+                            />
+                            {/* × badge: remove from active (only if >1 active) */}
+                            {isActive && activeColorIds.size > 1 && (
+                                <button
+                                    title="Remove from design"
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        const next = new Set(activeColorIds);
+                                        next.delete(color.id);
+                                        setActiveColorIds(next);
+                                        if (isViewing) handleColorSelect([...next][0]);
+                                    }}
+                                    className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-gray-700 rounded-full hidden group-hover:flex items-center justify-center z-10">
+                                    <X className="w-2 h-2 text-white" />
+                                </button>
+                            )}
+                        </div>
+                    );
+                })}
 
                 {displaySizeIn && (
                     <span className="text-[10px] font-mono text-gray-700 tabular-nums px-2 py-1 bg-gray-100 rounded ml-2">
@@ -811,6 +851,22 @@ export default function CanvasTest() {
                                     draggable
                                     onClick={() => setSelectedId(ci.id)}
                                     onTap={() => setSelectedId(ci.id)}
+                                    onDragMove={e => {
+                                        if (!printZone) return;
+                                        const node = e.target;
+                                        const w = node.width() * node.scaleX();
+                                        const h = node.height() * node.scaleY();
+                                        const pzR = printZone.left + printZone.width;
+                                        const pzB = printZone.top + printZone.height;
+                                        let x = node.x();
+                                        let y = node.y();
+                                        if (x < printZone.left) x = printZone.left;
+                                        else if (x + w > pzR) x = pzR - w;
+                                        if (y < printZone.top) y = printZone.top;
+                                        else if (y + h > pzB) y = pzB - h;
+                                        node.x(x);
+                                        node.y(y);
+                                    }}
                                     onDragEnd={e => {
                                         const node = e.target;
                                         setCanvasImages(prev => prev.map(item =>
@@ -844,7 +900,15 @@ export default function CanvasTest() {
                                 />
                             ))}
                             <Transformer ref={transformerRef} rotateEnabled={false} keepRatio={true}
-                                boundBoxFunc={(oldBox, newBox) => newBox.width < 10 || newBox.height < 10 ? oldBox : newBox} />
+                                boundBoxFunc={(oldBox, newBox) => {
+                                    if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10) return oldBox;
+                                    if (!printZone) return newBox;
+                                    const pzR = printZone.left + printZone.width;
+                                    const pzB = printZone.top + printZone.height;
+                                    if (newBox.x < printZone.left || newBox.y < printZone.top ||
+                                        newBox.x + newBox.width > pzR || newBox.y + newBox.height > pzB) return oldBox;
+                                    return newBox;
+                                }} />
                             {printZone && (
                                 <Rect ref={printZoneNodeRef}
                                     x={printZone.left} y={printZone.top}
