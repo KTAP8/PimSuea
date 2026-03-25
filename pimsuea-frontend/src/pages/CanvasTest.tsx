@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from 'react-konva';
 import Konva from 'konva';
-import { Upload, ImageIcon, X, Trash2, Loader2, Save } from 'lucide-react';
+import { Upload, ImageIcon, X, Trash2, Loader2, Save, Layers, ChevronUp, ChevronDown } from 'lucide-react';
 import { MD5 } from 'crypto-js';
 import api, { getProductTemplates, uploadFile, r2ProxyUrl } from '../services/api';
 import { injectPngDpi } from '../utils/canvasExporter';
@@ -60,6 +60,7 @@ export default function CanvasTest() {
 
     // Sidebar / library state
     const [showImageLibrary, setShowImageLibrary] = useState(false);
+    const [showLayerPanel, setShowLayerPanel] = useState(false);
     const [userUploads, setUserUploads] = useState<{ name: string; url: string }[]>([]);
     const [loadingUploads, setLoadingUploads] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -195,6 +196,27 @@ export default function CanvasTest() {
     const uniqueColors: Color[] = Array.from(
         new Map(templates.map(t => [t.color?.id, t.color])).values()
     ).filter((c): c is Color => !!c);
+
+    // ── Layer order helpers ───────────────────────────────────────────────────
+    const moveLayer = (id: string, delta: 'front' | 'forward' | 'backward' | 'back') => {
+        setCanvasImages(prev => {
+            const idx = prev.findIndex(ci => ci.id === id);
+            if (idx === -1) return prev;
+            const arr = [...prev];
+            if (delta === 'front') {
+                const [item] = arr.splice(idx, 1);
+                arr.push(item);
+            } else if (delta === 'back') {
+                const [item] = arr.splice(idx, 1);
+                arr.unshift(item);
+            } else if (delta === 'forward' && idx < arr.length - 1) {
+                [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+            } else if (delta === 'backward' && idx > 0) {
+                [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
+            }
+            return arr;
+        });
+    };
 
     // ── Save current side before switching ───────────────────────────────────
     const saveCurrentSide = () => {
@@ -605,6 +627,12 @@ export default function CanvasTest() {
                     + Add Image
                 </button>
 
+                <button onClick={() => setShowLayerPanel(v => !v)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 border rounded text-sm transition-colors ${showLayerPanel ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+                    <Layers className="w-3.5 h-3.5" />
+                    Layers{canvasImages.length > 0 && <span className="opacity-60">{canvasImages.length}</span>}
+                </button>
+
                 {selectedId && (
                     <button onClick={() => { setCanvasImages(prev => prev.filter(ci => ci.id !== selectedId)); setSelectedId(null); }}
                         className="px-3 py-1.5 text-red-600 border border-red-200 rounded text-sm hover:bg-red-50">
@@ -702,6 +730,65 @@ export default function CanvasTest() {
                                         </button>
                                     </div>
                                 ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Layer panel */}
+                {showLayerPanel && (
+                    <div className="w-52 bg-white shadow-2xl rounded-2xl border flex flex-col z-40 absolute right-4 top-4 bottom-4 overflow-hidden">
+                        <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50/50">
+                            <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                                <Layers className="w-4 h-4" /> Layers
+                            </h3>
+                            <button onClick={() => setShowLayerPanel(false)}
+                                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-200">
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+                            {canvasImages.length === 0 ? (
+                                <p className="text-xs text-gray-400 text-center py-8">No layers yet</p>
+                            ) : (
+                                // Display front-first (reverse of render order)
+                                [...canvasImages].reverse().map((ci, displayIdx) => {
+                                    const realIdx = canvasImages.length - 1 - displayIdx;
+                                    const isSelected = ci.id === selectedId;
+                                    return (
+                                        <div key={ci.id}
+                                            onClick={() => setSelectedId(ci.id)}
+                                            className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer group border transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : 'border-transparent hover:bg-gray-50'}`}>
+                                            {/* Thumbnail */}
+                                            <div className="w-8 h-8 rounded bg-gray-100 shrink-0 overflow-hidden border border-gray-200 flex items-center justify-center">
+                                                <img src={ci.src.startsWith('blob:') ? ci.src : r2ProxyUrl(ci.src)}
+                                                    className="w-full h-full object-contain" alt="" />
+                                            </div>
+                                            {/* Label */}
+                                            <span className="flex-1 text-xs text-gray-600 truncate min-w-0">
+                                                Layer {canvasImages.length - displayIdx}
+                                            </span>
+                                            {/* Reorder */}
+                                            <div className="flex flex-col shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={e => { e.stopPropagation(); moveLayer(ci.id, 'forward'); }}
+                                                    disabled={realIdx >= canvasImages.length - 1}
+                                                    className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30" title="Bring Forward">
+                                                    <ChevronUp className="w-3 h-3" />
+                                                </button>
+                                                <button onClick={e => { e.stopPropagation(); moveLayer(ci.id, 'backward'); }}
+                                                    disabled={realIdx <= 0}
+                                                    className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30" title="Send Backward">
+                                                    <ChevronDown className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                            {/* Delete */}
+                                            <button onClick={e => { e.stopPropagation(); setCanvasImages(prev => prev.filter(x => x.id !== ci.id)); if (selectedId === ci.id) setSelectedId(null); }}
+                                                className="shrink-0 p-1 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete">
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     </div>
