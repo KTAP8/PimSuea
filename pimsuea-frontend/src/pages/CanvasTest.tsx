@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Stage, Layer, Image as KonvaImage, Rect, Transformer } from 'react-konva';
 import Konva from 'konva';
-import { Upload, ImageIcon, X, Trash2, Loader2, Save, Layers, ChevronUp, ChevronDown } from 'lucide-react';
+import { Upload, ImageIcon, X, Trash2, Loader2, Save, Layers, ChevronUp, ChevronDown, Plus, Check } from 'lucide-react';
 import { MD5 } from 'crypto-js';
 import api, { getProductTemplates, uploadFile, r2ProxyUrl } from '../services/api';
 import { injectPngDpi } from '../utils/canvasExporter';
@@ -27,7 +27,6 @@ export default function CanvasTest() {
     const { user } = useAuth();
     const stageRef = useRef<Konva.Stage>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const transformerRef = useRef<Konva.Transformer>(null);
     const bgNodeRef = useRef<Konva.Image>(null);
     const printZoneNodeRef = useRef<Konva.Rect>(null);
@@ -47,6 +46,8 @@ export default function CanvasTest() {
 
     // Color selection
     const [activeColorIds, setActiveColorIds] = useState<Set<string>>(new Set());
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const colorPickerRef = useRef<HTMLDivElement>(null);
 
     // Save state
     const [designId, setDesignId] = useState<string | null>(null);
@@ -71,6 +72,18 @@ export default function CanvasTest() {
     const [isUploading, setIsUploading] = useState(false);
     const [deleteImageName, setDeleteImageName] = useState<string | null>(null);
     const [dpiWarningFile, setDpiWarningFile] = useState<{ file: File; dpi: number } | null>(null);
+
+    // ── Close color picker on outside click ──────────────────────────────────
+    useEffect(() => {
+        if (!showColorPicker) return;
+        const handler = (e: MouseEvent) => {
+            if (colorPickerRef.current && !colorPickerRef.current.contains(e.target as Node)) {
+                setShowColorPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [showColorPicker]);
 
     // ── Template loading ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -273,26 +286,6 @@ export default function CanvasTest() {
             setSelectedId(newId);
         };
         img.src = r2ProxyUrl(url);
-    };
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !printZone) return;
-        const objectUrl = URL.createObjectURL(file);
-        const img = new window.Image();
-        img.onload = () => {
-            const scale = Math.min(printZone.width / img.width, printZone.height / img.height, 1);
-            const w = img.width * scale;
-            const h = img.height * scale;
-            const x = printZone.left + (printZone.width - w) / 2;
-            const y = printZone.top + (printZone.height - h) / 2;
-            const newId = Math.random().toString(36).substring(7);
-            // Keep objectUrl alive (not revoked) so img.src remains valid
-            setCanvasImages(prev => [...prev, { id: newId, image: img, src: objectUrl, x, y, width: w, height: h }]);
-            setSelectedId(newId);
-        };
-        img.src = objectUrl;
-        e.target.value = '';
     };
 
     // ── Sidebar upload ────────────────────────────────────────────────────────
@@ -608,123 +601,79 @@ export default function CanvasTest() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="flex flex-col h-screen bg-gray-50">
+        <div className="flex flex-col h-screen bg-background">
+            {/* Top Global Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-white/95 backdrop-blur-md border-b shadow-sm z-20 shrink-0 sticky top-0">
+                <div className="flex items-center gap-4 w-1/3">
+                    <span className="font-bold text-primary tracking-tight text-lg">Design Canvas</span>
+                </div>
+                
+                <div className="flex-1 flex justify-center w-1/3">
+                    <input
+                        value={designName}
+                        onChange={e => setDesignName(e.target.value)}
+                        className="border-2 border-gray-100 bg-gray-50 rounded-xl px-4 py-2 text-sm font-semibold w-64 text-center focus:outline-none focus:ring-2 focus:ring-action/20 focus:border-action transition-all placeholder-gray-400"
+                        placeholder="Untitled Design"
+                    />
+                </div>
 
-            {/* Top toolbar */}
-            <div className="flex items-center gap-2 p-2 bg-white border-b flex-wrap shrink-0">
-                <span className="text-xs font-medium text-gray-500 mr-1">Side:</span>
-                {currentSides.map(t => (
-                    <button key={t.id} onClick={() => { saveCurrentSide(); setCurrentTemplate(t); }}
-                        className={`px-3 py-1 rounded border text-sm ${t.id === currentTemplate?.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
-                        {t.side}
+                <div className="flex items-center justify-end gap-3 w-1/3">
+                    <button onClick={handleSave} disabled={isSaving || !currentTemplate}
+                        className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
+                            saveStatus === 'saved' ? 'bg-green-600 text-white shadow-green-600/20' :
+                            saveStatus === 'error' ? 'bg-destructive text-white shadow-red-500/20' :
+                            'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
+                        }`}>
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save'}
                     </button>
-                ))}
 
-                <span className="text-xs font-medium text-gray-500 ml-3 mr-1">Color:</span>
-                {uniqueColors.map(color => {
-                    const isViewing = color.id === selectedColorId;
-                    const isActive = activeColorIds.has(color.id);
-                    return (
-                        <div key={color.id} className="relative group">
-                            {/* Swatch: click to view + activate */}
-                            <button
-                                title={color.name}
-                                onClick={() => {
-                                    setActiveColorIds(prev => new Set([...prev, color.id]));
-                                    handleColorSelect(color.id);
-                                }}
-                                className={`w-6 h-6 rounded-full border-2 transition-all ${isViewing ? 'border-blue-600 scale-110' : 'border-gray-300'} ${isActive ? '' : 'opacity-35'}`}
-                                style={{ backgroundColor: color.hex_code ?? '#ccc' }}
-                            />
-                            {/* × badge: remove from active (only if >1 active) */}
-                            {isActive && activeColorIds.size > 1 && (
-                                <button
-                                    title="Remove from design"
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        const next = new Set(activeColorIds);
-                                        next.delete(color.id);
-                                        setActiveColorIds(next);
-                                        if (isViewing) handleColorSelect([...next][0]);
-                                    }}
-                                    className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-gray-700 rounded-full hidden group-hover:flex items-center justify-center z-10">
-                                    <X className="w-2 h-2 text-white" />
-                                </button>
-                            )}
-                        </div>
-                    );
-                })}
-
-                {displaySizeIn && (
-                    <span className="text-[10px] font-mono text-gray-700 tabular-nums px-2 py-1 bg-gray-100 rounded ml-2">
-                        {displaySizeIn.w.toFixed(2)}" × {displaySizeIn.h.toFixed(2)}"
-                    </span>
-                )}
-
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                <button onClick={() => fileInputRef.current?.click()} disabled={!printZone}
-                    className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50 disabled:opacity-40 ml-2">
-                    + Add Image
-                </button>
-
-                <button onClick={() => setShowLayerPanel(v => !v)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 border rounded text-sm transition-colors ${showLayerPanel ? 'bg-gray-800 text-white border-gray-800' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
-                    <Layers className="w-3.5 h-3.5" />
-                    Layers{canvasImages.length > 0 && <span className="opacity-60">{canvasImages.length}</span>}
-                </button>
-
-                {selectedId && (
-                    <button onClick={() => { setCanvasImages(prev => prev.filter(ci => ci.id !== selectedId)); setSelectedId(null); }}
-                        className="px-3 py-1.5 text-red-600 border border-red-200 rounded text-sm hover:bg-red-50">
-                        Remove
+                    <button onClick={handleExport} disabled={isExporting || !currentTemplate}
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-action text-white rounded-xl text-sm font-semibold shadow-sm shadow-action/20 transition-all hover:bg-action/90 active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {isExporting ? 'Exporting…' : 'Export 300 DPI'}
                     </button>
-                )}
-
-                {/* Design name input */}
-                <input
-                    value={designName}
-                    onChange={e => setDesignName(e.target.value)}
-                    className="ml-auto border border-gray-200 rounded px-2 py-1 text-sm w-40 focus:outline-none focus:border-blue-400"
-                    placeholder="Design name"
-                />
-
-                {/* Save button */}
-                <button onClick={handleSave} disabled={isSaving || !currentTemplate}
-                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded text-sm font-medium transition-colors disabled:opacity-50 ${
-                        saveStatus === 'saved' ? 'bg-green-600 text-white' :
-                        saveStatus === 'error' ? 'bg-red-500 text-white' :
-                        'bg-gray-800 text-white hover:bg-black'
-                    }`}>
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {isSaving ? 'Saving…' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save'}
-                </button>
-
-                {/* Export button */}
-                <button onClick={handleExport} disabled={isExporting || !currentTemplate}
-                    className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm disabled:opacity-50 hover:bg-blue-700">
-                    {isExporting ? 'Exporting…' : 'Export 300 DPI'}
-                </button>
+                </div>
             </div>
 
             {/* Main content: sidebar + canvas */}
             <div className="flex flex-row flex-1 overflow-hidden relative">
 
-                {/* Left sidebar */}
-                <aside className="w-20 bg-white border-r flex flex-col items-center py-4 gap-4 z-10 shrink-0">
-                    <div className="flex flex-col items-center gap-1 cursor-pointer">
-                        <label className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${isUploading ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
-                            {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-gray-500" /> : <Upload className="w-5 h-5" />}
+                {/* Left sidebar tools */}
+                <aside className="w-24 bg-white shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col items-center py-6 gap-6 z-10 shrink-0 border-r border-gray-100">
+                    
+                    {/* Upload to Server */}
+                    <div className="flex flex-col items-center gap-1.5 cursor-pointer w-full group text-gray-400 hover:text-gray-700">
+                        <label className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all cursor-pointer border border-transparent group-hover:border-gray-200 ${isUploading ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-50 group-hover:bg-gray-100 text-gray-600'}`}>
+                            {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-5 h-5" />}
                             <input type="file" className="hidden" accept="image/*" onChange={handleSidebarUpload} disabled={isUploading} />
                         </label>
-                        <span className="text-[10px] text-gray-500 font-medium">{isUploading ? '...' : 'อัปโหลด'}</span>
+                        <span className="text-[10px] font-semibold">{isUploading ? '...' : 'Upload'}</span>
                     </div>
 
-                    <div className={`flex flex-col items-center gap-1 cursor-pointer w-full ${showImageLibrary ? 'bg-slate-100 border-r-4 border-black' : ''}`}
+                    {/* Image Library Panel Toggle */}
+                    <div className={`flex flex-col items-center gap-1.5 cursor-pointer w-full group ${showImageLibrary ? 'text-primary' : 'text-gray-400 hover:text-gray-700'}`}
                         onClick={() => setShowImageLibrary(v => !v)}>
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${showImageLibrary ? 'bg-black text-white' : 'bg-gray-100 hover:bg-black hover:text-white'}`}>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all border border-transparent ${showImageLibrary ? 'bg-primary/10 text-primary border-primary/20' : 'bg-gray-50 group-hover:bg-gray-100 text-gray-600 group-hover:border-gray-200'}`}>
                             <ImageIcon className="w-5 h-5" />
                         </div>
-                        <span className="text-[10px] text-gray-500 font-medium">คลังรูป</span>
+                        <span className="text-[10px] font-semibold">Library</span>
+                    </div>
+
+                    <div className="w-10 h-px bg-gray-100 my-1" />
+
+                    {/* Layers Panel Toggle */}
+                    <div className={`flex flex-col items-center gap-1.5 cursor-pointer w-full group ${showLayerPanel ? 'text-primary' : 'text-gray-400 hover:text-gray-700'}`}
+                        onClick={() => setShowLayerPanel(v => !v)}>
+                        <div className={`relative w-12 h-12 rounded-2xl flex items-center justify-center transition-all border border-transparent ${showLayerPanel ? 'bg-primary/10 text-primary border-primary/20' : 'bg-gray-50 group-hover:bg-gray-100 text-gray-600 group-hover:border-gray-200'}`}>
+                            <Layers className="w-5 h-5" />
+                            {canvasImages.length > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
+                                    {canvasImages.length}
+                                </span>
+                            )}
+                        </div>
+                        <span className="text-[10px] font-semibold">Layers</span>
                     </div>
                 </aside>
 
@@ -739,7 +688,7 @@ export default function CanvasTest() {
                             </button>
                         </div>
                         <div className="p-4 border-b">
-                            <label className={`w-full h-11 text-white rounded-xl flex items-center justify-center cursor-pointer gap-2 transition-all ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-black hover:bg-gray-800'}`}>
+                            <label className={`w-full h-11 text-white rounded-xl flex items-center justify-center cursor-pointer gap-2 transition-all shadow-sm ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}>
                                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                                 <span className="text-sm font-semibold">{isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่'}</span>
                                 <input type="file" className="hidden" accept="image/*" onChange={handleSidebarUpload} disabled={isUploading} />
@@ -777,14 +726,14 @@ export default function CanvasTest() {
 
                 {/* Layer panel */}
                 {showLayerPanel && (
-                    <div className="w-52 bg-white shadow-2xl rounded-2xl border flex flex-col z-40 absolute right-4 top-4 bottom-4 overflow-hidden">
-                        <div className="px-4 py-3 border-b flex items-center justify-between bg-gray-50/50">
-                            <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                                <Layers className="w-4 h-4" /> Layers
+                    <div className="w-64 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-2xl border border-gray-100 flex flex-col z-40 absolute right-6 top-6 bottom-32 overflow-hidden">
+                        <div className="px-5 py-4 border-b flex items-center justify-between bg-gray-50/50">
+                            <h3 className="font-semibold text-base flex items-center gap-2 text-gray-800">
+                                <Layers className="w-4.5 h-4.5" /> Layers
                             </h3>
                             <button onClick={() => setShowLayerPanel(false)}
-                                className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-gray-200">
-                                <X className="w-3.5 h-3.5" />
+                                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-200 text-gray-500 hover:text-gray-800 transition-colors">
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
@@ -798,7 +747,7 @@ export default function CanvasTest() {
                                     return (
                                         <div key={ci.id}
                                             onClick={() => setSelectedId(ci.id)}
-                                            className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer group border transition-colors ${isSelected ? 'bg-blue-50 border-blue-200' : 'border-transparent hover:bg-gray-50'}`}>
+                                            className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer group border transition-colors ${isSelected ? 'bg-primary/5 border-primary/20 shadow-sm' : 'border-transparent hover:bg-gray-50'}`}>
                                             {/* Thumbnail */}
                                             <div className="w-8 h-8 rounded bg-gray-100 shrink-0 overflow-hidden border border-gray-200 flex items-center justify-center">
                                                 <img src={ci.src.startsWith('blob:') ? ci.src : r2ProxyUrl(ci.src)}
@@ -835,7 +784,115 @@ export default function CanvasTest() {
                 )}
 
                 {/* Canvas area */}
-                <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden">
+                <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden relative">
+                    
+                    {/* Floating Metrics / Actions (Top Left of Canvas Area) */}
+                    <div className="absolute top-6 left-6 flex items-center gap-3 z-10 pointer-events-none">
+                        {displaySizeIn && (
+                            <div className="px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-gray-100 rounded-lg shadow-sm font-mono text-xs text-gray-600 font-medium tracking-wide">
+                                {displaySizeIn.w.toFixed(2)}" × {displaySizeIn.h.toFixed(2)}"
+                            </div>
+                        )}
+                        {selectedId && (
+                            <button onClick={() => { setCanvasImages(prev => prev.filter(ci => ci.id !== selectedId)); setSelectedId(null); }}
+                                className="pointer-events-auto px-4 py-1.5 bg-white backdrop-blur-sm border border-red-100 text-red-500 rounded-lg shadow-sm text-xs font-semibold hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-1.5">
+                                <Trash2 className="w-3.5 h-3.5" /> Remove
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Floating Context Panel (Bottom Center) */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-full px-8 py-3.5 flex items-center gap-8 border border-gray-100 z-10 transition-all">
+                        <div className="flex items-center gap-4">
+                            <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">Side</span>
+                            <div className="flex bg-gray-100/80 rounded-xl p-1 shrink-0">
+                                {currentSides.map(t => (
+                                    <button key={t.id} onClick={() => { saveCurrentSide(); setCurrentTemplate(t); }}
+                                        className={`px-5 py-1.5 rounded-lg text-sm font-semibold transition-all ${t.id === currentTemplate?.id ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'}`}>
+                                        {t.side}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="w-px h-8 bg-gray-200" />
+
+                        <div className="flex items-center gap-4">
+                            <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">Color</span>
+                            <div className="flex items-center gap-2">
+                                {/* Active color swatches */}
+                                {uniqueColors.filter(c => activeColorIds.has(c.id)).map(color => {
+                                    const isViewing = color.id === selectedColorId;
+                                    return (
+                                        <div key={color.id} className="relative group">
+                                            <button
+                                                title={color.name}
+                                                onClick={() => handleColorSelect(color.id)}
+                                                className={`w-8 h-8 rounded-full border-2 transition-all shadow-sm ${isViewing ? 'border-primary scale-110 ring-4 ring-primary/15' : 'border-black/10 hover:scale-105'}`}
+                                                style={{ backgroundColor: color.hex_code ?? '#ccc' }}
+                                            />
+                                            {activeColorIds.size > 1 && (
+                                                <button
+                                                    title="Remove color"
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        const next = new Set(activeColorIds);
+                                                        next.delete(color.id);
+                                                        setActiveColorIds(next);
+                                                        if (isViewing) handleColorSelect([...next][0]);
+                                                    }}
+                                                    className="absolute -top-1 -right-1 w-4 h-4 bg-gray-700 rounded-full hidden group-hover:flex items-center justify-center z-10 hover:bg-red-500 transition-colors">
+                                                    <X className="w-2.5 h-2.5 text-white" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+
+                                {/* + Add color button */}
+                                <div className="relative" ref={colorPickerRef}>
+                                    <button
+                                        title="Add color"
+                                        onClick={() => setShowColorPicker(p => !p)}
+                                        className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all hover:scale-105">
+                                        <Plus className="w-4 h-4" />
+                                    </button>
+
+                                    {/* Color picker dropdown */}
+                                    {showColorPicker && (
+                                        <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 min-w-[160px] z-50">
+                                            <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase px-2 py-1.5">Available Colors</p>
+                                            {uniqueColors.map(color => {
+                                                const isActive = activeColorIds.has(color.id);
+                                                return (
+                                                    <button
+                                                        key={color.id}
+                                                        onClick={() => {
+                                                            const next = new Set(activeColorIds);
+                                                            if (isActive && next.size > 1) {
+                                                                next.delete(color.id);
+                                                                setActiveColorIds(next);
+                                                                if (selectedColorId === color.id) handleColorSelect([...next][0]);
+                                                            } else if (!isActive) {
+                                                                next.add(color.id);
+                                                                setActiveColorIds(next);
+                                                                handleColorSelect(color.id);
+                                                            }
+                                                        }}
+                                                        className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition-colors">
+                                                        <div className="w-6 h-6 rounded-full border border-black/10 shrink-0 shadow-sm" style={{ backgroundColor: color.hex_code ?? '#ccc' }} />
+                                                        <span className="flex-1 text-sm text-gray-700 text-left truncate">{color.name}</span>
+                                                        {isActive && <Check className="w-3.5 h-3.5 text-primary shrink-0" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <Stage ref={stageRef} width={stageSize.width} height={stageSize.height}
                         onMouseDown={e => { if (e.target === e.target.getStage() || e.target.name() === 'bg') setSelectedId(null); }}
                         onTouchStart={e => { if (e.target === e.target.getStage() || e.target.name() === 'bg') setSelectedId(null); }}>
