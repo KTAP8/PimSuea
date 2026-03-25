@@ -67,7 +67,7 @@ function buildPhysChunk(dpi: number): Uint8Array {
  * and inserts a fresh pHYs with the target DPI right after IHDR.
  * canvas.toDataURL() never writes the correct pHYs even at high multipliers.
  */
-function injectPngDpi(pngBytes: Uint8Array, dpi: number): Uint8Array {
+export function injectPngDpi(pngBytes: Uint8Array, dpi: number): Uint8Array {
   const physChunk = buildPhysChunk(dpi);
   const sig = pngBytes.slice(0, 8); // PNG signature
 

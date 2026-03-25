@@ -55,10 +55,11 @@ export default function DesignCanvas() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const designId = searchParams.get('designId');
-  // Normalize to uppercase — DB ids are 'dtg'/'dtf', backend expects 'DTG'/'DTF'
   const rawPrintingType = searchParams.get('printingType') || searchParams.get('printing_type');
   const normalizedPrintingType = rawPrintingType?.toUpperCase();
-  const printingType = (normalizedPrintingType === 'DTG' || normalizedPrintingType === 'DTF') ? normalizedPrintingType : null;
+  const [printingType, setPrintingType] = useState<string | null>(
+      (normalizedPrintingType === 'DTG' || normalizedPrintingType === 'DTF') ? normalizedPrintingType : null
+  );
   console.log("Captured Printing Type:", printingType); // DEBUG
   const navigate = useNavigate();
   
@@ -72,6 +73,7 @@ export default function DesignCanvas() {
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const clipPathRef = useRef<fabric.Rect | null>(null); // Store the clipping rect
   const printZoneBoundsRef = useRef<{ left: number, top: number, width: number, height: number } | null>(null); // To center objects
+  const pxPerInchRef = useRef<number | null>(null); // display pixels per physical inch (for size display)
   const guideLinesRef = useRef<fabric.Line[]>([]);
   const SNAP_THRESHOLD = 8; // canvas pixels (divided by zoom at runtime)
   const PRINT_TIERS = {
@@ -100,6 +102,7 @@ export default function DesignCanvas() {
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [activeColorIds, setActiveColorIds] = useState<Set<string>>(new Set()); // User selected colors
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [objectSizeIn, setObjectSizeIn] = useState<{ w: number; h: number } | null>(null);
   const [sizeLockAxis, setSizeLockAxis] = useState<'width' | 'height'>('width');
 
   // Initialize Color on Template Load
@@ -462,11 +465,32 @@ export default function DesignCanvas() {
       console.log("RENDER DesignCanvas | ID:", id);
       if (!id) return;
       try {
-        const data = await getProductTemplates(id);
-        // If Edit Mode: Fetch design data
-        if (designId) {
+             let data = await getProductTemplates(id);
+             
+             let effectivePrintingType = normalizedPrintingType;
+             let design: any = null;
+
+             if (designId) {
+                 design = await getDesignById(designId);
+                 if (!effectivePrintingType && design.printing_type) {
+                     effectivePrintingType = design.printing_type.toUpperCase();
+                     setPrintingType(effectivePrintingType || null);
+                 }
+             }
+
+             // Filter by printing type if specified (either from URL or from Design DB)
+             if (effectivePrintingType) {
+                 const filteredData = data.filter((t: ProductTemplate) => t.id.toUpperCase().includes(effectivePrintingType!));
+                 if (filteredData.length > 0) {
+                     data = filteredData;
+                 }
+             }
+
+             setTemplates(data);
+
+             if (design) {
             console.log("Loading Saved Design:", designId);
-            const design = await getDesignById(designId);
+            // const design = await getDesignById(designId); // This line is now above
             if (design && design.canvas_data) {
                 // Populate savedDesignsRef
                 let parsedData = design.canvas_data;
@@ -546,7 +570,7 @@ export default function DesignCanvas() {
         }
         
         // Update Templates State LAST (trigers watchers)
-        setTemplates(data);
+        // setTemplates(data); // This is now done earlier
         
         // Template initialization is handled by the useEffect hook watching 'templates'
         // BUT if we set selectedColorId above, the watcher won't override it.
@@ -585,9 +609,19 @@ export default function DesignCanvas() {
     fabricRef.current = newCanvas;
 
     // Event Listeners
-    newCanvas.on('selection:created', (e) => setSelectedObject(e.selected?.[0] || null));
-    newCanvas.on('selection:updated', (e) => setSelectedObject(e.selected?.[0] || null));
-    newCanvas.on('selection:cleared', () => setSelectedObject(null));
+    newCanvas.on('selection:created', (e) => {
+        const obj = e.selected?.[0] || null;
+        setSelectedObject(obj);
+        if (obj) updateSizeDisplay(obj);
+    });
+    newCanvas.on('selection:updated', (e) => {
+        const obj = e.selected?.[0] || null;
+        setSelectedObject(obj);
+        if (obj) updateSizeDisplay(obj);
+    });
+    newCanvas.on('selection:cleared', () => { setSelectedObject(null); setObjectSizeIn(null); });
+    newCanvas.on('object:scaling', (e) => { if (e.target) updateSizeDisplay(e.target); });
+    newCanvas.on('object:modified', (e) => { if (e.target) updateSizeDisplay(e.target); });
 
     // ZOOM & PAN Event Listeners
     newCanvas.on('mouse:wheel', (opt) => {
@@ -629,12 +663,17 @@ export default function DesignCanvas() {
         const scaledWidth = w * scaleFactor;
         const scaledHeight = h * scaleFactor;
 
-        printZoneBoundsRef.current = { 
-            left: scaledLeft, 
-            top: scaledTop, 
-            width: scaledWidth, 
-            height: scaledHeight 
+        printZoneBoundsRef.current = {
+            left: scaledLeft,
+            top: scaledTop,
+            width: scaledWidth,
+            height: scaledHeight
         };
+           // (we just don't clamp immediately).
+        // Safely extract the physical coordinates, falling back to DTG standard (12x16 inch approx)
+        const physW_in = (currentTemplate.print_area_config?.physical_w_cm ?? 30.48) / 2.54;
+        pxPerInchRef.current = scaledWidth / physW_in;
+        console.log('[CANVAS SETUP] containerW:', containerWidth, 'scaleFactor:', scaleFactor, 'scaledWidth:', scaledWidth, 'physW_in:', physW_in, 'pxPerInch:', pxPerInchRef.current);
         
         // Expand clip by strokeWidth/2 (1px) so objects snapped to the zone edge
         // are never sitting exactly on the clip boundary, which causes sub-pixel
@@ -723,12 +762,13 @@ export default function DesignCanvas() {
                // Rescale objects if the canvas scaleFactor changed since the last save
                // (e.g. browser window was a different size). All coords/sizes are stored
                // in display pixels, so they must scale with the print zone.
-               if (savedBoundsForRescale && printZoneBoundsRef.current) {
+               console.log('[LOAD] savedBoundsForRescale:', savedBoundsForRescale, 'currentZoneWidth:', printZoneBoundsRef.current?.width);
+              if (savedBoundsForRescale && printZoneBoundsRef.current) {
                    const ratio = printZoneBoundsRef.current.width / savedBoundsForRescale.width;
+                   console.log('[RESCALE] ratio:', ratio, '(fires if |ratio-1| > 0.001)');
                    if (Math.abs(ratio - 1) > 0.001) {
-                       newCanvas.getObjects()
-                           .filter((o: any) => o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide')
-                           .forEach(o => {
+                       newCanvas.getObjects().forEach(o => {
+                           if (o.name !== 'static_bg' && o.name !== 'print_zone' && o.name !== 'smart_guide') {
                                o.set({
                                    left: (o.left ?? 0) * ratio,
                                    top: (o.top ?? 0) * ratio,
@@ -737,14 +777,17 @@ export default function DesignCanvas() {
                                    const text = o as fabric.IText;
                                    text.set({ fontSize: Math.max(5, Math.round((text.fontSize ?? 12) * ratio)) });
                                } else {
-                                   o.set({
-                                       scaleX: (o.scaleX ?? 1) * ratio,
-                                       scaleY: (o.scaleY ?? 1) * ratio,
-                                   });
+                                   const newScaleX = (o.scaleX ?? 1) * ratio;
+                                   const newScaleY = (o.scaleY ?? 1) * ratio;
+                                   o.set({ scaleX: newScaleX, scaleY: newScaleY });
+                                   console.log(`[RESCALE] Applying scale ${newScaleX} to object ${o.type}`);
                                }
                                o.setCoords();
-                           });
+                           }
+                       });
                    }
+               } else {
+                   console.warn('[RESCALE] Skipping! missing bounds. savedBoundsForRescale:', savedBoundsForRescale);
                }
 
                // One-time clamp: ensure all design objects are within the print zone.
@@ -1382,6 +1425,14 @@ export default function DesignCanvas() {
         fabricRef.current.renderAll();
     }, { crossOrigin: 'anonymous' });
   }
+
+  const updateSizeDisplay = (obj: fabric.Object) => {
+    if (!pxPerInchRef.current) { setObjectSizeIn(null); return; }
+    const w = ((obj.width ?? 0) * (obj.scaleX ?? 1)) / pxPerInchRef.current;
+    const h = ((obj.height ?? 0) * (obj.scaleY ?? 1)) / pxPerInchRef.current;
+    console.log('[SIZE] width:', obj.width, 'scaleX:', obj.scaleX, 'pxPerInch:', pxPerInchRef.current, '→', w.toFixed(3), '"');
+    setObjectSizeIn({ w, h });
+  };
 
   // Delete Object
   const applyPresetSize = (tier: TierKey, axis: 'width' | 'height') => {
@@ -2186,6 +2237,15 @@ const handleManualSave = async () => {
                             
                             <div className="w-px h-6 bg-gray-200 mx-1" />
                         </>
+                    )}
+
+                    <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                    {/* Object size in inches */}
+                    {objectSizeIn && (
+                        <span className="text-[10px] font-mono text-gray-700 shrink-0 tabular-nums">
+                            {objectSizeIn.w.toFixed(2)}" × {objectSizeIn.h.toFixed(2)}"
+                        </span>
                     )}
 
                     <div className="w-px h-6 bg-gray-200 mx-1" />
