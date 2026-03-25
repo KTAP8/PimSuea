@@ -56,9 +56,9 @@ export default function CanvasTest() {
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-    // Per-side image storage (keyed by template ID, mirrors DesignCanvas savedDesigns pattern)
+    // Per-side image storage (keyed by side NAME e.g. "front"/"back" — shared across all colors)
     const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
-    // Per-side scaled print zone (populated when each template's bg image loads)
+    // Per-side scaled print zone (keyed by side NAME — same side has same zone across colors)
     const sideZones = useRef<Record<string, { left: number; top: number; width: number; height: number }>>({});
     // Serializable pending side data to load once the background image renders (keyed by template ID)
     type SerializableImage = { id: string; src: string; x: number; y: number; width: number; height: number };
@@ -90,8 +90,10 @@ export default function CanvasTest() {
         if (!id) return;
         getProductTemplates(id).then(async data => {
             setTemplates(data);
-            // Prefer the template marked is_default (same as DesignCanvas), else first
-            const defaultTemplate = data.find(t => t.is_default) ?? data[0] ?? null;
+            // Prefer is_default → then front side → then first
+            const defaultTemplate = data.find(t => t.is_default)
+                ?? data.find(t => t.side?.toLowerCase() === 'front')
+                ?? data[0] ?? null;
             let targetTemplate = defaultTemplate;
             if (defaultTemplate?.color?.id) {
                 setSelectedColorId(defaultTemplate.color.id);
@@ -109,16 +111,30 @@ export default function CanvasTest() {
                     }
                     const canvasData = design.canvas_data;
                     if (canvasData?.renderer === 'konva') {
-                        // New multi-side format: { sides: { [templateId]: SerializableImage[] } }
                         if (canvasData.sides) {
-                            pendingSideData.current = canvasData.sides;
-                            const activeId = canvasData.activeTemplateId;
-                            const savedTemplate = data.find(t => t.id === activeId) ?? data.find(t => canvasData.sides[t.id]);
-                            if (savedTemplate) { targetTemplate = savedTemplate; setSelectedColorId(savedTemplate.color?.id ?? null); }
-                        // Old single-side format: { templateId, images: [] }
+                            if (canvasData.activeSide) {
+                                // New format: sides keyed by side name ("front"/"back")
+                                pendingSideData.current = canvasData.sides;
+                                const savedTemplate = data.find(t => t.side === canvasData.activeSide)
+                                    ?? data.find(t => canvasData.sides[t.side]);
+                                if (savedTemplate) { targetTemplate = savedTemplate; setSelectedColorId(savedTemplate.color?.id ?? null); }
+                            } else {
+                                // Old format: sides keyed by template ID — convert to side-name keys
+                                const converted: Record<string, SerializableImage[]> = {};
+                                for (const [key, imgs] of Object.entries(canvasData.sides as Record<string, SerializableImage[]>)) {
+                                    const tmpl = data.find(t => t.id === key);
+                                    if (tmpl) converted[tmpl.side] = imgs;
+                                }
+                                pendingSideData.current = converted;
+                                const savedTemplate = data.find(t => t.id === canvasData.activeTemplateId)
+                                    ?? data.find(t => canvasData.sides[t.id]);
+                                if (savedTemplate) { targetTemplate = savedTemplate; setSelectedColorId(savedTemplate.color?.id ?? null); }
+                            }
+                        // Oldest single-side format: { templateId, images: [] }
                         } else if (canvasData.templateId && canvasData.images?.length) {
-                            pendingSideData.current = { [canvasData.templateId]: canvasData.images };
-                            const savedTemplate = data.find(t => t.id === canvasData.templateId);
+                            const tmpl = data.find(t => t.id === canvasData.templateId);
+                            if (tmpl) pendingSideData.current = { [tmpl.side]: canvasData.images };
+                            const savedTemplate = tmpl;
                             if (savedTemplate) { targetTemplate = savedTemplate; setSelectedColorId(savedTemplate.color?.id ?? null); }
                         }
                     }
@@ -146,13 +162,13 @@ export default function CanvasTest() {
             const pz = template.print_area_config;
             const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
             setPrintZone(pzScaled);
-            sideZones.current[template.id] = pzScaled;
+            sideZones.current[template.side] = pzScaled;
             setSelectedId(null);
 
             // If there's pending serializable data for this side, load it now
-            const pending = pendingSideData.current[template.id];
+            const pending = pendingSideData.current[template.side];
             if (pending) {
-                delete pendingSideData.current[template.id];
+                delete pendingSideData.current[template.side];
                 Promise.all(pending.map(d => new Promise<CanvasImage>((resolve, reject) => {
                     const i = new window.Image();
                     i.crossOrigin = 'anonymous';
@@ -160,12 +176,12 @@ export default function CanvasTest() {
                     i.onerror = reject;
                     i.src = r2ProxyUrl(d.src);
                 }))).then(loaded => {
-                    sideCanvasImages.current[template.id] = loaded;
+                    sideCanvasImages.current[template.side] = loaded;
                     setCanvasImages(loaded);
                 }).catch(err => console.error('[CanvasTest] Failed to restore side images:', err));
             } else {
-                // Restore previously saved images for this side (in-session switch)
-                setCanvasImages(sideCanvasImages.current[template.id] ?? []);
+                // Restore previously saved images for this side (shared across all colors)
+                setCanvasImages(sideCanvasImages.current[template.side] ?? []);
             }
         };
         img.onerror = () => console.error('[CanvasTest] image load failed:', template.image_url);
@@ -215,9 +231,15 @@ export default function CanvasTest() {
         : null;
     const displaySizeIn = liveSizeIn ?? selectedSizeIn;
 
-    const currentSides = selectedColorId != null
+    const SIDE_ORDER = ['front', 'back'];
+    const currentSides = (selectedColorId != null
         ? templates.filter(t => t.color?.id === selectedColorId)
-        : templates;
+        : templates
+    ).slice().sort((a, b) => {
+        const ai = SIDE_ORDER.indexOf(a.side?.toLowerCase() ?? '');
+        const bi = SIDE_ORDER.indexOf(b.side?.toLowerCase() ?? '');
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
     const uniqueColors: Color[] = Array.from(
         new Map(templates.map(t => [t.color?.id, t.color])).values()
     ).filter((c): c is Color => !!c);
@@ -245,27 +267,14 @@ export default function CanvasTest() {
 
     // ── Save current side before switching ───────────────────────────────────
     const saveCurrentSide = () => {
-        if (currentTemplate) sideCanvasImages.current[currentTemplate.id] = canvasImages;
+        if (currentTemplate) sideCanvasImages.current[currentTemplate.side] = canvasImages;
     };
 
     // ── Canvas image helpers ──────────────────────────────────────────────────
     const handleColorSelect = (colorId: string) => {
         saveCurrentSide();
-        const oldColorId = selectedColorId;
-        // Copy designs from old color → new color for all other sides (same as DesignCanvas)
-        if (oldColorId && oldColorId !== colorId) {
-            const oldSideTemplates = templates.filter(t => t.color?.id === oldColorId);
-            for (const oldTmpl of oldSideTemplates) {
-                if (oldTmpl.id === currentTemplate?.id) continue; // current side handled by saveCurrentSide
-                const saved = sideCanvasImages.current[oldTmpl.id];
-                if (!saved) continue;
-                const newTmpl = templates.find(t => t.color?.id === colorId && t.side === oldTmpl.side);
-                if (newTmpl && !sideCanvasImages.current[newTmpl.id]) {
-                    sideCanvasImages.current[newTmpl.id] = saved;
-                }
-            }
-        }
         setSelectedColorId(colorId);
+        // Keep the same side name — images are shared across all colors via sideCanvasImages keyed by side
         const sameSide = templates.find(t => t.color?.id === colorId && t.side === currentTemplate?.side);
         const first = sameSide ?? templates.find(t => t.color?.id === colorId);
         if (first) setCurrentTemplate(first);
@@ -485,16 +494,16 @@ export default function CanvasTest() {
         setSaveStatus('idle');
         try {
             // 1. Sync current side into ref, then build multi-side canvas data
-            sideCanvasImages.current[currentTemplate.id] = canvasImages;
+            sideCanvasImages.current[currentTemplate.side] = canvasImages;
             const sides = Object.fromEntries(
                 Object.entries(sideCanvasImages.current)
                     .filter(([, imgs]) => imgs.length > 0)
-                    .map(([tid, imgs]) => [tid, imgs.map(ci => ({ id: ci.id, src: ci.src, x: ci.x, y: ci.y, width: ci.width, height: ci.height }))])
+                    .map(([sideName, imgs]) => [sideName, imgs.map(ci => ({ id: ci.id, src: ci.src, x: ci.x, y: ci.y, width: ci.width, height: ci.height }))])
             );
             const canvasData = {
                 renderer: 'konva',
                 version: '2',
-                activeTemplateId: currentTemplate.id,
+                activeSide: currentTemplate.side,
                 sides,
             };
             const canvasDataStr = JSON.stringify(canvasData);
@@ -528,14 +537,16 @@ export default function CanvasTest() {
                 }
 
                 // Other sides — render off-screen
-                for (const [tid, imgs] of Object.entries(sideCanvasImages.current)) {
-                    if (tid === currentTemplate.id || !imgs.length) continue;
-                    const tmpl = templates.find(t => t.id === tid);
+                for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
+                    if (sideName === currentTemplate.side || !imgs.length) continue;
+                    // Any template with this side works — use current color's if available
+                    const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                        ?? templates.find(t => t.side === sideName);
                     if (!tmpl) continue;
                     const blob = await captureOffScreenBlob(tmpl, imgs);
                     if (blob) {
                         const url = await uploadFile(blob, 'print', `print_${Math.random().toString(36).substring(7)}.png`);
-                        printFiles[tmpl.side.toLowerCase()] = url;
+                        printFiles[sideName.toLowerCase()] = url;
                     }
                 }
 
@@ -555,10 +566,11 @@ export default function CanvasTest() {
                 if (aabb) print_dimensions[currentTemplate.side.toLowerCase()] = aabb;
             }
             // Other sides
-            for (const [tid, imgs] of Object.entries(sideCanvasImages.current)) {
-                if (tid === currentTemplate.id || !imgs.length) continue;
-                const tmpl = templates.find(t => t.id === tid);
-                const zone = sideZones.current[tid];
+            for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
+                if (sideName === currentTemplate.side || !imgs.length) continue;
+                const zone = sideZones.current[sideName];
+                const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                    ?? templates.find(t => t.side === sideName);
                 if (!tmpl || !zone) continue;
                 const pz = tmpl.print_area_config;
                 const aabb = computeSideAabb(
@@ -566,7 +578,7 @@ export default function CanvasTest() {
                     pz.physical_w_cm ?? 30.48, pz.physical_h_cm ?? 40.64,
                     pz.width, pz.height,
                 );
-                if (aabb) print_dimensions[tmpl.side.toLowerCase()] = aabb;
+                if (aabb) print_dimensions[sideName.toLowerCase()] = aabb;
             }
 
             // 6. Upsert design
