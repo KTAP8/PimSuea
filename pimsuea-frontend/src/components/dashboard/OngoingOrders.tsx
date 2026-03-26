@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Package } from 'lucide-react';
 import type { Order } from '@/types/api';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -19,17 +19,22 @@ export function OngoingOrders({ orders, loading }: Props) {
 
     return (
         <section className="container mx-auto px-4">
-            <div className="flex justify-between items-end mb-5">
-                <h2 className="text-2xl font-bold text-gray-900">📦 คำสั่งซื้อที่กำลังดำเนินการ</h2>
-                <Link to="/orders" className="text-sm text-primary hover:underline font-medium flex items-center gap-1">
-                    ดูทั้งหมด <ArrowRight className="w-3.5 h-3.5" />
+            <div className="flex justify-between items-end mb-8">
+                <h2 className="text-2xl font-semibold flex items-center gap-2 text-slate-900">
+                    <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
+                      <Package className="w-6 h-6" />
+                    </div>
+                    คำสั่งซื้อที่กำลังดำเนินการ
+                </h2>
+                <Link to="/orders" className="text-sm text-primary hover:underline font-normal flex items-center gap-1.5 transition-colors">
+                    ดูทั้งหมด <ArrowRight className="w-4 h-4" />
                 </Link>
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
                 {loading
                     ? Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="bg-gray-100 rounded-2xl h-20 animate-pulse" />
+                        <div key={i} className="bg-slate-100 rounded-3xl h-24 animate-pulse" />
                     ))
                     : orders.map(order => {
                         const status = STATUS_MAP[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-800' };
@@ -38,20 +43,26 @@ export function OngoingOrders({ orders, loading }: Props) {
                             <Link
                                 key={order.id}
                                 to="/orders"
-                                className="group bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center justify-between"
+                                className="group bg-white ring-1 ring-slate-900/5 rounded-3xl p-5 md:px-6 md:py-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 ease-out flex items-center justify-between"
                             >
-                                <div className="flex items-center gap-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                                     <div>
-                                        <p className="font-bold text-gray-900 text-sm">คำสั่งซื้อ #{order.id}</p>
+                                        <p className="font-semibold text-slate-900 text-base">คำสั่งซื้อ #{order.id}</p>
                                         {itemCount > 0 && (
-                                            <p className="text-xs text-gray-500 mt-0.5">{itemCount} ชิ้น · ฿{order.total_amount.toLocaleString()}</p>
+                                            <p className="text-sm text-slate-500 mt-0.5 flex gap-1.5 font-normal">
+                                              <span>{itemCount} ชิ้น</span> 
+                                              <span>·</span> 
+                                              <span className="font-medium text-slate-700">฿{order.total_amount.toLocaleString()}</span>
+                                            </p>
                                         )}
                                     </div>
-                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${status.color}`}>
+                                    <span className={`text-xs font-medium px-3 py-1.5 rounded-full w-fit ${status.color}`}>
                                         {status.label}
                                     </span>
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors shrink-0" />
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 flex-shrink-0 ml-4 hidden sm:flex">
+                                    <ArrowRight className="w-5 h-5 text-slate-700" />
+                                </div>
                             </Link>
                         );
                     })

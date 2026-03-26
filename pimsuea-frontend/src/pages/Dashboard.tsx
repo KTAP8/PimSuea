@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Star, Loader2, AlertCircle } from "lucide-react";
+import { ArrowRight, Star, Loader2, AlertCircle, Newspaper, Flame } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getDashboard } from "@/services/api";
 import type { DashboardData } from "@/types/api";
@@ -62,33 +62,35 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="pb-10">
+    <div className="pb-16 bg-slate-50 min-h-screen">
       {/* Hero Section */}
-      <BackgroundCells className="h-[80vh] border-b">
-        <div className="text-center px-4 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 text-slate-900 tracking-tight leading-tight">
+      <BackgroundCells className="h-[75vh] border-b border-gray-100/50 bg-white/40">
+        <div className="text-center px-4 max-w-4xl mx-auto relative z-10 flex flex-col justify-center h-full pt-10">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 text-slate-900 tracking-tight leading-tight">
             บริการ Print On Demand <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#07636D] to-teal-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#07636D] to-teal-500 drop-shadow-sm">
               เพื่อคุณ โดยคุณ เราจัดการให้
             </span>
           </h1>
 
-          <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-slate-500 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
             ศูนย์รวมงานสกรีนคุณภาพสูง ออกแบบเองได้ง่ายๆ <br className="hidden md:block" /> เริ่มต้นเพียง 1 ชิ้น ส่งตรงถึงบ้านคุณ
           </p>
 
-          <Link to="/catalog">
-            <Button size="lg" className="bg-[#07636D] hover:bg-[#06545c] text-white rounded-full text-lg px-8 py-6 shadow-xl shadow-teal-900/10 transition-all hover:scale-105 hover:shadow-teal-900/20">
-              เริ่มสั่งทำเลย <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </Link>
+          <div>
+            <Link to="/catalog">
+              <Button size="lg" className="bg-[#07636D] hover:bg-[#06545c] text-white rounded-full text-lg px-8 py-6 shadow-xl shadow-teal-900/15 transition-all duration-300 hover:scale-[1.02] hover:shadow-teal-900/30">
+                เริ่มสั่งทำเลย <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </BackgroundCells>
       
       {/* Personalized user summary */}
       <UserGreeting stats={stats} />
 
-      <div className="container mx-auto px-4 space-y-12 mt-8">
+      <div className="container mx-auto px-4 space-y-16 mt-10">
         <QuickActions stats={stats} />
         <ContinueDesigning designs={stats.recentDesigns} loading={stats.loading} />
         <OngoingOrders orders={stats.ongoingOrders} loading={stats.loading} />
@@ -96,8 +98,11 @@ export default function Dashboard() {
             {/* News Section */}
         {data?.news && data.news.length > 0 && (
             <section className="container mx-auto px-4">
-                <h2 className="text-3xl font-bold mb-6 flex items-center">
-                📢 ข่าวสารและโปรโมชั่น
+                <h2 className="text-2xl font-semibold mb-8 flex items-center gap-2 text-slate-900">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <Newspaper className="w-6 h-6" />
+                </div>
+                ข่าวสารและโปรโมชั่น
                 </h2>
                 <Carousel
                   opts={{
@@ -133,7 +138,7 @@ export default function Dashboard() {
                                 
                                 {/* Content */}
                                 <div className="p-5 flex-1 flex flex-col">
-                                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                                    <h3 className="text-xl font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
                                         {item.title}
                                     </h3>
                                     <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
@@ -158,12 +163,15 @@ export default function Dashboard() {
 
         {/* Best Sellers */}
         {data?.bestSellers && data.bestSellers.length > 0 && (
-            <section className="container mx-auto px-4">
-                <div className="flex justify-between items-end mb-6">
-                <h2 className="text-3xl font-bold flex items-center">
-                    🔥 สินค้าขายดี
+            <section className="container mx-auto px-4 pb-12">
+                <div className="flex justify-between items-end mb-8">
+                <h2 className="text-2xl font-semibold flex items-center gap-2 text-slate-900">
+                    <div className="p-2 bg-orange-50 text-orange-500 rounded-xl">
+                      <Flame className="w-6 h-6" />
+                    </div>
+                    สินค้าขายดี
                 </h2>
-                <Link to="/catalog" className="text-primary hover:underline font-medium">
+                <Link to="/catalog" className="text-primary hover:underline text-sm font-normal">
                     ดูทั้งหมด
                 </Link>
                 </div>
@@ -180,7 +188,7 @@ export default function Dashboard() {
                         )}
                     </div>
                     <div className="p-4">
-                        <h3 className="font-semibold text-lg mb-1 truncate">{product.name}</h3>
+                        <h3 className="font-medium text-lg mb-1 text-slate-800 truncate">{product.name}</h3>
                         <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
                          {/* Fallback sold count if missing */}
                         <span>ขายแล้ว {product.sold_count || '100+'}</span>
@@ -189,7 +197,7 @@ export default function Dashboard() {
                         </div>
                         </div>
                         <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-primary">฿{(product.price).toLocaleString()}</span>
+                        <span className="text-lg font-semibold text-primary">฿{(product.price).toLocaleString()}</span>
                         <Link to={`/product/${product.id}`}>
                             <Button size="sm" variant="secondary" className="rounded-full">เลือก</Button>
                         </Link>

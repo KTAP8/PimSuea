@@ -8,7 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
 import DesignCanvas from './pages/DesignCanvas';
-import CanvasTest from './pages/CanvasTest';
+import DesignStudio from './pages/DesignStudio';
 import MyOrders from './pages/MyOrders';
 import MyProducts from './pages/MyProducts';
 import Wallet from './pages/Wallet';
@@ -30,7 +30,7 @@ function Layout() {
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding', '/home'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/design/')
-    && !location.pathname.startsWith('/test-canvas/');
+    && !location.pathname.startsWith('/studio/');
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -59,7 +59,7 @@ function Layout() {
                 <Route path="/catalog" element={<Catalog />} />
                 <Route path="/product/:id" element={<ProductDetails />} />
                 <Route path="/design/:id" element={<DesignCanvas />} />
-                <Route path="/test-canvas/:id" element={<CanvasTest />} />
+                <Route path="/studio/:id" element={<DesignStudio />} />
                 <Route path="/orders" element={<MyOrders />} />
                 <Route path="/my-products" element={<MyProducts />} />
                 <Route path="/wallet" element={<Wallet />} />

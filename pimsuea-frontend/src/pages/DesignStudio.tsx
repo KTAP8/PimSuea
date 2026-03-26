@@ -12,7 +12,7 @@ import { LeaveConfirmModal } from '../components/canvas/LeaveConfirmModal';
 import { MockupModal } from '../components/canvas/MockupModal';
 import { OrderPanel } from '../components/canvas/OrderPanel';
 
-export default function CanvasTest() {
+export default function DesignStudio() {
     const d = useCanvasDesign();
     const navigate = useNavigate();
     const [showLeaveModal, setShowLeaveModal] = useState(false);

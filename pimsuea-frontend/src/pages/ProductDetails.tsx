@@ -95,7 +95,7 @@ export default function ProductDetails() {
 
   const handleStartDesign = () => {
     if (!selectedMethodId) return;
-    navigate(`/test-canvas/${id}?printingType=${selectedMethodId}`, {
+    navigate(`/studio/${id}?printingType=${selectedMethodId}`, {
         state: {
             printMethodId: selectedMethodId,
             quantity: quantity,
