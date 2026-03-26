@@ -29,7 +29,7 @@ interface Props {
 
 export function CanvasStage({
     stageRef, bgNodeRef, printZoneNodeRef, transformerRef,
-    bgImage, stageSize, printZone, canvasImages, selectedId, isExporting, pxPerInch,
+    bgImage, stageSize, printZone, canvasImages, isExporting, pxPerInch,
     onSelect, onDragEnd, onTransform, onTransformEnd,
 }: Props) {
     const handleDeselect = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {

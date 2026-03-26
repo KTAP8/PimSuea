@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Konva from 'konva';
 import { MD5 } from 'crypto-js';
-import api, { getProductTemplates, uploadFile, r2ProxyUrl } from '../services/api';
+import api, { getProductTemplates, uploadFile, r2ProxyUrl, getPrice } from '../services/api';
 import { injectPngDpi } from '../utils/canvasExporter';
 import { useAuth } from '../contexts/AuthContext';
 import type { ProductTemplate, Color } from '../types/api';
-import type { CanvasImage, SerializableImage } from '../types/canvas';
+import type { CanvasImage, SerializableImage, CanvasPriceBreakdown } from '../types/canvas';
 
 export const SIDE_ORDER = ['front', 'back'];
 
@@ -48,6 +48,10 @@ export function useCanvasDesign() {
     const [printingType, setPrintingType] = useState<string>(printingTypeParam ?? 'DTG');
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+
+    // Pricing state
+    const [priceBreakdown, setPriceBreakdown] = useState<CanvasPriceBreakdown | null>(null);
+    const [priceLoading, setPriceLoading] = useState(false);
 
     // Per-side storage (keyed by side name e.g. "front"/"back" — shared across all colors)
     const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
@@ -99,6 +103,19 @@ export function useCanvasDesign() {
                     if (Array.isArray(design.available_colors) && design.available_colors.length > 0) {
                         setActiveColorIds(new Set(design.available_colors));
                     }
+                    // Load price from stored print_dimensions if available
+                    if (design.print_dimensions && design.printing_type) {
+                        const colorId = design.available_colors?.[0] ?? defaultTemplate?.color?.id;
+                        const productId = defaultTemplate?.product_id;
+                        if (colorId && productId) {
+                            const dims = Object.fromEntries(
+                                Object.entries(design.print_dimensions as Record<string, { w: number; h: number }>)
+                                    .filter(([, d]) => d.w > 0 && d.h > 0)
+                            );
+                            computePriceBreakdown(dims, productId, colorId, design.printing_type);
+                        }
+                    }
+
                     const canvasData = design.canvas_data;
                     if (canvasData?.renderer === 'konva') {
                         if (canvasData.sides) {
@@ -432,6 +449,50 @@ export function useCanvasDesign() {
         return new Blob([new Uint8Array(injectPngDpi(raw, 300))], { type: 'image/png' });
     };
 
+    // ── Price calculation ─────────────────────────────────────────────────────
+    const computePriceBreakdown = async (
+        printDimensions: Record<string, { w: number; h: number }>,
+        productId: string,
+        colorId: string,
+        pType: string,
+    ) => {
+        const entries = Object.entries(printDimensions).filter(([, d]) => d.w > 0 && d.h > 0);
+        if (!entries.length) return;
+        setPriceLoading(true);
+        try {
+            const sideResults: CanvasPriceBreakdown['sides'] = [];
+            let shirt_per_unit = 0;
+            for (const [side, dims] of entries) {
+                try {
+                    const bd = await getPrice({
+                        printingType: pType as 'DTG' | 'DTF',
+                        aabb_w_cm: dims.w,
+                        aabb_h_cm: dims.h,
+                        quantity: 1,
+                        productId,
+                        color_id: colorId,
+                        size: 'M',
+                    });
+                    shirt_per_unit = bd.shirt_per_unit;
+                    sideResults.push({ side, tier: bd.tier, print_per_unit: bd.print_per_unit });
+                } catch { /* skip sides with no pricing match */ }
+            }
+            if (sideResults.length > 0) {
+                const total_print_per_unit = sideResults.reduce((s, r) => s + r.print_per_unit, 0);
+                setPriceBreakdown({
+                    sides: sideResults,
+                    shirt_per_unit,
+                    total_print_per_unit,
+                    total_per_unit: shirt_per_unit + total_print_per_unit,
+                });
+            }
+        } catch (err) {
+            console.error('[CanvasDesign] computePriceBreakdown failed:', err);
+        } finally {
+            setPriceLoading(false);
+        }
+    };
+
     // ── Export ────────────────────────────────────────────────────────────────
     const handleExport = async () => {
         if (!currentTemplate || !printZone) return;
@@ -538,6 +599,15 @@ export function useCanvasDesign() {
 
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2500);
+
+            // Compute price from the freshly saved print_dimensions
+            if (currentTemplate && selectedColorId) {
+                const dims = Object.fromEntries(
+                    Object.entries(print_dimensions).filter((e): e is [string, NonNullable<typeof e[1]>] => e[1] != null)
+                        .map(([k, v]) => [k, { w: v.w, h: v.h }])
+                );
+                computePriceBreakdown(dims, currentTemplate.product_id, selectedColorId, printingType);
+            }
         } catch (err) {
             console.error('[CanvasDesign] Save failed:', err);
             setSaveStatus('error');
@@ -557,8 +627,8 @@ export function useCanvasDesign() {
         isExporting, exportedUrl,
         // Color picker
         activeColorIds, setActiveColorIds, showColorPicker, setShowColorPicker,
-        // Save
-        designName, setDesignName, isSaving, saveStatus,
+        // Save + pricing
+        designName, setDesignName, isSaving, saveStatus, priceBreakdown, priceLoading,
         // Sidebar
         showImageLibrary, setShowImageLibrary, showLayerPanel, setShowLayerPanel,
         userUploads, loadingUploads, isUploading,

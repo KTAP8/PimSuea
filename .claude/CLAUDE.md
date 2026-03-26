@@ -19,6 +19,14 @@ npm run lint      # ESLint
 npm run preview   # Preview production build
 ```
 
+## Workflow Rules
+
+**Before finishing any frontend task**, always run:
+```bash
+cd pimsuea-frontend && npm run build
+```
+This runs `tsc -b && vite build` — identical to the Vercel deploy command. The task is not complete until this passes with no errors. Fix any TypeScript errors before declaring done.
+
 ### Backend (`backend/`)
 ```bash
 npm run dev       # Start with nodemon (hot reload)

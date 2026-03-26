@@ -4,6 +4,7 @@ import { ImageLibraryPanel } from '../components/canvas/ImageLibraryPanel';
 import { LayerPanel } from '../components/canvas/LayerPanel';
 import { BottomContextPanel } from '../components/canvas/BottomContextPanel';
 import { CanvasStage } from '../components/canvas/CanvasStage';
+import { PriceCard } from '../components/canvas/PriceCard';
 
 export default function CanvasTest() {
     const d = useCanvasDesign();
@@ -116,6 +117,11 @@ export default function CanvasTest() {
 
                 {/* Canvas area */}
                 <div ref={d.containerRef} className="flex-1 flex items-center justify-center overflow-hidden relative">
+
+                    {/* Top-right overlay: price card */}
+                    <div className="absolute top-6 right-6 z-10">
+                        <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} />
+                    </div>
 
                     {/* Top-left overlay: size display + remove button */}
                     <div className="absolute top-6 left-6 flex items-center gap-3 z-10 pointer-events-none">

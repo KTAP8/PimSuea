@@ -8,6 +8,19 @@ export interface CanvasImage {
     height: number;
 }
 
+export interface SidePriceBreakdown {
+    side: string;
+    tier: string;
+    print_per_unit: number;
+}
+
+export interface CanvasPriceBreakdown {
+    sides: SidePriceBreakdown[];
+    shirt_per_unit: number;
+    total_print_per_unit: number;
+    total_per_unit: number;
+}
+
 export type SerializableImage = {
     id: string;
     src: string;
