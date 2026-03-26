@@ -28,7 +28,9 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 function Layout() {
   const location = useLocation();
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding', '/home'];
-  const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname) && !location.pathname.startsWith('/design/');
+  const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
+    && !location.pathname.startsWith('/design/')
+    && !location.pathname.startsWith('/test-canvas/');
 
   return (
     <div className="min-h-screen flex bg-slate-50">

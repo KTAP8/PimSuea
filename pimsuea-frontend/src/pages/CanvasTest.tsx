@@ -1,4 +1,6 @@
-import { Upload, ImageIcon, Layers, Loader2, Save, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Upload, ImageIcon, Layers, Loader2, Save, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useCanvasDesign } from '../hooks/useCanvasDesign';
 import { ImageLibraryPanel } from '../components/canvas/ImageLibraryPanel';
 import { LayerPanel } from '../components/canvas/LayerPanel';
@@ -6,29 +8,72 @@ import { BottomContextPanel } from '../components/canvas/BottomContextPanel';
 import { CanvasStage } from '../components/canvas/CanvasStage';
 import { PriceCard } from '../components/canvas/PriceCard';
 import { SizeEditor } from '../components/canvas/SizeEditor';
+import { LeaveConfirmModal } from '../components/canvas/LeaveConfirmModal';
+import { MockupModal } from '../components/canvas/MockupModal';
 
 export default function CanvasTest() {
     const d = useCanvasDesign();
+    const navigate = useNavigate();
+    const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+    // Block browser tab close / refresh when there are unsaved changes
+    useEffect(() => {
+        if (!d.isDirty) return;
+        const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [d.isDirty]);
+
+    const handleBack = () => {
+        if (d.isDirty) {
+            setShowLeaveModal(true);
+        } else {
+            navigate(-1);
+        }
+    };
 
     return (
         <div className="flex flex-col h-screen bg-background">
 
             {/* ── Top header ───────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between px-6 py-4 bg-white/95 backdrop-blur-md border-b shadow-sm z-20 shrink-0 sticky top-0">
-                <div className="flex items-center gap-4 w-1/3">
+                <div className="flex items-center gap-3 w-1/3">
+                    <button onClick={handleBack}
+                        className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all">
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <span className="font-bold text-primary tracking-tight text-lg">Design Canvas</span>
                 </div>
 
-                <div className="flex-1 flex justify-center w-1/3">
-                    <input
-                        value={d.designName}
-                        onChange={e => d.setDesignName(e.target.value)}
-                        className="border-2 border-gray-100 bg-gray-50 rounded-xl px-4 py-2 text-sm font-semibold w-64 text-center focus:outline-none focus:ring-2 focus:ring-action/20 focus:border-action transition-all placeholder-gray-400"
-                        placeholder="Untitled Design"
-                    />
+                <div className="flex-1 flex items-center justify-center w-1/3">
+                    <div className="relative flex flex-col items-center">
+                        <input
+                            value={d.designName}
+                            onChange={e => d.handleDesignNameChange(e.target.value)}
+                            className="relative z-10 border-2 border-gray-100 bg-gray-50 rounded-xl px-4 py-2 text-sm font-semibold text-gray-800 w-64 text-center focus:outline-none focus:ring-2 focus:ring-action/20 focus:border-action transition-all placeholder-gray-400 hover:bg-white"
+                            placeholder="Untitled Design"
+                        />
+                        <div className={`absolute top-full left-1/2 -translate-x-1/2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-0 pointer-events-none flex justify-center ${d.isDirty ? 'opacity-100 translate-y-1.5' : 'opacity-0 -translate-y-2 scale-95'}`}>
+                            <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-200/60 shadow-[0_2px_8px_-2px_rgba(251,191,36,0.2)] text-[10.5px] font-bold tracking-wide whitespace-nowrap">
+                                <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                                </span>
+                                ยังไม่ได้บันทึก
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 w-1/3">
+                    <button
+                        onClick={d.handleMockup}
+                        disabled={d.generatingMockup || !d.templates.some(t => t.color?.id === d.selectedColorId && t.mockup_config)}
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                        {d.generatingMockup ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {d.generatingMockup ? 'กำลังสร้าง…' : 'ตัวอย่าง'}
+                    </button>
+
                     <button onClick={d.handleSave} disabled={d.isSaving || !d.currentTemplate}
                         className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
                             d.saveStatus === 'saved' ? 'bg-green-600 text-white shadow-green-600/20' :
@@ -111,6 +156,7 @@ export default function CanvasTest() {
                         onDelete={id => {
                             d.setCanvasImages(prev => prev.filter(ci => ci.id !== id));
                             if (d.selectedId === id) d.setSelectedId(null);
+                            d.markDirty();
                         }}
                         onClose={() => d.setShowLayerPanel(false)}
                     />
@@ -129,7 +175,7 @@ export default function CanvasTest() {
                         <SizeEditor displaySizeIn={d.displaySizeIn} onApply={d.applySizeIn} />
                         {d.selectedId && (
                             <button
-                                onClick={() => { d.setCanvasImages(prev => prev.filter(ci => ci.id !== d.selectedId)); d.setSelectedId(null); }}
+                                onClick={() => { d.setCanvasImages(prev => prev.filter(ci => ci.id !== d.selectedId)); d.setSelectedId(null); d.markDirty(); }}
                                 className="pointer-events-auto px-4 py-1.5 bg-white backdrop-blur-sm border border-red-100 text-red-500 rounded-lg shadow-sm text-xs font-semibold hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-1.5">
                                 <Trash2 className="w-3.5 h-3.5" /> Remove
                             </button>
@@ -193,6 +239,19 @@ export default function CanvasTest() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Mockup preview modal */}
+            {d.showMockup && (
+                <MockupModal results={d.mockupUrl} onClose={() => d.setShowMockup(false)} />
+            )}
+
+            {/* Leave confirmation modal */}
+            {showLeaveModal && (
+                <LeaveConfirmModal
+                    onConfirm={() => navigate(-1)}
+                    onCancel={() => setShowLeaveModal(false)}
+                />
             )}
 
             {/* DPI warning modal */}

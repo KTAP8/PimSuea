@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import Konva from 'konva';
 import { MD5 } from 'crypto-js';
 import api, { getProductTemplates, uploadFile, r2ProxyUrl, getPrice } from '../services/api';
+import { compositeSingleSide, OUTPUT_SCALE } from '../utils/mockupCompositor';
 import { injectPngDpi } from '../utils/canvasExporter';
 import { useAuth } from '../contexts/AuthContext';
 import type { ProductTemplate, Color } from '../types/api';
@@ -48,10 +49,17 @@ export function useCanvasDesign() {
     const [printingType, setPrintingType] = useState<string>(printingTypeParam ?? 'DTG');
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+    const [isDirty, setIsDirty] = useState(false);
+    const markDirty = () => setIsDirty(true);
 
     // Pricing state
     const [priceBreakdown, setPriceBreakdown] = useState<CanvasPriceBreakdown | null>(null);
     const [priceLoading, setPriceLoading] = useState(false);
+
+    // Mockup state
+    const [showMockup, setShowMockup] = useState(false);
+    const [mockupUrl, setMockupUrl] = useState<{ side: string; url: string }[]>([]);
+    const [generatingMockup, setGeneratingMockup] = useState(false);
 
     // Per-side storage (keyed by side name e.g. "front"/"back" — shared across all colors)
     const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
@@ -253,6 +261,7 @@ export function useCanvasDesign() {
 
     // ── Layer helpers ─────────────────────────────────────────────────────────
     const moveLayer = (layerId: string, delta: 'forward' | 'backward') => {
+        markDirty();
         setCanvasImages(prev => {
             const idx = prev.findIndex(ci => ci.id === layerId);
             if (idx === -1) return prev;
@@ -264,6 +273,11 @@ export function useCanvasDesign() {
             }
             return arr;
         });
+    };
+
+    const handleDesignNameChange = (name: string) => {
+        setDesignName(name);
+        markDirty();
     };
 
     // ── Side / color helpers ──────────────────────────────────────────────────
@@ -305,6 +319,7 @@ export function useCanvasDesign() {
             const newId = Math.random().toString(36).substring(7);
             setCanvasImages(prev => [...prev, { id: newId, image: img, src: url, x, y, width: w, height: h }]);
             setSelectedId(newId);
+            markDirty();
         };
         img.src = r2ProxyUrl(url);
     };
@@ -355,6 +370,7 @@ export function useCanvasDesign() {
     // ── Stage event handlers (called from CanvasStage) ────────────────────────
     const handleStageDragEnd = (imgId: string, x: number, y: number) => {
         setCanvasImages(prev => prev.map(item => item.id === imgId ? { ...item, x, y } : item));
+        markDirty();
     };
 
     const handleStageTransform = (scaledW: number, scaledH: number) => {
@@ -367,6 +383,7 @@ export function useCanvasDesign() {
             item.id === imgId ? { ...item, x, y, width: Math.max(10, scaledW), height: Math.max(10, scaledH), rotation } : item
         ));
         setLiveSizeIn(null);
+        markDirty();
     };
 
     const applySizeIn = (w: number, h: number) => {
@@ -376,6 +393,7 @@ export function useCanvasDesign() {
                 ? { ...ci, width: Math.max(10, w * pxPerInch), height: Math.max(10, h * pxPerInch) }
                 : ci
         ));
+        markDirty();
     };
 
     // ── Print helpers ─────────────────────────────────────────────────────────
@@ -519,6 +537,92 @@ export function useCanvasDesign() {
         }
     };
 
+    // ── Mockup ────────────────────────────────────────────────────────────────
+    const captureDesignDataUrl = (placement: { w: number; h: number }): string | null => {
+        if (!stageRef.current || !printZone) return null;
+        const pixelRatio = (placement.w * OUTPUT_SCALE) / printZone.width;
+        const tr = transformerRef.current;
+        const prevNodes = tr?.nodes() ?? [];
+        tr?.nodes([]);
+        bgNodeRef.current?.hide();
+        printZoneNodeRef.current?.hide();
+        stageRef.current.getLayers()[0]?.batchDraw();
+        const dataUrl = stageRef.current.toDataURL({
+            x: printZone.left, y: printZone.top,
+            width: printZone.width, height: printZone.height,
+            pixelRatio,
+        });
+        bgNodeRef.current?.show();
+        printZoneNodeRef.current?.show();
+        if (prevNodes.length) tr?.nodes(prevNodes);
+        stageRef.current.getLayers()[0]?.batchDraw();
+        return dataUrl;
+    };
+
+    const captureOffScreenDataUrl = async (
+        tmpl: ProductTemplate,
+        images: CanvasImage[],
+        placement: { w: number; h: number },
+    ): Promise<string | null> => {
+        if (!images.length) return null;
+        const bgImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const i = new window.Image();
+            i.crossOrigin = 'anonymous';
+            i.onload = () => resolve(i);
+            i.onerror = reject;
+            i.src = r2ProxyUrl(tmpl.image_url);
+        });
+        const containerW = containerRef.current?.clientWidth || window.innerWidth - 80;
+        const containerH = (containerRef.current?.clientHeight || window.innerHeight) - 48;
+        const sf = Math.min(containerW / bgImg.width, containerH / bgImg.height, 1) * 0.95;
+        const pz = tmpl.print_area_config;
+        const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
+        const pixelRatio = (placement.w * OUTPUT_SCALE) / pzScaled.width;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(pzScaled.width * pixelRatio);
+        canvas.height = Math.round(pzScaled.height * pixelRatio);
+        const ctx = canvas.getContext('2d')!;
+        ctx.scale(pixelRatio, pixelRatio);
+        ctx.translate(-pzScaled.left, -pzScaled.top);
+        images.forEach(ci => ctx.drawImage(ci.image, ci.x, ci.y, ci.width, ci.height));
+        return canvas.toDataURL('image/png');
+    };
+
+    const handleMockup = async () => {
+        saveCurrentSide();
+        setGeneratingMockup(true);
+        try {
+            const results: { side: string; url: string }[] = [];
+            const colorTemplates = templates.filter(t => t.color?.id === selectedColorId && t.mockup_config);
+            for (const tmpl of colorTemplates) {
+                const placement = tmpl.mockup_config!.placement;
+                const images = tmpl.side === currentTemplate?.side
+                    ? canvasImages
+                    : (sideCanvasImages.current[tmpl.side] ?? []);
+                if (!images.length) continue;
+                const designDataUrl = tmpl.side === currentTemplate?.side
+                    ? captureDesignDataUrl(placement)
+                    : await captureOffScreenDataUrl(tmpl, images, placement);
+                if (!designDataUrl) continue;
+                const composited = await compositeSingleSide(
+                    r2ProxyUrl(tmpl.mockup_config!.image_url),
+                    placement,
+                    designDataUrl,
+                );
+                results.push({ side: tmpl.side, url: composited });
+            }
+            results.sort((a, b) => {
+                const ai = SIDE_ORDER.indexOf(a.side.toLowerCase());
+                const bi = SIDE_ORDER.indexOf(b.side.toLowerCase());
+                return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+            });
+            setMockupUrl(results);
+            setShowMockup(true);
+        } finally {
+            setGeneratingMockup(false);
+        }
+    };
+
     // ── Save ──────────────────────────────────────────────────────────────────
     const handleSave = async () => {
         if (!currentTemplate || !printZone || !stageRef.current) return;
@@ -607,6 +711,7 @@ export function useCanvasDesign() {
             }
 
             setSaveStatus('saved');
+            setIsDirty(false);
             setTimeout(() => setSaveStatus('idle'), 2500);
 
             // Compute price from the freshly saved print_dimensions
@@ -637,7 +742,7 @@ export function useCanvasDesign() {
         // Color picker
         activeColorIds, setActiveColorIds, showColorPicker, setShowColorPicker,
         // Save + pricing
-        designName, setDesignName, isSaving, saveStatus, priceBreakdown, priceLoading,
+        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, isDirty, markDirty, priceBreakdown, priceLoading,
         // Sidebar
         showImageLibrary, setShowImageLibrary, showLayerPanel, setShowLayerPanel,
         userUploads, loadingUploads, isUploading,
@@ -645,7 +750,8 @@ export function useCanvasDesign() {
         // Actions
         saveCurrentSide, handleColorSelect, handleColorAdd, handleColorRemove,
         addImageFromUrl, handleSidebarUpload, proceedWithUpload, confirmDeleteImage,
-        moveLayer, handleExport, handleSave,
+        moveLayer, handleExport, handleSave, handleMockup,
+        showMockup, setShowMockup, mockupUrl, generatingMockup,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
     };
 }
