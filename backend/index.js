@@ -34,6 +34,7 @@ app.use('/api/uploads', require('./src/routes/uploadRoutes'));
 app.use('/api/pricing', require('./src/routes/pricingRoutes'));
 app.use('/api/waitlist', require('./src/routes/waitlistRoutes'));
 app.use('/api/delivery-fee', require('./src/routes/deliveryFeeRoutes'));
+app.use('/api/line', require('./src/routes/lineRoutes'));
 
 // Health check
 app.get('/', (req, res) => {

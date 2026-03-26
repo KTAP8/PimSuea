@@ -976,6 +976,7 @@ export default function Order() {
           </div>
 
           <div className="bg-white border rounded-xl divide-y overflow-hidden">
+            {/* Step 1: Add LINE friend */}
             <div className="p-4 space-y-3">
               <p className="font-semibold">1. เพิ่มเพื่อน LINE ของ PimSuea</p>
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
@@ -993,15 +994,9 @@ export default function Order() {
               </div>
             </div>
 
-            <div className="p-4">
-              <p className="font-semibold">2. ส่งหมายเลขคำสั่งซื้อในแชท LINE</p>
-              <p className="text-sm text-gray-500 mt-1">
-                ส่ง <span className="font-mono font-bold text-gray-800">#{placedOrderId}</span> ให้เราทราบในแชท LINE
-              </p>
-            </div>
-
+            {/* Step 2: Pay via PromptPay */}
             <div className="p-4 space-y-3">
-              <p className="font-semibold">3. ชำระเงินผ่าน PromptPay</p>
+              <p className="font-semibold">2. ชำระเงินผ่าน PromptPay</p>
               <p className="text-sm text-gray-500">
                 ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{(totalPrice + deliveryFee).toLocaleString()}</span>
               </p>
@@ -1012,6 +1007,15 @@ export default function Order() {
                   className="w-64 h-64 sm:w-80 sm:h-80 object-contain mx-auto border rounded-xl"
                 />
               )}
+            </div>
+
+            {/* Step 3: Send order ID + slip via LINE */}
+            <div className="p-4 space-y-2">
+              <p className="font-semibold">3. แจ้งชำระเงินในแชท LINE</p>
+              <p className="text-sm text-gray-500">
+                พิมพ์ <span className="font-mono font-bold text-gray-800">#{placedOrderId}</span> แล้วแนบสลิปการโอนเงินในแชท LINE ได้เลยค่ะ
+              </p>
+              <p className="text-xs text-gray-400">ทีมงานจะยืนยันการชำระเงินภายใน 1–2 ชั่วโมง</p>
             </div>
           </div>
 
