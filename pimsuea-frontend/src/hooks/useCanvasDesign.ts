@@ -369,6 +369,15 @@ export function useCanvasDesign() {
         setLiveSizeIn(null);
     };
 
+    const applySizeIn = (w: number, h: number) => {
+        if (!selectedId || !pxPerInch) return;
+        setCanvasImages(prev => prev.map(ci =>
+            ci.id === selectedId
+                ? { ...ci, width: Math.max(10, w * pxPerInch), height: Math.max(10, h * pxPerInch) }
+                : ci
+        ));
+    };
+
     // ── Print helpers ─────────────────────────────────────────────────────────
     const computeSideAabb = (
         images: CanvasImage[],
@@ -637,6 +646,6 @@ export function useCanvasDesign() {
         saveCurrentSide, handleColorSelect, handleColorAdd, handleColorRemove,
         addImageFromUrl, handleSidebarUpload, proceedWithUpload, confirmDeleteImage,
         moveLayer, handleExport, handleSave,
-        handleStageDragEnd, handleStageTransform, handleStageTransformEnd,
+        handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
     };
 }

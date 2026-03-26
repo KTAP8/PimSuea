@@ -27,6 +27,13 @@ cd pimsuea-frontend && npm run build
 ```
 This runs `tsc -b && vite build` — identical to the Vercel deploy command. The task is not complete until this passes with no errors. Fix any TypeScript errors before declaring done.
 
+**Keep every file focused and lean (clean code rule).** Follow these principles on every task:
+- Page files (`src/pages/`) contain layout and wiring only — no business logic, no inline component definitions.
+- Any reusable component with its own markup or state belongs in its own file under `src/components/` (e.g. `src/components/canvas/`, `src/components/ui/`).
+- Any non-trivial logic (state, effects, API calls, transformations) belongs in a dedicated hook under `src/hooks/`.
+- Never define a component inside another component's file. If a new component is needed, create a new file and import it.
+- If a file grows past ~200 lines, consider splitting it before adding more.
+
 ### Backend (`backend/`)
 ```bash
 npm run dev       # Start with nodemon (hot reload)

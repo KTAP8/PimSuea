@@ -5,6 +5,7 @@ import { LayerPanel } from '../components/canvas/LayerPanel';
 import { BottomContextPanel } from '../components/canvas/BottomContextPanel';
 import { CanvasStage } from '../components/canvas/CanvasStage';
 import { PriceCard } from '../components/canvas/PriceCard';
+import { SizeEditor } from '../components/canvas/SizeEditor';
 
 export default function CanvasTest() {
     const d = useCanvasDesign();
@@ -123,13 +124,9 @@ export default function CanvasTest() {
                         <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} />
                     </div>
 
-                    {/* Top-left overlay: size display + remove button */}
+                    {/* Top-left overlay: size editor + remove button */}
                     <div className="absolute top-6 left-6 flex items-center gap-3 z-10 pointer-events-none">
-                        {d.displaySizeIn && (
-                            <div className="px-3 py-1.5 bg-white/80 backdrop-blur-sm border border-gray-100 rounded-lg shadow-sm font-mono text-xs text-gray-600 font-medium tracking-wide">
-                                {d.displaySizeIn.w.toFixed(2)}" × {d.displaySizeIn.h.toFixed(2)}"
-                            </div>
-                        )}
+                        <SizeEditor displaySizeIn={d.displaySizeIn} onApply={d.applySizeIn} />
                         {d.selectedId && (
                             <button
                                 onClick={() => { d.setCanvasImages(prev => prev.filter(ci => ci.id !== d.selectedId)); d.setSelectedId(null); }}
