@@ -18,7 +18,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
 }));
-app.use(express.json());
+app.use(express.json({
+    verify: (req, _res, buf) => { req.rawBody = buf; }
+}));
 app.use(generalLimiter);               // global rate limit — all routes
 app.use('/api/waitlist', strictLimiter); // stricter limit — public endpoint
 
