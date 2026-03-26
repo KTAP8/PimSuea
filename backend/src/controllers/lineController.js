@@ -158,7 +158,11 @@ async function handleWebhook(req, res) {
     console.log(`[LINE DEBUG] Events count: ${events.length}`);
     
     for (const event of events) {
-        if (event.type !== 'message') continue;
+        console.log(`[LINE DEBUG] Full Event Payload:`, JSON.stringify(event, null, 2));
+        if (event.type !== 'message') {
+            console.log(`[LINE DEBUG] Skipping event because type is '${event.type}'`);
+            continue;
+        }
         try {
             if (event.source.userId === ADMIN_USER_ID) {
                 await handleAdminMessage(event);
