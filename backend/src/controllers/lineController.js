@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const axios = require('axios');
 const { supabaseAdmin } = require('../config/supabaseClient');
 
 const CHANNEL_SECRET       = process.env.LINE_CHANNEL_SECRET;
@@ -17,20 +16,24 @@ function verifySignature(rawBody, signature) {
 }
 
 async function replyMessage(replyToken, text) {
-    await axios.post('https://api.line.me/v2/bot/message/reply', {
-        replyToken,
-        messages: [{ type: 'text', text }],
-    }, {
-        headers: { Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
+    await fetch('https://api.line.me/v2/bot/message/reply', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify({ replyToken, messages: [{ type: 'text', text }] }),
     });
 }
 
 async function pushMessage(userId, text) {
-    await axios.post('https://api.line.me/v2/bot/message/push', {
-        to: userId,
-        messages: [{ type: 'text', text }],
-    }, {
-        headers: { Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}` },
+    await fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${CHANNEL_ACCESS_TOKEN}`,
+        },
+        body: JSON.stringify({ to: userId, messages: [{ type: 'text', text }] }),
     });
 }
 
