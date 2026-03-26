@@ -18,6 +18,7 @@ export default function ProductDetails() {
   const [error, setError] = useState<string | null>(null);
 
   // Configuration State
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
 
@@ -129,12 +130,33 @@ export default function ProductDetails() {
       </Link>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        {/* Left: Image */}
-        <div className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner overflow-hidden sticky top-24">
-            {product.image_url ? (
-                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-            ) : (
-                <span>👕</span>
+        {/* Left: Image gallery */}
+        <div className="sticky top-24 flex flex-col gap-3">
+            <div className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner overflow-hidden">
+                {(product.images && product.images.length > 0) ? (
+                    <img
+                        src={product.images[activeImageIdx]}
+                        alt={`${product.name} ${activeImageIdx + 1}`}
+                        className="w-full h-full object-cover"
+                    />
+                ) : product.image_url ? (
+                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                    <span>👕</span>
+                )}
+            </div>
+            {product.images && product.images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                    {product.images.map((url, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setActiveImageIdx(i)}
+                            className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === activeImageIdx ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                        >
+                            <img src={url} alt={`${product.name} ${i + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                    ))}
+                </div>
             )}
         </div>
 

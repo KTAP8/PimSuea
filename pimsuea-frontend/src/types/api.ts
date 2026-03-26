@@ -82,6 +82,7 @@ export interface Product {
     price: number;
     starting_price?: number; // New calculated field
     image_url?: string;
+    images?: string[];
     category_id: number;
     is_beginner_friendly: boolean;
     sold_count?: number; 

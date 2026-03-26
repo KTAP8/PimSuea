@@ -93,7 +93,7 @@ export default function CanvasTest() {
                             'bg-primary text-white hover:bg-primary/90'
                         }`}>
                         {d.isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        {d.isSaving ? 'Saving…' : d.saveStatus === 'saved' ? 'Saved!' : d.saveStatus === 'error' ? 'Error' : 'Save'}
+                        {d.isSaving ? 'Saving…' : d.saveStatus === 'saved' ? 'Saved!' : d.saveStatus === 'error' ? 'ตั้งชื่อก่อน' : 'Save'}
                     </button>
                 </div>
             </div>

@@ -636,6 +636,11 @@ export function useCanvasDesign() {
 
     const handleSave = async (): Promise<SaveResult | null> => {
         if (!currentTemplate || !printZone || !stageRef.current) return null;
+        const trimmedName = designName.trim();
+        if (!trimmedName || trimmedName.toLowerCase() === 'untitled design') {
+            setSaveStatus('error');
+            return null;
+        }
         setIsSaving(true);
         setSaveStatus('idle');
         try {

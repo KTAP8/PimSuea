@@ -6,6 +6,11 @@ import { getDashboard } from "@/services/api";
 import type { DashboardData } from "@/types/api";
 
 import { BackgroundCells } from "@/components/ui/background-ripple-effect";
+import { UserGreeting } from "@/components/dashboard/UserGreeting";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { ContinueDesigning } from "@/components/dashboard/ContinueDesigning";
+import { OngoingOrders } from "@/components/dashboard/OngoingOrders";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 import {
   Carousel,
@@ -19,6 +24,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const stats = useDashboardStats();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,7 +85,14 @@ export default function Dashboard() {
         </div>
       </BackgroundCells>
       
-      <div className="container mx-auto px-4 space-y-12 mt-12">
+      {/* Personalized user summary */}
+      <UserGreeting stats={stats} />
+
+      <div className="container mx-auto px-4 space-y-12 mt-8">
+        <QuickActions stats={stats} />
+        <ContinueDesigning designs={stats.recentDesigns} loading={stats.loading} />
+        <OngoingOrders orders={stats.ongoingOrders} loading={stats.loading} />
+
             {/* News Section */}
         {data?.news && data.news.length > 0 && (
             <section className="container mx-auto px-4">
