@@ -134,7 +134,7 @@ export default function MyProducts() {
 
               {/* Action Buttons Footer (Mobile Accessible) */}
               <div className="mt-auto grid grid-cols-5 gap-2 pt-4 border-t border-gray-100">
-                  <Link to={`/order?initialDesignId=${design.id}`} className="col-span-3">
+                  <Link to={`/checkout?initialDesignId=${design.id}`} className="col-span-3">
                       <Button variant="default" className="w-full rounded-xl shadow-sm hover:shadow-primary/20 bg-primary font-bold h-11">
                           <ShoppingCart className="w-4 h-4 mr-2" /> สั่งผลิต
                       </Button>
