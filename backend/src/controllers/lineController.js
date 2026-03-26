@@ -96,7 +96,11 @@ async function handleAdminMessage(event) {
     if (event.message.type !== 'text') return;
 
     const match = event.message.text.match(/confirm\s+#?(\d+)/i);
-    if (!match) return;
+    if (!match) {
+        console.log(`[LINE DEBUG] Admin (you) sent: ${event.message.text}. Ignoring because admins only trigger on "confirm #..."`);
+        await replyMessage(replyToken, "👑 [Admin Mode] บัญชีนี้เป็นแอดมิน หากต้องการตอบกลับลูกค้าปกติให้ใช้แอป LINE OA\nหากต้องการยืนยันออเดอร์ให้พิมพ์ confirm #ตามด้วยเลข เช่น confirm #123");
+        return;
+    }
 
     const orderId = parseInt(match[1]);
     const { data: order, error } = await supabaseAdmin
