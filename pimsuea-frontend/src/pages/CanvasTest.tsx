@@ -36,13 +36,13 @@ export default function CanvasTest() {
         <div className="flex flex-col h-screen bg-background">
 
             {/* ── Top header ───────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-6 py-4 bg-white/95 backdrop-blur-md border-b shadow-sm z-20 shrink-0 sticky top-0">
+            <div className="flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur-xl border-b border-gray-100 z-20 shrink-0 sticky top-0">
                 <div className="flex items-center gap-3 w-1/3">
                     <button onClick={handleBack}
-                        className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-all">
+                        className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <span className="font-bold text-primary tracking-tight text-lg">Design Canvas</span>
+                    <span className="font-semibold text-gray-800 tracking-tight text-sm">Design Canvas</span>
                 </div>
 
                 <div className="flex-1 flex items-center justify-center w-1/3">
@@ -50,7 +50,7 @@ export default function CanvasTest() {
                         <input
                             value={d.designName}
                             onChange={e => d.handleDesignNameChange(e.target.value)}
-                            className="relative z-10 border-2 border-gray-100 bg-gray-50 rounded-xl px-4 py-2 text-sm font-semibold text-gray-800 w-64 text-center focus:outline-none focus:ring-2 focus:ring-action/20 focus:border-action transition-all placeholder-gray-400 hover:bg-white"
+                            className="relative z-10 bg-transparent hover:bg-gray-100/60 focus:bg-white border text-center border-transparent focus:border-gray-200 rounded-xl px-4 py-1.5 text-sm font-bold text-gray-800 w-64 focus:outline-none focus:ring-4 focus:ring-gray-100/50 transition-all placeholder-gray-400 cursor-pointer focus:cursor-text"
                             placeholder="Untitled Design"
                         />
                         <div className={`absolute top-full left-1/2 -translate-x-1/2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-0 pointer-events-none flex justify-center ${d.isDirty ? 'opacity-100 translate-y-1.5' : 'opacity-0 -translate-y-2 scale-95'}`}>
@@ -65,29 +65,31 @@ export default function CanvasTest() {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 w-1/3">
+                <div className="flex items-center justify-end gap-2.5 w-1/3">
                     <button
                         onClick={d.handleMockup}
                         disabled={d.generatingMockup || !d.templates.some(t => t.color?.id === d.selectedColorId && t.mockup_config)}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold shadow-sm transition-all hover:bg-gray-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                         {d.generatingMockup ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                         {d.generatingMockup ? 'กำลังสร้าง…' : 'ตัวอย่าง'}
                     </button>
 
+                    <button onClick={d.handleExport} disabled={d.isExporting || !d.currentTemplate}
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                        {d.isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                        {d.isExporting ? 'Exporting…' : 'Export'}
+                    </button>
+
+                    <div className="w-px h-5 bg-gray-200 mx-1 rounded-full"></div>
+
                     <button onClick={d.handleSave} disabled={d.isSaving || !d.currentTemplate}
-                        className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
-                            d.saveStatus === 'saved' ? 'bg-green-600 text-white shadow-green-600/20' :
-                            d.saveStatus === 'error' ? 'bg-destructive text-white shadow-red-500/20' :
-                            'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
+                        className={`flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.05)] ${
+                            d.saveStatus === 'saved' ? 'bg-green-500 text-white hover:bg-green-600' :
+                            d.saveStatus === 'error' ? 'bg-destructive text-white' :
+                            'bg-primary text-white hover:bg-primary/90'
                         }`}>
                         {d.isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {d.isSaving ? 'Saving…' : d.saveStatus === 'saved' ? 'Saved!' : d.saveStatus === 'error' ? 'Error' : 'Save'}
-                    </button>
-
-                    <button onClick={d.handleExport} disabled={d.isExporting || !d.currentTemplate}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-action text-white rounded-xl text-sm font-semibold shadow-sm shadow-action/20 transition-all hover:bg-action/90 active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
-                        {d.isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {d.isExporting ? 'Exporting…' : 'Export 300 DPI'}
                     </button>
                 </div>
             </div>
