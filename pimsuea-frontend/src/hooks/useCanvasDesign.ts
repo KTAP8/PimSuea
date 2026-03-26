@@ -180,7 +180,7 @@ export function useCanvasDesign() {
                 Promise.all(pending.map(d => new Promise<CanvasImage>((resolve, reject) => {
                     const i = new window.Image();
                     i.crossOrigin = 'anonymous';
-                    i.onload = () => resolve({ id: d.id, image: i, src: d.src, x: d.x, y: d.y, width: d.width, height: d.height });
+                    i.onload = () => resolve({ id: d.id, image: i, src: d.src, x: d.x, y: d.y, width: d.width, height: d.height, rotation: d.rotation ?? 0 });
                     i.onerror = reject;
                     i.src = r2ProxyUrl(d.src);
                 }))).then(loaded => {
@@ -362,9 +362,9 @@ export function useCanvasDesign() {
         setLiveSizeIn({ w: Math.max(10, scaledW) / pxPerInch, h: Math.max(10, scaledH) / pxPerInch });
     };
 
-    const handleStageTransformEnd = (imgId: string, x: number, y: number, scaledW: number, scaledH: number) => {
+    const handleStageTransformEnd = (imgId: string, x: number, y: number, scaledW: number, scaledH: number, rotation: number) => {
         setCanvasImages(prev => prev.map(item =>
-            item.id === imgId ? { ...item, x, y, width: Math.max(10, scaledW), height: Math.max(10, scaledH) } : item
+            item.id === imgId ? { ...item, x, y, width: Math.max(10, scaledW), height: Math.max(10, scaledH), rotation } : item
         ));
         setLiveSizeIn(null);
     };
@@ -520,7 +520,7 @@ export function useCanvasDesign() {
             const sides = Object.fromEntries(
                 Object.entries(sideCanvasImages.current)
                     .filter(([, imgs]) => imgs.length > 0)
-                    .map(([sideName, imgs]) => [sideName, imgs.map(ci => ({ id: ci.id, src: ci.src, x: ci.x, y: ci.y, width: ci.width, height: ci.height }))])
+                    .map(([sideName, imgs]) => [sideName, imgs.map(ci => ({ id: ci.id, src: ci.src, x: ci.x, y: ci.y, width: ci.width, height: ci.height, rotation: ci.rotation ?? 0 }))])
             );
             const canvasData = { renderer: 'konva', version: '2', activeSide: currentTemplate.side, sides };
             const hash = MD5(JSON.stringify(canvasData)).toString();

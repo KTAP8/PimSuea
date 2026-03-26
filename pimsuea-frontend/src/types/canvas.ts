@@ -6,6 +6,7 @@ export interface CanvasImage {
     y: number;
     width: number;
     height: number;
+    rotation?: number;
 }
 
 export interface SidePriceBreakdown {
@@ -28,4 +29,5 @@ export type SerializableImage = {
     y: number;
     width: number;
     height: number;
+    rotation?: number;
 };

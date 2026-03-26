@@ -24,7 +24,7 @@ interface Props {
     onSelect: (id: string | null) => void;
     onDragEnd: (id: string, x: number, y: number) => void;
     onTransform: (scaledW: number, scaledH: number) => void;
-    onTransformEnd: (id: string, x: number, y: number, scaledW: number, scaledH: number) => void;
+    onTransformEnd: (id: string, x: number, y: number, scaledW: number, scaledH: number, rotation: number) => void;
 }
 
 export function CanvasStage({
@@ -62,6 +62,7 @@ export function CanvasStage({
                         image={ci.image}
                         x={ci.x} y={ci.y}
                         width={ci.width} height={ci.height}
+                        rotation={ci.rotation ?? 0}
                         draggable
                         onClick={() => onSelect(ci.id)}
                         onTap={() => onSelect(ci.id)}
@@ -94,14 +95,14 @@ export function CanvasStage({
                             const scaleY = node.scaleY();
                             node.scaleX(1);
                             node.scaleY(1);
-                            onTransformEnd(ci.id, node.x(), node.y(), node.width() * scaleX, node.height() * scaleY);
+                            onTransformEnd(ci.id, node.x(), node.y(), node.width() * scaleX, node.height() * scaleY, node.rotation());
                         }}
                     />
                 ))}
 
                 <Transformer
                     ref={transformerRef}
-                    rotateEnabled={false}
+                    rotateEnabled={true}
                     keepRatio={true}
                     boundBoxFunc={(oldBox, newBox) => {
                         if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10) return oldBox;
