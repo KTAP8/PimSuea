@@ -54,6 +54,8 @@ COLLAR_TO_PRINT_AREA_IN = 3.0
 # ─── LOGO TAG CONFIG ──────────────────────────────────────────────────────────
 # Woven/printed brand tag overlaid on the front collar of every mockup.
 # Set TAG_IMAGE_PATH to your tag PNG; set to None to skip.
+# Set SHOW_TAG = False to omit the tag without changing TAG_IMAGE_PATH.
+SHOW_TAG           = False                      # ← toggle tag on/off globally
 TAG_IMAGE_PATH     = "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/Tag.png"                   # e.g. "tools/assets/tag.png"
 TAG_PHYS_W_IN      = 1.5                   # physical width of the tag (inches)
 TAG_SRC_W, TAG_SRC_H = 2400, 1212            # source image px — gives aspect ratio
@@ -92,7 +94,7 @@ COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # One-shot pipeline: annotate each side, then combine into a single image.
 # Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
 BATCH_SIDES = [
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/testyyy.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/front_white_mock_template.png", "side": "front"}
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/PrintFile_front.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/front_white_mock_template.png", "side": "front", "show_tag": False}
     # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
     # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},
 ]
@@ -183,6 +185,7 @@ def composite_on_mockup(
     output_path: Path,
     measurements: dict,
     side: str = "front",
+    show_tag: bool = True,
 ) -> None:
     """Paste the print file onto the shirt mockup and draw annotations at mockup resolution.
 
@@ -211,7 +214,7 @@ def composite_on_mockup(
 
     # 1b. Logo tag overlay (front only) — compute geometry always, paste if image available
     _tag_info = None
-    if side == "front":
+    if show_tag and side == "front":
         px_per_in = pw / PHYSICAL_W_IN                          # mockup px per physical inch
         tag_w_px  = round(TAG_PHYS_W_IN * px_per_in)           # e.g. 3.0" → 66 px
         tag_h_px  = round(tag_w_px * TAG_SRC_H / TAG_SRC_W)    # preserve source aspect ratio
@@ -403,9 +406,11 @@ def composite_on_mockup(
 
 def annotate(input_path: str, output_path: str | None = None, *,
              shirt_side: str | None = None,
-             mockup_image_path: str | None = None) -> Path | None:
+             mockup_image_path: str | None = None,
+             show_tag: bool | None = None) -> Path | None:
     _side       = shirt_side        if shirt_side        is not None else SHIRT_SIDE
     _mockup_img = mockup_image_path if mockup_image_path is not None else MOCKUP_IMAGE_PATH
+    _show_tag   = show_tag          if show_tag          is not None else SHOW_TAG
 
     is_url = input_path.startswith("http://") or input_path.startswith("https://")
 
@@ -549,7 +554,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
         "x_dir": x_dir,
         "x_offset_in": x_offset_in,
     }
-    composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements, side=_side)
+    composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements, side=_side, show_tag=_show_tag)
     return mockup_out
 
 
@@ -607,6 +612,7 @@ def run_batch(sides, output_path=None):
             entry["input"],
             shirt_side=entry["side"],
             mockup_image_path=entry["mockup"],
+            show_tag=entry.get("show_tag"),
         )
         if mockup_out:
             mockup_paths.append(mockup_out)
