@@ -767,7 +767,7 @@ export function useCanvasDesign() {
                 preview_url: result.previewUrl,
                 design_name: designName,
             });
-            if (navigateToOrder) navigate('/order');
+            if (navigateToOrder) navigate('/checkout');
         } catch (err) {
             console.error('[CanvasDesign] Add to cart failed:', err);
         } finally {

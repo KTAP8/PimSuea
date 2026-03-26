@@ -32,7 +32,7 @@ export function UserGreeting({ stats }: Props) {
             label: 'สินค้าในตะกร้า',
             value: String(cartCount),
             icon: <ShoppingCart className="w-5 h-5" />,
-            to: '/order',
+            to: '/checkout',
             accent: 'text-amber-600 bg-amber-50',
         },
     ];

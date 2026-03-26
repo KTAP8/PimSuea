@@ -22,7 +22,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
     { label: "หน้าหลัก", path: "/dashboard", icon: <Home className="w-5 h-5" /> },
     { label: "แคตตาล็อก", path: "/catalog", icon: <ShoppingBag className="w-5 h-5" /> },
     { label: "งานของฉัน", path: "/my-products", icon: <Palette className="w-5 h-5" /> },
-    { label: "ตะกร้าสินค้า", path: "/order", icon: <ShoppingCart className="w-5 h-5" /> },
+    { label: "ตะกร้าสินค้า", path: "/checkout", icon: <ShoppingCart className="w-5 h-5" /> },
     { label: "คำสั่งซื้อ", path: "/orders", icon: <Package className="w-5 h-5" /> },
     { label: "กระเป๋าเงิน", path: "/wallet", icon: <Wallet className="w-5 h-5" /> },
   ];

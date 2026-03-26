@@ -1851,7 +1851,7 @@ const handleAddToCart = async () => {
         // 4. Redirect
         // If it was a new design, we might want to navigate to '?designId=XX' or just go to order.
         // Since we are going to Order page, it's fine.
-        navigate('/order');
+        navigate('/checkout');
 
     } catch (error) {
         console.error("Add to cart error:", error);
