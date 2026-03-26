@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useCart } from '../contexts/CartContext';
 import Konva from 'konva';
 import { MD5 } from 'crypto-js';
 import api, { getProductTemplates, uploadFile, r2ProxyUrl, getPrice } from '../services/api';
@@ -14,6 +15,8 @@ export const SIDE_ORDER = ['front', 'back'];
 export function useCanvasDesign() {
     const { id } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { addToCart } = useCart();
     const designIdParam = searchParams.get('designId');
     const printingTypeParam = (searchParams.get('printingType') || searchParams.get('printing_type'))?.toUpperCase();
     const { user } = useAuth();
@@ -55,6 +58,11 @@ export function useCanvasDesign() {
     // Pricing state
     const [priceBreakdown, setPriceBreakdown] = useState<CanvasPriceBreakdown | null>(null);
     const [priceLoading, setPriceLoading] = useState(false);
+
+    // Order state
+    const [selectedSize, setSelectedSize] = useState('M');
+    const [quantity, setQuantity] = useState(1);
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
 
     // Mockup state
     const [showMockup, setShowMockup] = useState(false);
@@ -624,8 +632,10 @@ export function useCanvasDesign() {
     };
 
     // ── Save ──────────────────────────────────────────────────────────────────
-    const handleSave = async () => {
-        if (!currentTemplate || !printZone || !stageRef.current) return;
+    type SaveResult = { savedDesignId: string; printFileUrl: string; previewUrl: string; canvasData: object };
+
+    const handleSave = async (): Promise<SaveResult | null> => {
+        if (!currentTemplate || !printZone || !stageRef.current) return null;
         setIsSaving(true);
         setSaveStatus('idle');
         try {
@@ -703,11 +713,12 @@ export function useCanvasDesign() {
                 print_dimensions: Object.keys(print_dimensions).length > 0 ? print_dimensions : undefined,
             };
 
+            let savedDesignId = designId ?? '';
             if (designId) {
                 await api.put(`/designs/${designId}`, payload);
             } else {
                 const { data } = await api.post('/designs', payload);
-                if (data?.design?.id) setDesignId(data.design.id);
+                if (data?.design?.id) { setDesignId(data.design.id); savedDesignId = data.design.id; }
             }
 
             setSaveStatus('saved');
@@ -722,11 +733,40 @@ export function useCanvasDesign() {
                 );
                 computePriceBreakdown(dims, currentTemplate.product_id, selectedColorId, printingType);
             }
+
+            return { savedDesignId, printFileUrl: printFileUrl ?? '', previewUrl, canvasData };
         } catch (err) {
             console.error('[CanvasDesign] Save failed:', err);
             setSaveStatus('error');
+            return null;
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    // ── Add to cart ───────────────────────────────────────────────────────────
+    const handleAddToCart = async (navigateToOrder: boolean) => {
+        if (!currentTemplate || !user) return;
+        setIsAddingToCart(true);
+        try {
+            const result = await handleSave();
+            if (!result) throw new Error('Auto-save failed');
+            addToCart({
+                product_id: currentTemplate.product_id,
+                color_id: selectedColorId || '',
+                size: selectedSize,
+                quantity,
+                design_id: result.savedDesignId || undefined,
+                print_file_url: result.printFileUrl,
+                design_json: result.canvasData,
+                preview_url: result.previewUrl,
+                design_name: designName,
+            });
+            if (navigateToOrder) navigate('/order');
+        } catch (err) {
+            console.error('[CanvasDesign] Add to cart failed:', err);
+        } finally {
+            setIsAddingToCart(false);
         }
     };
 
@@ -752,6 +792,8 @@ export function useCanvasDesign() {
         addImageFromUrl, handleSidebarUpload, proceedWithUpload, confirmDeleteImage,
         moveLayer, handleExport, handleSave, handleMockup,
         showMockup, setShowMockup, mockupUrl, generatingMockup,
+        selectedSize, setSelectedSize, quantity, setQuantity,
+        isAddingToCart, handleAddToCart,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
     };
 }

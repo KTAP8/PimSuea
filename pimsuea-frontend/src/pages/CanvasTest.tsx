@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Upload, ImageIcon, Layers, Loader2, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Upload, ImageIcon, Layers, Loader2, Save, ShoppingCart, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCanvasDesign } from '../hooks/useCanvasDesign';
 import { ImageLibraryPanel } from '../components/canvas/ImageLibraryPanel';
@@ -10,11 +10,13 @@ import { PriceCard } from '../components/canvas/PriceCard';
 import { SizeEditor } from '../components/canvas/SizeEditor';
 import { LeaveConfirmModal } from '../components/canvas/LeaveConfirmModal';
 import { MockupModal } from '../components/canvas/MockupModal';
+import { OrderPanel } from '../components/canvas/OrderPanel';
 
 export default function CanvasTest() {
     const d = useCanvasDesign();
     const navigate = useNavigate();
     const [showLeaveModal, setShowLeaveModal] = useState(false);
+    const [showOrderPanel, setShowOrderPanel] = useState(false);
 
     // Block browser tab close / refresh when there are unsaved changes
     useEffect(() => {
@@ -81,6 +83,14 @@ export default function CanvasTest() {
                     </button>
 
                     <div className="w-px h-5 bg-gray-200 mx-1 rounded-full"></div>
+
+                    <button
+                        onClick={() => setShowOrderPanel(true)}
+                        disabled={!d.currentTemplate}
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 bg-action text-white rounded-xl text-sm font-bold shadow-sm shadow-action/20 transition-all hover:bg-action/90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                        <ShoppingCart className="w-4 h-4" />
+                        สั่งซื้อ
+                    </button>
 
                     <button onClick={d.handleSave} disabled={d.isSaving || !d.currentTemplate}
                         className={`flex items-center justify-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.05)] ${
@@ -227,6 +237,22 @@ export default function CanvasTest() {
                     <span className="font-medium text-green-700 mr-1">Exported:</span>
                     <a href={d.exportedUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{d.exportedUrl}</a>
                 </div>
+            )}
+
+            {/* Order panel */}
+            {showOrderPanel && (
+                <OrderPanel
+                    selectedSize={d.selectedSize}
+                    onSizeChange={d.setSelectedSize}
+                    quantity={d.quantity}
+                    onQuantityChange={d.setQuantity}
+                    priceBreakdown={d.priceBreakdown}
+                    isAddingToCart={d.isAddingToCart}
+                    isSaving={d.isSaving}
+                    onAddToCart={() => { setShowOrderPanel(false); d.handleAddToCart(false); }}
+                    onOrderNow={() => { setShowOrderPanel(false); d.handleAddToCart(true); }}
+                    onClose={() => setShowOrderPanel(false)}
+                />
             )}
 
             {/* Delete confirmation modal */}
