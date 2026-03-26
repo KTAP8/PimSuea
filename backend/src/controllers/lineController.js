@@ -47,7 +47,12 @@ async function handleUserMessage(event) {
     // Text message: look for "#<orderId>" to link order to LINE account
     if (msgType === 'text') {
         const match = event.message.text.match(/#(\d+)/);
-        if (!match) return; // ignore unrelated messages
+        if (!match) {
+            console.log(`[LINE DEBUG] User ${userId} sent: ${event.message.text}`);
+            // Fallback response so we know the webhook is working end-to-end
+            await replyMessage(replyToken, "🤖 รับทราบข้อความค่ะ!\nหากต้องการแจ้งชำระเงิน กรุณาพิมพ์ # ตามด้วยเลขคำสั่งซื้อ (เช่น #123) นะคะ");
+            return;
+        }
 
         const orderId = parseInt(match[1]);
         const { data: order, error } = await supabaseAdmin
@@ -145,6 +150,9 @@ async function handleWebhook(req, res) {
     res.status(200).end();
 
     const events = req.body.events || [];
+    console.log(`\n--- [LINE DEBUG] Received Webhook ---`);
+    console.log(`[LINE DEBUG] Events count: ${events.length}`);
+    
     for (const event of events) {
         if (event.type !== 'message') continue;
         try {
@@ -154,7 +162,7 @@ async function handleWebhook(req, res) {
                 await handleUserMessage(event);
             }
         } catch (err) {
-            console.error('[LINE] Error handling event:', err?.response?.data || err.message);
+            console.error('[LINE ERROR] Error handling event:', err?.response?.data || err.message || err);
         }
     }
 }
