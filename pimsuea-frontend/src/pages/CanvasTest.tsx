@@ -76,12 +76,6 @@ export default function CanvasTest() {
                         {d.generatingMockup ? 'กำลังสร้าง…' : 'ตัวอย่าง'}
                     </button>
 
-                    <button onClick={d.handleExport} disabled={d.isExporting || !d.currentTemplate}
-                        className="flex items-center justify-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                        {d.isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {d.isExporting ? 'Exporting…' : 'Export'}
-                    </button>
-
                     <div className="w-px h-5 bg-gray-200 mx-1 rounded-full"></div>
 
                     <button
@@ -230,14 +224,6 @@ export default function CanvasTest() {
                     />
                 </div>
             </div>
-
-            {/* Export result */}
-            {d.exportedUrl && (
-                <div className="p-2 text-xs bg-green-50 border-t break-all shrink-0">
-                    <span className="font-medium text-green-700 mr-1">Exported:</span>
-                    <a href={d.exportedUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{d.exportedUrl}</a>
-                </div>
-            )}
 
             {/* Order panel */}
             {showOrderPanel && (
