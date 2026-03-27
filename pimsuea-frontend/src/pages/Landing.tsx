@@ -522,7 +522,7 @@ export default function Landing() {
 
           {/* Card 1 — Design Canvas (col-span-2, white) */}
           <RevealWrapper delay="delay-100" className="md:col-span-2">
-            <div className="h-full bg-card border border-border rounded-2xl p-8 flex flex-col gap-4 relative overflow-hidden min-h-[300px] group">
+            <div className="h-full bg-card border border-border rounded-2xl p-8 flex flex-col gap-4 relative overflow-hidden min-h-[200px] md:min-h-[300px] group">
               <p className="text-sm font-bold text-primary relative z-10">{f.canvas.label}</p>
               <h3 className="font-heavy text-4xl md:text-5xl text-foreground leading-tight relative z-10">{f.canvas.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-light max-w-sm relative z-10">{f.canvas.desc}</p>
@@ -550,7 +550,7 @@ export default function Landing() {
 
           {/* Card 2 — No Minimum (col-span-1, brand green) */}
           <RevealWrapper delay="delay-200" className="md:col-span-1">
-            <div className="h-full bg-primary rounded-2xl p-8 flex flex-col gap-3 min-h-[300px] relative overflow-hidden group">
+            <div className="h-full bg-primary rounded-2xl p-8 flex flex-col gap-3 min-h-[200px] md:min-h-[300px] relative overflow-hidden group">
               {/* Visual Background: Glowing Orbs */}
               <motion.div style={{ y: countdownMarqueeY }} className="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-3xl transition-transform duration-700 group-hover:scale-150" />
               <motion.div style={{ y: bentoFloat1Y }} className="absolute -left-10 -bottom-10 w-48 h-48 bg-black/20 rounded-full blur-3xl transition-transform duration-700 group-hover:block" />
@@ -572,7 +572,7 @@ export default function Landing() {
 
           {/* Card 3 — Instant Pricing (col-span-1, gray) */}
           <RevealWrapper delay="delay-300" className="md:col-span-1">
-            <div className="h-full bg-secondary border border-border rounded-2xl p-8 flex flex-col gap-3 min-h-[280px] relative overflow-hidden group">
+            <div className="h-full bg-secondary border border-border rounded-2xl p-8 flex flex-col gap-3 min-h-[160px] md:min-h-[280px] relative overflow-hidden group">
               <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center relative z-10 shadow-[0_0_15px_rgba(8,99,109,0.3)]">
                 <Zap className="w-5 h-5 text-primary-foreground" />
               </div>
@@ -599,7 +599,7 @@ export default function Landing() {
 
           {/* Card 4 — Fast Delivery (col-span-2, white) */}
           <RevealWrapper delay="delay-400" className="md:col-span-2">
-            <div className="h-full bg-card border border-border rounded-2xl p-8 flex flex-col gap-4 min-h-[280px] relative overflow-hidden group">
+            <div className="h-full bg-card border border-border rounded-2xl p-8 flex flex-col gap-4 min-h-[160px] md:min-h-[280px] relative overflow-hidden group">
               <h3 className="font-heavy text-4xl md:text-5xl text-foreground leading-tight relative z-10">{f.delivery.title}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed font-light max-w-md relative z-10">{f.delivery.desc}</p>
               

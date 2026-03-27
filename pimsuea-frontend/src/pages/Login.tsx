@@ -51,7 +51,7 @@ export default function Login() {
       setError(signInError.message);
       setLoading(false);
     } else {
-      navigate("/");
+      navigate("/dashboard");
     }
   };
 

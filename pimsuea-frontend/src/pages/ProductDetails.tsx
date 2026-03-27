@@ -250,12 +250,12 @@ export default function ProductDetails() {
           {/* Secondary Elements: Details, Size, Estimator */}
           {/* Secondary Elements: Details, Size, Care, Estimator */}
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="w-full bg-gray-50/80 p-1.5 rounded-2xl h-14 flex overflow-x-auto no-scrollbar">
-              <TabsTrigger value="details" className="flex-1 min-w-[100px] rounded-xl font-medium text-base h-full data-[state=active]:shadow-sm">รายละเอียด</TabsTrigger>
-              <TabsTrigger value="size" className="flex-1 min-w-[100px] rounded-xl font-medium text-base h-full data-[state=active]:shadow-sm">ตารางไซส์</TabsTrigger>
-              <TabsTrigger value="care" className="flex-1 min-w-[100px] rounded-xl font-medium text-base h-full data-[state=active]:shadow-sm">การดูแล</TabsTrigger>
-              <TabsTrigger value="estimator" className="flex-1 min-w-[120px] rounded-xl font-medium text-base h-full data-[state=active]:bg-primary/5 data-[state=active]:text-primary data-[state=active]:shadow-sm">
-                  <Calculator className="w-4 h-4 mr-2" /> คำนวณราคา
+            <TabsList className="w-full bg-gray-50/80 p-1.5 rounded-2xl h-12 sm:h-14 flex overflow-x-auto no-scrollbar">
+              <TabsTrigger value="details" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">รายละเอียด</TabsTrigger>
+              <TabsTrigger value="size" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">ตารางไซส์</TabsTrigger>
+              <TabsTrigger value="care" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">การดูแล</TabsTrigger>
+              <TabsTrigger value="estimator" className="flex-1 min-w-[80px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:bg-primary/5 data-[state=active]:text-primary data-[state=active]:shadow-sm">
+                  <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> คำนวณราคา
               </TabsTrigger>
             </TabsList>
             

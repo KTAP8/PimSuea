@@ -34,7 +34,7 @@ function CanvasHeroGraphic() {
       className="relative w-full max-w-lg mx-auto"
     >
       {/* Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-primary/10 blur-[80px] rounded-full -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/10 blur-[80px] rounded-full -z-10" />
 
       {/* Window chrome */}
       <div className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">

@@ -315,7 +315,7 @@ export default function MyOrders() {
                                          <Label>ที่อยู่</Label>
                                          <Input value={editForm.addressLine1} onChange={e => setEditForm({...editForm, addressLine1: e.target.value})} />
                                      </div>
-                                     <div className="grid grid-cols-2 gap-2">
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                          <div>
                                             <Label>แขวง/ตำบล</Label>
                                             <Input value={editForm.district} onChange={e => setEditForm({...editForm, district: e.target.value})} />

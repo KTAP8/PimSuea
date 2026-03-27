@@ -673,19 +673,19 @@ export default function Order() {
 
       {/* Steps Indicator */}
       {step < 4 && <div className="flex items-center justify-center mb-8">
-          <div className={`flex items-center gap-2 ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
-              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current">1</div>
-              <span>ตะกร้าสินค้า</span>
+          <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">1</div>
+              <span className="hidden sm:inline text-sm">ตะกร้าสินค้า</span>
           </div>
-          <div className="w-12 h-0.5 bg-gray-200 mx-4" />
-          <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary' : 'text-gray-400'}`}>
-              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current">2</div>
-              <span>ที่อยู่จัดส่ง</span>
+          <div className="w-8 sm:w-12 h-0.5 bg-gray-200 mx-2 sm:mx-4 shrink-0" />
+          <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">2</div>
+              <span className="hidden sm:inline text-sm">ที่อยู่จัดส่ง</span>
           </div>
-          <div className="w-12 h-0.5 bg-gray-200 mx-4" />
-           <div className={`flex items-center gap-2 ${step >= 3 ? 'text-primary' : 'text-gray-400'}`}>
-              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current">3</div>
-              <span>สรุป & จ่ายเงิน</span>
+          <div className="w-8 sm:w-12 h-0.5 bg-gray-200 mx-2 sm:mx-4 shrink-0" />
+           <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-primary' : 'text-gray-400'}`}>
+              <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">3</div>
+              <span className="hidden sm:inline text-sm">สรุป & จ่ายเงิน</span>
           </div>
       </div>}
 
@@ -776,7 +776,7 @@ export default function Order() {
                              <Plus className="w-5 h-5 mr-2"/> ซื้อสินค้าเพิ่ม
                          </Button>
                      </SheetTrigger>
-                     <SheetContent side="right" className="w-[400px] sm:w-[540px] bg-gray-50 border-l border-gray-100 pt-12 shadow-2xl">
+                     <SheetContent side="right" className="w-[85vw] sm:w-[400px] md:w-[540px] bg-gray-50 border-l border-gray-100 pt-12 shadow-2xl">
                          <SheetHeader className="mb-6 px-2">
                              <SheetTitle className="font-bold text-2xl text-gray-900 flex items-center gap-3">
                                 <span className="bg-primary/10 p-2 rounded-xl text-primary"><Plus className="w-5 h-5" /></span>
