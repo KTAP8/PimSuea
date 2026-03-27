@@ -46,6 +46,10 @@ _PLACEMENTS = {
     "back":  {"x": 242, "y": 191, "w": 263, "h": 350},
 }
 
+# Back side only: leftmost pixel of the shirt body in the back mockup image.
+# Used as the reference point for horizontal offset (instead of shirt center).
+BACK_SHIRT_LEFT_PX = 169
+
 # Collar positions in each mockup image (px from the top of the image)
 COLLAR_Y = {"front": 223, "back": 144}
 # Fixed real-world distance from collar to the top of the print area
@@ -94,7 +98,8 @@ COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # One-shot pipeline: annotate each side, then combine into a single image.
 # Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
 BATCH_SIDES = [
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/PrintFile_front.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/front_white_mock_template.png", "side": "front", "show_tag": False}
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_5.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/front_white_mock_template.png", "side": "front", "show_tag": True},
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/back_white_mock_template.png", "side": "back", "show_tag": False}
     # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
     # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},
 ]
@@ -274,18 +279,31 @@ def composite_on_mockup(
     # Y label: hugs the collar tick from below, left side — always above X label
     draw_label(draw, y_total_label, collar_x - TICK - 30, collar_y + FONT_SIZE // 2 + 4, font)
 
-    # ── X measurement: dashed horizontal line from collar_x → element left ───
+    # ── X measurement ─────────────────────────────────────────────────────────
     x_dir = measurements["x_dir"]
-    if x_dir != "centered":
-        draw_dashed_line(draw, collar_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
-        draw.line([(collar_x, elem_top_y - TICK), (collar_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
-        draw.line([(bx0,      elem_top_y - TICK), (bx0,      elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
-        x_label_text = f"{measurements['x_offset_in']:.1f} in ({measurements['x_offset_in'] * 2.54:.1f} cm) {x_dir}"
-        mid_h = (collar_x + bx0) // 2
-        # X label: hugs the element-top tick from above — always below Y label
-        draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
+    if side == "back":
+        # Back side: measure from shirt left edge to graphic left, or omit if centered.
+        if x_dir != "centered":
+            shirt_x = BACK_SHIRT_LEFT_PX
+            draw_dashed_line(draw, shirt_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
+            draw.line([(shirt_x, elem_top_y - TICK), (shirt_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
+            draw.line([(bx0,     elem_top_y - TICK), (bx0,     elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
+            xfs = measurements["x_from_shirt_in"]
+            x_label_text = f"{xfs:.1f} in ({xfs * 2.54:.1f} cm) from shirt left"
+            mid_h = (shirt_x + bx0) // 2
+            draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
+        # else centered → no X annotation
     else:
-        draw_label(draw, "centered", collar_x - TICK - 30, elem_top_y - FONT_SIZE // 2 - 4, font)
+        # Front / other: measure from shirt center to graphic left edge
+        if x_dir != "centered":
+            draw_dashed_line(draw, collar_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
+            draw.line([(collar_x, elem_top_y - TICK), (collar_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
+            draw.line([(bx0,      elem_top_y - TICK), (bx0,      elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
+            x_label_text = f"{measurements['x_offset_in']:.1f} in ({measurements['x_offset_in'] * 2.54:.1f} cm) {x_dir}"
+            mid_h = (collar_x + bx0) // 2
+            draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
+        else:
+            draw_label(draw, "centered", collar_x - TICK - 30, elem_top_y - FONT_SIZE // 2 - 4, font)
 
     # ── Tag annotations (front only) ─────────────────────────────────────────
     if _tag_info is not None:
@@ -443,6 +461,13 @@ def annotate(input_path: str, output_path: str | None = None, *,
                    else "centered")
     tier        = get_print_tier(elem_w_in, elem_h_in)
 
+    # Back side only: distance from shirt's left edge to graphic's left edge
+    x_from_shirt_in = 0.0
+    if _side == "back" and x_dir != "centered":
+        _bp = _PLACEMENTS["back"]
+        shirt_left_offset_in = (_bp["x"] - BACK_SHIRT_LEFT_PX) / (_bp["w"] / PHYSICAL_W_IN)
+        x_from_shirt_in = shirt_left_offset_in + x_min * px_to_in
+
     # ── Console summary ──────────────────────────────────────────────────────
     print(f"\n{'─'*48}")
     print(f"  File       : {src.name}")
@@ -517,16 +542,26 @@ def annotate(input_path: str, output_path: str | None = None, *,
     y_label = "0.0 in from top" if y_in < 0.005 else f"{y_in:.1f} in ({y_in * 2.54:.1f} cm) from top"
     draw_label(draw, y_label, MARGIN_LEFT // 2, mid_y, font)
 
-    # 3. X offset — horizontal line in top margin, from area center-x to element left edge
+    # 3. X offset — horizontal line in top margin
     hy = MARGIN_TOP // 2
-    draw_dashed_line(draw, cx_s, hy, bx0, hy, color=ORANGE)
-    draw.line([(cx_s, hy - TICK), (cx_s, hy + TICK)], fill=ORANGE, width=LINE_W)
-    draw.line([(bx0,  hy - TICK), (bx0,  hy + TICK)], fill=ORANGE, width=LINE_W)
-    # Vertical connector from top margin line down to element's top-left corner
-    draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
-    x_label = ("centered" if x_dir == "centered"
-               else f"{x_offset_in:.1f} in ({x_offset_in * 2.54:.1f} cm) {x_dir}")
-    draw_label(draw, x_label, (cx_s + bx0) // 2, hy // 2 + 4, font)
+    if _side == "back":
+        # Back side: measure from shirt left edge (off-canvas) to graphic left.
+        # Shirt edge is outside the canvas, so just drop a tick + connector at bx0.
+        if x_dir != "centered":
+            x_label = f"{x_from_shirt_in:.1f} in ({x_from_shirt_in * 2.54:.1f} cm) from shirt left"
+            draw.line([(bx0, hy - TICK), (bx0, hy + TICK)], fill=ORANGE, width=LINE_W)
+            draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
+            draw_label(draw, x_label, bx0, hy // 2 + 4, font)
+        # else centered → no X annotation
+    else:
+        # Front / other: measure from print-area center to graphic left edge
+        draw_dashed_line(draw, cx_s, hy, bx0, hy, color=ORANGE)
+        draw.line([(cx_s, hy - TICK), (cx_s, hy + TICK)], fill=ORANGE, width=LINE_W)
+        draw.line([(bx0,  hy - TICK), (bx0,  hy + TICK)], fill=ORANGE, width=LINE_W)
+        draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
+        x_label = ("centered" if x_dir == "centered"
+                   else f"{x_offset_in:.1f} in ({x_offset_in * 2.54:.1f} cm) {x_dir}")
+        draw_label(draw, x_label, (cx_s + bx0) // 2, hy // 2 + 4, font)
 
     # 4. Size + tier label below the bounding box
     size_text = f"{elem_w_in:.1f}\" × {elem_h_in:.1f}\" ({elem_w_in * 2.54:.1f} × {elem_h_in * 2.54:.1f} cm)  [{tier}]"
@@ -553,6 +588,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
         "collar_to_elem_in": COLLAR_TO_PRINT_AREA_IN + y_in,
         "x_dir": x_dir,
         "x_offset_in": x_offset_in,
+        "x_from_shirt_in": x_from_shirt_in,
     }
     composite_on_mockup(img_full, mockup_path, placement, mockup_out, measurements, side=_side, show_tag=_show_tag)
     return mockup_out

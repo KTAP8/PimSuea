@@ -19,6 +19,7 @@ export default function ProductDetails() {
 
   // Configuration State
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [mainImageHovered, setMainImageHovered] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
 
@@ -132,15 +133,37 @@ export default function ProductDetails() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Left: Image gallery */}
         <div className="flex flex-col gap-3">
-            <div className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner overflow-hidden">
+            <div
+                className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner overflow-hidden relative"
+                onMouseEnter={() => setMainImageHovered(true)}
+                onMouseLeave={() => setMainImageHovered(false)}
+            >
                 {(product.images && product.images.length > 0) ? (
-                    <img
-                        src={product.images[activeImageIdx]}
-                        alt={`${product.name} ${activeImageIdx + 1}`}
-                        className="w-full h-full object-cover"
-                    />
+                    <>
+                        <img
+                            src={product.images[activeImageIdx]}
+                            alt={`${product.name} ${activeImageIdx + 1}`}
+                            className="w-full h-full object-cover"
+                        />
+                        {product.hover_image_url && (
+                            <img
+                                src={product.hover_image_url}
+                                alt={`${product.name} hover`}
+                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mainImageHovered && activeImageIdx === 0 ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                        )}
+                    </>
                 ) : product.image_url ? (
-                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                    <>
+                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                        {product.hover_image_url && (
+                            <img
+                                src={product.hover_image_url}
+                                alt={`${product.name} hover`}
+                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mainImageHovered && activeImageIdx === 0 ? 'opacity-100' : 'opacity-0'}`}
+                            />
+                        )}
+                    </>
                 ) : (
                     <span>👕</span>
                 )}
@@ -151,6 +174,7 @@ export default function ProductDetails() {
                         <button
                             key={i}
                             onClick={() => setActiveImageIdx(i)}
+                            onMouseEnter={() => setActiveImageIdx(i)}
                             className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === activeImageIdx ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'}`}
                         >
                             <img src={url} alt={`${product.name} ${i + 1}`} className="w-full h-full object-cover" />

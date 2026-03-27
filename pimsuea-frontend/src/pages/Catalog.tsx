@@ -116,6 +116,9 @@ export default function Catalog() {
                            ) : (
                               <span>👕</span>
                            )}
+                           {product.hover_image_url && (
+                              <img src={product.hover_image_url} alt={`${product.name} hover`} className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                           )}
                            {/* Premium Hover Gradient Overlay */}
                            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                       </div>

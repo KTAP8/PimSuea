@@ -31,7 +31,7 @@ exports.getProducts = async (req, res) => {
         description:details,
         is_beginner_friendly,
         category_id,
-        product_images (image_url)
+        product_images (image_url, is_hover, display_order)
       `)
       .eq('is_active', true);
 
@@ -47,12 +47,19 @@ exports.getProducts = async (req, res) => {
 
     if (error) throw error;
 
-    const formattedProducts = products.map(p => ({
-        ...p,
-        image_url: p.product_images && p.product_images.length > 0 ? p.product_images[0].image_url : null,
-        starting_price: p.min_price ?? null,
-        price: p.min_price ?? p.price,
-    }));
+    const formattedProducts = products.map(p => {
+        const gallery = p.product_images
+            ? p.product_images.filter(img => !img.is_hover).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+            : [];
+        const hoverImg = p.product_images ? p.product_images.find(img => img.is_hover) : null;
+        return {
+            ...p,
+            image_url: gallery.length > 0 ? gallery[0].image_url : null,
+            hover_image_url: hoverImg ? hoverImg.image_url : null,
+            starting_price: p.min_price ?? null,
+            price: p.min_price ?? p.price,
+        };
+    });
 
     res.json(formattedProducts);
   } catch (error) {
@@ -81,7 +88,7 @@ exports.getProductById = async (req, res) => {
         size_guide,
         is_beginner_friendly,
         category_id,
-        product_images (image_url),
+        product_images (image_url, is_hover, display_order),
         category:categories(name),
         product_print_methods (
           print_method:print_methods (
@@ -126,10 +133,18 @@ exports.getProductById = async (req, res) => {
             })
         : Object.keys(product.size_guide || {});
 
+    const galleryImages = product.product_images
+        ? product.product_images.filter(img => !img.is_hover).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+        : [];
+    const hoverImg = product.product_images
+        ? product.product_images.find(img => img.is_hover)
+        : null;
+
     const formattedProduct = {
         ...product,
-        images: product.product_images ? product.product_images.map(img => img.image_url) : [],
-        image_url: product.product_images && product.product_images.length > 0 ? product.product_images[0].image_url : null,
+        images: galleryImages.map(img => img.image_url),
+        image_url: galleryImages.length > 0 ? galleryImages[0].image_url : null,
+        hover_image_url: hoverImg ? hoverImg.image_url : null,
         print_methods: printMethods,
         starting_price: startingPrice,
         available_sizes,
