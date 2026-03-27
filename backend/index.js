@@ -23,11 +23,7 @@ const ALLOWED_ORIGINS = [
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
 ];
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (curl, Postman, server-to-server)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin ${origin} not allowed`));
-  },
+  origin: "*"
 }));
 app.use(express.json({
     verify: (req, _res, buf) => { req.rawBody = buf; }
