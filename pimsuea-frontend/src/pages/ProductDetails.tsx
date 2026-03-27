@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Check, ShieldCheck, Loader2, AlertCircle, Calculator } from "lucide-react";
+import { ArrowLeft, Check, Loader2, AlertCircle, Calculator } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getProductById, estimatePrice } from "@/services/api";
 import type { Product } from "@/types/api";
@@ -236,16 +236,6 @@ export default function ProductDetails() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-700 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-             <div className="flex items-center gap-3 font-medium">
-                 <div className="bg-green-100 p-2 rounded-full"><Check className="w-5 h-5 text-green-600"/></div>
-                 ผลิตไวใน 2-3 วัน
-             </div>
-             <div className="flex items-center gap-3 font-medium">
-                 <div className="bg-blue-100 p-2 rounded-full"><ShieldCheck className="w-5 h-5 text-blue-600"/></div>
-                 รับประกันคุณภาพ
-             </div>
-          </div>
 
           {/* Secondary Elements: Details, Size, Estimator */}
           {/* Secondary Elements: Details, Size, Care, Estimator */}
