@@ -12,8 +12,8 @@ interface Props {
 
 export function ImageLibraryPanel({ userUploads, loadingUploads, isUploading, onClose, onAddImage, onUpload, onDeleteRequest }: Props) {
     return (
-        <div className="w-80 bg-white shadow-2xl rounded-2xl border flex flex-col z-40 absolute left-24 top-4 bottom-4 overflow-hidden">
-            <div className="p-5 border-b flex items-center justify-between bg-gray-50/50">
+        <div className="fixed md:absolute bottom-16 md:bottom-4 left-0 right-0 md:left-24 top-auto md:top-4 h-[60vh] md:h-auto md:w-80 bg-white shadow-[0_-8px_30px_rgb(0,0,0,0.12)] md:shadow-2xl rounded-t-3xl md:rounded-2xl border flex flex-col z-40 overflow-hidden">
+            <div className="p-4 md:p-5 border-b flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-bold text-lg">คลังรูปภาพ</h3>
                 <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200">
                     <X className="w-4 h-4" />

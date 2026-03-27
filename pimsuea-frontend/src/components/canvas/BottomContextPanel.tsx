@@ -21,11 +21,11 @@ export function BottomContextPanel({
     colorPickerRef, onSideChange, onColorSelect, onToggleColorPicker, onColorAdd, onColorRemove,
 }: Props) {
     return (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-full px-8 py-3.5 flex items-center gap-8 border border-gray-100 z-10 transition-all">
+        <div className="absolute bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-2xl md:rounded-full px-4 md:px-8 py-2.5 md:py-3.5 flex flex-wrap md:flex-nowrap items-center justify-center gap-x-4 gap-y-2.5 md:gap-8 border border-gray-100 z-10 transition-all w-[calc(100vw-2rem)] md:w-auto">
 
             {/* Side selector */}
-            <div className="flex items-center gap-4">
-                <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">Side</span>
+            <div className="flex items-center gap-3 md:gap-4">
+                <span className="text-[10px] md:text-[11px] font-bold tracking-widest text-gray-400 uppercase">Side</span>
                 <div className="flex bg-gray-100/80 rounded-xl p-1 shrink-0">
                     {currentSides.map(t => (
                         <button key={t.id} onClick={() => onSideChange(t)}
@@ -36,12 +36,12 @@ export function BottomContextPanel({
                 </div>
             </div>
 
-            <div className="w-px h-8 bg-gray-200" />
+            <div className="hidden md:block w-px h-8 bg-gray-200" />
 
             {/* Color selector */}
-            <div className="flex items-center gap-4">
-                <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">Color</span>
-                <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 md:gap-4">
+                <span className="text-[10px] md:text-[11px] font-bold tracking-widest text-gray-400 uppercase">Color</span>
+                <div className="flex items-center gap-2 flex-wrap justify-center">
 
                     {/* Active color swatches */}
                     {uniqueColors.filter(c => activeColorIds.has(c.id)).map(color => {

@@ -13,7 +13,7 @@ interface Props {
 
 export function LayerPanel({ canvasImages, selectedId, onSelect, onMove, onDelete, onClose }: Props) {
     return (
-        <div className="w-64 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-2xl border border-gray-100 flex flex-col z-40 absolute right-6 top-6 bottom-32 overflow-hidden">
+        <div className="fixed md:absolute bottom-16 md:bottom-32 left-0 right-0 md:left-auto md:right-6 top-auto md:top-6 h-[50vh] md:h-auto md:w-64 bg-white shadow-[0_-8px_30px_rgb(0,0,0,0.12)] md:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-t-3xl md:rounded-2xl border flex flex-col z-40 overflow-hidden">
             <div className="px-5 py-4 border-b flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-semibold text-base flex items-center gap-2 text-gray-800">
                     <Layers className="w-4 h-4" /> Layers

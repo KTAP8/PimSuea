@@ -250,7 +250,7 @@ export default function ProductDetails() {
             </TabsList>
             
             <TabsContent value="details" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm">
-              <p className="text-gray-600 leading-relaxed text-lg">{product.description || "ไม่มีรายละเอียดสินค้า"}</p>
+              <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-wrap">{product.description || "ไม่มีรายละเอียดสินค้า"}</p>
             </TabsContent>
             
             <TabsContent value="size" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm overflow-hidden">
