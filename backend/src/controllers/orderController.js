@@ -104,6 +104,60 @@ exports.getOrderDetails = async (req, res) => {
   }
 };
 
+/**
+ * Shared coupon validation helper — fetches the coupon, checks all constraints,
+ * and returns { coupon } on success or throws an Error with a Thai message.
+ */
+async function fetchAndValidateCoupon(code, userId) {
+  const { data: coupon, error } = await supabaseAdmin
+    .from('coupons')
+    .select('id, code, discount_type, discount_value, max_discount_thb, max_uses_per_user, max_total_uses, max_qty, expires_at, is_active')
+    .eq('code', code)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!coupon || !coupon.is_active) throw new Error('ไม่พบรหัสโค้ดนี้ หรือโค้ดถูกปิดใช้งานแล้ว');
+  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) throw new Error('รหัสโค้ดนี้หมดอายุแล้ว');
+
+  if (coupon.max_total_uses != null) {
+    const { count } = await supabaseAdmin
+      .from('coupon_usages')
+      .select('id', { count: 'exact', head: true })
+      .eq('coupon_id', coupon.id);
+    if ((count ?? 0) >= coupon.max_total_uses) throw new Error('โค้ดนี้ถูกใช้ครบจำนวนแล้ว');
+  }
+
+  if (coupon.max_uses_per_user != null) {
+    const { count: userCount } = await supabaseAdmin
+      .from('coupon_usages')
+      .select('id', { count: 'exact', head: true })
+      .eq('coupon_id', coupon.id)
+      .eq('user_id', userId);
+    if ((userCount ?? 0) >= coupon.max_uses_per_user) throw new Error('คุณใช้รหัสโค้ดนี้ครบจำนวนแล้ว');
+  }
+
+  return coupon;
+}
+
+/**
+ * Calculate the discount amount given a validated coupon, the product subtotal,
+ * and the total shirt quantity in the order.
+ */
+function computeCouponDiscount(coupon, subtotal, totalQty) {
+  const applicableQty = (coupon.max_qty != null) ? Math.min(totalQty, coupon.max_qty) : totalQty;
+  const fraction = totalQty > 0 ? applicableQty / totalQty : 0;
+  const discountableSubtotal = subtotal * fraction;
+
+  let discount;
+  if (coupon.discount_type === 'percentage') {
+    const raw = discountableSubtotal * (Number(coupon.discount_value) / 100);
+    discount = (coupon.max_discount_thb != null) ? Math.min(raw, Number(coupon.max_discount_thb)) : raw;
+  } else {
+    discount = Math.min(Number(coupon.discount_value), discountableSubtotal);
+  }
+  return Math.round(discount * 100) / 100;
+}
+
 exports.createOrder = async (req, res) => {
   const userId = req.user.id;
   const { items, shipping } = req.body;
@@ -226,15 +280,35 @@ exports.createOrder = async (req, res) => {
     // Calculate delivery fee based on total shirt quantity
     const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
     const { fee: deliveryFee } = await getDeliveryFee(totalQty);
-    const grandTotal = verifiedItemsTotal + deliveryFee;
 
-    // 2. Create Order with server-verified total (items + delivery)
+    // Apply coupon discount (server-side, product subtotal only)
+    let discountAmount = 0;
+    let appliedCouponCode = null;
+    let appliedCouponId = null;
+    if (req.body.coupon_code && typeof req.body.coupon_code === 'string') {
+      const code = req.body.coupon_code.trim().toUpperCase();
+      try {
+        const coupon = await fetchAndValidateCoupon(code, userId);
+        discountAmount = computeCouponDiscount(coupon, verifiedItemsTotal, totalQty);
+        appliedCouponCode = code;
+        appliedCouponId = coupon.id;
+      } catch (couponErr) {
+        // Coupon invalid at order time — reject the order so the user knows
+        return res.status(400).json({ error: couponErr.message });
+      }
+    }
+
+    const grandTotal = verifiedItemsTotal - discountAmount + deliveryFee;
+
+    // 2. Create Order with server-verified total (items + delivery - discount)
     const { data: order, error: orderError } = await client
       .from('orders')
       .insert({
         user_id: userId,
         total_amount: grandTotal,
         delivery_fee: deliveryFee,
+        discount_amount: discountAmount,
+        coupon_code: appliedCouponCode,
         status: 'pending_payment',
         shipping_address: shipping,
         created_at: new Date().toISOString(),
@@ -290,6 +364,16 @@ exports.createOrder = async (req, res) => {
     if (itemsError) {
       await client.from('orders').delete().eq('id', order.id);
       throw itemsError;
+    }
+
+    // Record coupon usage (admin client bypasses RLS)
+    if (appliedCouponId) {
+      await supabaseAdmin.from('coupon_usages').insert({
+        coupon_id: appliedCouponId,
+        user_id: userId,
+        order_id: order.id,
+        discount_applied: discountAmount,
+      });
     }
 
     res.status(201).json({ message: 'Order created successfully', orderId: order.id });

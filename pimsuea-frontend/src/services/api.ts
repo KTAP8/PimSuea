@@ -180,6 +180,21 @@ export const fetchDeliveryFee = async (qty: number): Promise<{ fee: number; labe
     return response.data;
 };
 
+export interface CouponValidationResult {
+    valid: boolean;
+    reason?: string;
+    code?: string;
+    discount_type?: 'percentage' | 'fixed';
+    discount_value?: number;
+    max_discount_thb?: number | null;
+    max_qty?: number | null;
+}
+
+export const validateCoupon = async (code: string): Promise<CouponValidationResult> => {
+    const response = await api.get<CouponValidationResult>(`/coupons/validate?code=${encodeURIComponent(code)}`);
+    return response.data;
+};
+
 export const joinWaitlist = async (payload: { name: string; email: string; reason: string }): Promise<{ message: string }> => {
     const response = await axios.post<{ message: string }>(`${API_BASE}/waitlist`, payload);
     return response.data;

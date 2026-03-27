@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee } from "@/services/api";
+import CouponInput, { type AppliedCoupon, computeDiscount } from "@/components/CouponInput";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
@@ -188,6 +189,10 @@ export default function Order() {
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [deliveryLabel, setDeliveryLabel] = useState('');
 
+  // Coupon state
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
   // Calculate Total
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
@@ -200,6 +205,13 @@ export default function Order() {
       setDeliveryLabel(label);
     }).catch(() => { /* keep previous fee on error */ });
   }, [totalItems]);
+
+  // Recompute discount preview whenever subtotal or qty changes
+  useEffect(() => {
+    if (appliedCoupon) {
+      setDiscountAmount(computeDiscount(appliedCoupon, totalPrice, totalItems));
+    }
+  }, [appliedCoupon, totalPrice, totalItems]);
 
   // Phase 1: Initialize Cart
   useEffect(() => {
@@ -621,7 +633,8 @@ export default function Order() {
                 ...item,
             })),
             shipping: shippingInfo,
-            total: totalPrice + deliveryFee
+            total: totalPrice - discountAmount + deliveryFee,
+            coupon_code: appliedCoupon?.code ?? null,
         };
 
         const result = await createOrder(orderPayload);
@@ -925,17 +938,32 @@ export default function Order() {
                            )}
                        </div>
                    ))}
+                       <div className="pt-2 border-t">
+                       <CouponInput
+                           subtotal={totalPrice}
+                           totalQty={totalItems}
+                           appliedCoupon={appliedCoupon}
+                           onApply={(coupon, discount) => { setAppliedCoupon(coupon); setDiscountAmount(discount); }}
+                           onClear={() => { setAppliedCoupon(null); setDiscountAmount(0); }}
+                       />
+                   </div>
                    <div className="flex justify-between text-sm text-gray-600 pt-2 border-t">
                        <span>ราคาสินค้า</span>
                        <span>฿{totalPrice.toLocaleString()}</span>
                    </div>
+                   {discountAmount > 0 && (
+                       <div className="flex justify-between text-sm text-green-600">
+                           <span>ส่วนลด ({appliedCoupon?.code})</span>
+                           <span>-฿{discountAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                       </div>
+                   )}
                    <div className="flex justify-between text-sm text-gray-600">
                        <span>ค่าจัดส่ง{deliveryLabel ? ` (${deliveryLabel})` : ''}</span>
                        <span>{deliveryFee === 0 ? 'ฟรี' : `฿${deliveryFee.toLocaleString()}`}</span>
                    </div>
                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
                        <span>ยอดรวมสุทธิ</span>
-                       <span>฿{(totalPrice + deliveryFee).toLocaleString()}</span>
+                       <span>฿{(totalPrice - discountAmount + deliveryFee).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                    </div>
                </div>
                
@@ -998,7 +1026,7 @@ export default function Order() {
             <div className="p-4 space-y-3">
               <p className="font-semibold">2. ชำระเงินผ่าน PromptPay</p>
               <p className="text-sm text-gray-500">
-                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{(totalPrice + deliveryFee).toLocaleString()}</span>
+                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{(totalPrice - discountAmount + deliveryFee).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
               </p>
               {import.meta.env.VITE_PROMPTPAY_QR_URL && (
                 <img
