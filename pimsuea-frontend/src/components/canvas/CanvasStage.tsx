@@ -196,6 +196,57 @@ export function CanvasStage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [stageSize]);
 
+    // ── Touch: pinch-to-zoom + pan (2 fingers) ────────────────────────────────
+    useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        let lastDist = 0;
+        let lastCenter = { x: 0, y: 0 };
+
+        const onTouchMove = (e: TouchEvent) => {
+            if (e.touches.length !== 2) return;
+            e.preventDefault();
+            const stage = stageRef.current;
+            if (!stage) return;
+
+            const [t1, t2] = [e.touches[0], e.touches[1]];
+            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            const center = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+
+            if (!lastDist) { lastDist = dist; lastCenter = center; return; }
+
+            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, stageScaleRef.current * (dist / lastDist)));
+            const rect = stage.container().getBoundingClientRect();
+            const ox = center.x - rect.left;
+            const oy = center.y - rect.top;
+            const oldPos = stage.position();
+            const px = (ox - oldPos.x) / stageScaleRef.current;
+            const py = (oy - oldPos.y) / stageScaleRef.current;
+            const dx = center.x - lastCenter.x;
+            const dy = center.y - lastCenter.y;
+
+            stage.scale({ x: newScale, y: newScale });
+            stage.position({ x: ox - px * newScale + dx, y: oy - py * newScale + dy });
+            stageScaleRef.current = newScale;
+            setStageScale(newScale);
+            stage.batchDraw();
+
+            lastDist = dist;
+            lastCenter = center;
+        };
+
+        const onTouchEnd = () => { lastDist = 0; };
+
+        container.addEventListener('touchmove', onTouchMove, { passive: false });
+        container.addEventListener('touchend', onTouchEnd);
+        return () => {
+            container.removeEventListener('touchmove', onTouchMove);
+            container.removeEventListener('touchend', onTouchEnd);
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // ── Wheel: pinch/Ctrl+scroll → zoom, 2-finger scroll → pan ───────────────
     useEffect(() => {
         const container = containerRef.current;
@@ -281,7 +332,7 @@ export function CanvasStage({
                 onMouseMove={handleStageMouseMove}
                 onMouseUp={handleStageMouseUp}
                 onTouchStart={e => {
-                    if (!isPanMode && (e.target === e.target.getStage() || e.target.name() === 'bg')) onSelect(null);
+                    if (e.evt.touches.length === 1 && !isPanMode && (e.target === e.target.getStage() || e.target.name() === 'bg')) onSelect(null);
                 }}>
                 <Layer>
                     {bgImage && (

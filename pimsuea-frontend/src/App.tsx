@@ -7,7 +7,6 @@ import { Sidebar } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
-import DesignCanvas from './pages/DesignCanvas';
 import DesignStudio from './pages/DesignStudio';
 import MyOrders from './pages/MyOrders';
 import MyProducts from './pages/MyProducts';
@@ -29,14 +28,13 @@ function Layout() {
   const location = useLocation();
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
-    && !location.pathname.startsWith('/design/')
     && !location.pathname.startsWith('/studio/');
 
   return (
     <div className="min-h-screen flex bg-slate-50">
       {shouldShowSidebar && <Sidebar />}
       <main className={`flex-1 min-w-0 transition-all duration-300 ${shouldShowSidebar ? 'md:ml-0' : ''}`}>
-        {/* Mobile header spacer — not needed on full-screen pages like DesignCanvas */}
+        {/* Mobile header spacer — not needed on full-screen pages like DesignStudio */}
         {shouldShowSidebar && <div className="h-16 md:hidden"></div>}
         
         <Routes>
@@ -58,7 +56,6 @@ function Layout() {
                 <Route path="/news/:id" element={<NewsDetails />} />
                 <Route path="/catalog" element={<Catalog />} />
                 <Route path="/product/:id" element={<ProductDetails />} />
-                <Route path="/design/:id" element={<DesignCanvas />} />
                 <Route path="/studio/:id" element={<DesignStudio />} />
                 <Route path="/orders" element={<MyOrders />} />
                 <Route path="/my-products" element={<MyProducts />} />

@@ -182,18 +182,20 @@ export default function DesignStudio() {
                 {/* Canvas area */}
                 <div ref={d.containerRef} className="flex-1 flex items-center justify-center overflow-hidden relative">
 
-                    {/* Top-right overlay: price card */}
-                    <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 scale-90 md:scale-100 origin-top-right">
+                    {/* Top-right overlay: price card — desktop only */}
+                    <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 hidden md:block">
                         <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} />
                     </div>
 
-                    {/* Top-left overlay: size editor + remove button */}
-                    <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 z-10 pointer-events-none scale-90 md:scale-100 origin-top-left">
-                        <SizeEditor displaySizeIn={d.displaySizeIn} onApply={d.applySizeIn} />
+                    {/* Top-left overlay: size editor (desktop) + remove button */}
+                    <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 z-10 pointer-events-none origin-top-left">
+                        <div className="hidden md:block">
+                            <SizeEditor displaySizeIn={d.displaySizeIn} onApply={d.applySizeIn} />
+                        </div>
                         {d.selectedId && (
                             <button
                                 onClick={() => { d.setCanvasImages(prev => prev.filter(ci => ci.id !== d.selectedId)); d.setSelectedId(null); d.markDirty(); }}
-                                className="pointer-events-auto px-4 py-1.5 bg-white backdrop-blur-sm border border-red-100 text-red-500 rounded-lg shadow-sm text-xs font-semibold hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-1.5">
+                                className="pointer-events-auto px-4 py-2.5 md:py-1.5 bg-white/95 backdrop-blur-sm border border-red-100 text-red-500 rounded-xl shadow-sm text-xs font-semibold hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-1.5 min-h-[40px]">
                                 <Trash2 className="w-3.5 h-3.5" /> Remove
                             </button>
                         )}

@@ -10,7 +10,7 @@ export function CanvasZoomHint({ scale, isPanMode, onReset }: Props) {
     const pct = Math.round(scale * 100);
 
     return (
-        <div className="absolute bottom-6 right-6 flex items-center gap-2 pointer-events-none select-none z-10">
+        <div className="absolute bottom-6 right-6 hidden md:flex items-center gap-2 pointer-events-none select-none z-10">
             {/* Shortcuts hint — fades in when not at 100% or in pan mode */}
             <div className={`transition-opacity duration-300 ${scale !== 1 || isPanMode ? 'opacity-100' : 'opacity-0'}`}>
                 <span className="text-[10px] text-gray-400 font-medium bg-white/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-100 whitespace-nowrap">
@@ -36,10 +36,10 @@ export function CanvasZoomHint({ scale, isPanMode, onReset }: Props) {
     );
 }
 
-// Static hint shown at the bottom-left — always visible, explains shortcuts
+// Static hint shown at the bottom-left — always visible on desktop, hidden on mobile
 export function CanvasShortcutHint() {
     return (
-        <div className="absolute bottom-6 left-6 pointer-events-none select-none z-10">
+        <div className="absolute bottom-6 left-6 hidden md:block pointer-events-none select-none z-10">
             <div className="flex flex-col gap-2 bg-white/80 backdrop-blur-sm border border-gray-100 rounded-xl px-3 py-2.5 shadow-sm">
                 <span className="text-[10px] text-gray-500 font-medium flex items-center gap-1.5 w-max">
                     <kbd className="font-sans bg-gray-100/80 px-1.5 py-0.5 rounded border border-gray-200/80 text-gray-600 shadow-[0_1px_1px_rgba(0,0,0,0.02)]">Space</kbd> + ลาก = เลื่อน
