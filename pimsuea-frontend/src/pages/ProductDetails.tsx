@@ -131,7 +131,7 @@ export default function ProductDetails() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Left: Image gallery */}
-        <div className="sticky top-24 flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
             <div className="bg-gray-50 rounded-2xl aspect-square flex items-center justify-center text-9xl shadow-inner overflow-hidden">
                 {(product.images && product.images.length > 0) ? (
                     <img
