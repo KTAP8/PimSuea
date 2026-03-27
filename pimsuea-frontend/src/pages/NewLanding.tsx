@@ -608,7 +608,7 @@ export default function NewLanding() {
     <PageSEO
       title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
       description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG & DTF printing. Fast delivery across Thailand."
-      canonical="https://pimsuea.com/home"
+      canonical="https://pimsuea.com/"
     />
     <script
       type="application/ld+json"

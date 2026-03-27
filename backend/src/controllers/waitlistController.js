@@ -184,34 +184,42 @@ const notify = async (req, res) => {
       }
 
       await resend.emails.send({
-        from: FROM_EMAIL,
-        to: signup.email,
-        subject: 'PimSuea เปิดให้บริการแล้ว! + โค้ดส่วนลดพิเศษสำหรับคุณ 🎁',
-        html: emailWrapper(`
-          <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#111;">รอคอยมานานแล้ว — วันนี้มาถึงแล้ว! 🚀</h2>
-          <p style="color:#555;line-height:1.7;margin:0 0 20px;">
-            ขอบคุณที่รอคอยเรา — <strong>PimSuea</strong> พร้อมให้คุณออกแบบและสั่งพิมพ์เสื้อยืดในแบบของคุณเองได้แล้ววันนี้!
+      from: FROM_EMAIL,
+      to: signup.email,
+      subject: 'The canvas is open. Welcome to PimSuea. 🤍',
+      html: emailWrapper(`
+        <h2 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#151515;letter-spacing:-0.5px;">The canvas is open.</h2>
+        <p style="color:#555;line-height:1.6;margin:0 0 8px;font-size:15px;">
+          You were the first to believe in a better way to make custom apparel. No minimums. No language barriers. No waiting for admins.
+        </p>
+        <p style="color:#8E9B82;line-height:1.6;margin:0 0 24px;font-size:14px;">
+          สิ้นสุดการรอคอย ระบบของ PimSuea เปิดให้คุณเข้ามาออกแบบเสื้อในแบบของคุณเองได้แล้ววันนี้
+        </p>
+
+        <div style="border-top:1px solid #E2DCD0;padding-top:24px;margin-top:8px;">
+          <h3 style="margin:0 0 8px;font-size:16px;font-weight:600;color:#151515;">Your Waitlist Privilege / ของขวัญพิเศษสำหรับคุณ</h3>
+          <p style="color:#555;line-height:1.6;margin:0 0 16px;font-size:14px;">
+            As a thank you for joining our early waitlist, please enjoy <strong>20% off</strong> your first order (up to ฿200).<br>
+            <span style="color:#8E9B82;">แทนคำขอบคุณที่เราขอมอบส่วนลด 20% สำหรับออเดอร์แรกของคุณ</span>
           </p>
-
-          <div style="border-top:1px solid #e5e7eb;padding-top:20px;margin-top:4px;">
-            <h3 style="margin:0 0 10px;font-size:17px;font-weight:700;color:#111;">ของขวัญพิเศษจาก PimSuea 🎁</h3>
-            <p style="color:#555;line-height:1.7;margin:0 0 16px;">
-              เพื่อเป็นการขอบคุณที่คุณสมัครรอตั้งแต่แรก เราขอมอบ<strong>ส่วนลด 20% สำหรับออเดอร์แรก</strong> (สูงสุด ฿200) เป็นพิเศษสำหรับคุณ
-            </p>
-            <p style="color:#555;line-height:1.7;margin:0 0 16px;">กรอกโค้ดนี้ที่หน้าชำระเงิน:</p>
-            <div style="background:#f0fafa;border:2px solid #08636D;border-radius:10px;padding:16px 24px;text-align:center;margin:0 0 16px;">
-              <span style="font-family:monospace;font-size:26px;font-weight:700;letter-spacing:3px;color:#08636D;">${code}</span>
-            </div>
-            <p style="color:#9ca3af;font-size:12px;margin:0 0 24px;line-height:1.6;">
-              ใช้ได้ 1 ครั้งต่อ 1 บัญชีเท่านั้น · ไม่มีวันหมดอายุ
-            </p>
+          
+          <div style="background:#FAFAED;border:1px solid #8E9B82;border-radius:6px;padding:20px 24px;text-align:center;margin:0 0 16px;">
+            <span style="font-family: 'Courier New', Courier, monospace;font-size:24px;font-weight:600;letter-spacing:4px;color:#151515;">${code}</span>
           </div>
+          
+          <p style="color:#adb5bd;font-size:12px;margin:0 0 24px;line-height:1.5;">
+            *Apply this code at checkout. Valid for one-time use per account. No expiration date.<br>
+            *กรอกโค้ดนี้ที่หน้าชำระเงิน ใช้ได้ 1 ครั้งต่อ 1 บัญชีเท่านั้น
+          </p>
+        </div>
 
-          <a href="https://pimsuea.com/home" style="display:inline-block;padding:14px 28px;background:#08636D;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px;">
-            เริ่มออกแบบเลย →
+        <div style="text-align:center;margin-top:10px;">
+          <a href="https://pimsuea.com/home" style="display:inline-block;padding:14px 32px;background:#151515;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:500;font-size:15px;letter-spacing:0.5px;">
+            Enter the Canvas / เริ่มออกแบบ
           </a>
-        `),
-      });
+        </div>
+      `),
+});
 
       // Mark as notified
       const now = new Date().toISOString();

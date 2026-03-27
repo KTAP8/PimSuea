@@ -27,7 +27,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
   const location = useLocation();
-  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding', '/home'];
+  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/design/')
     && !location.pathname.startsWith('/studio/');
@@ -41,12 +41,12 @@ function Layout() {
         
         <Routes>
           {/* Waitlist gate: before launch date only / is accessible */}
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={!import.meta.env.DEV && new Date() < LAUNCH_DATE ? <Landing /> : <NewLanding />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
           {!import.meta.env.DEV && new Date() < LAUNCH_DATE ? (
             <Route path="*" element={<Navigate to="/" replace />} />
           ) : (
             <>
-              <Route path="/home" element={<NewLanding />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/reset-password" element={<ResetPassword />} />
