@@ -22,6 +22,36 @@ const emailWrapper = (content) => `
   </div>
 `;
 
+/** Generate a unique WAIT-prefixed coupon code. */
+function generateWaitlistCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let suffix = '';
+  for (let i = 0; i < 8; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+  return 'WAIT' + suffix;
+}
+
+/**
+ * Insert a new coupon into the coupons table for a waitlist user.
+ * Retries up to 5 times on collision.
+ */
+async function createWaitlistCoupon() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateWaitlistCode();
+    const { error } = await supabaseAdmin.from('coupons').insert({
+      code,
+      discount_type: 'percentage',
+      discount_value: 20,
+      max_discount_thb: 200,
+      max_total_uses: 1,
+      max_uses_per_user: 1,
+      is_active: true,
+    });
+    if (!error) return code;
+    if (error.code !== '23505') throw error; // only retry on unique violation
+  }
+  throw new Error('Failed to generate unique coupon code after 5 attempts');
+}
+
 // POST /api/waitlist
 // Public — no auth required
 const signup = async (req, res) => {
@@ -72,8 +102,55 @@ const signup = async (req, res) => {
   return res.status(200).json({ message: 'ลงทะเบียนสำเร็จ' });
 };
 
+// POST /api/waitlist/send-coupon
+// Protected — generates a unique coupon for a single waitlist email, no email sent yet.
+const sendCoupon = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'กรุณาระบุอีเมล' });
+  }
+
+  const normalised = email.trim().toLowerCase();
+
+  // Fetch waitlist row
+  const { data: signup, error: fetchError } = await supabaseAdmin
+    .from('waitlist')
+    .select('id, coupon_code')
+    .eq('email', normalised)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('Waitlist fetch error:', fetchError);
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาด' });
+  }
+
+  if (!signup) {
+    return res.status(404).json({ error: 'ไม่พบอีเมลนี้ใน Waitlist' });
+  }
+
+  // Idempotent — return existing code if already generated
+  if (signup.coupon_code) {
+    return res.json({ message: 'มีโค้ดอยู่แล้ว', code: signup.coupon_code, alreadyGenerated: true });
+  }
+
+  try {
+    const code = await createWaitlistCoupon();
+
+    await supabaseAdmin
+      .from('waitlist')
+      .update({ coupon_code: code })
+      .eq('id', signup.id);
+
+    return res.json({ message: 'สร้างโค้ดสำเร็จ', code, alreadyGenerated: false });
+  } catch (err) {
+    console.error('Coupon generation error:', err);
+    return res.status(500).json({ error: 'เกิดข้อผิดพลาดในการสร้างโค้ด' });
+  }
+};
+
 // POST /api/waitlist/notify
-// Protected — requires valid Bearer JWT (admin only)
+// Protected — sends combined launch + coupon email to all unnotified waitlist users.
 const notify = async (req, res) => {
   if (!process.env.RESEND_API_KEY) {
     return res.status(503).json({ error: 'RESEND_API_KEY not configured' });
@@ -82,7 +159,7 @@ const notify = async (req, res) => {
   // Fetch all unnotified signups
   const { data: signups, error: fetchError } = await supabaseAdmin
     .from('waitlist')
-    .select('id, email')
+    .select('id, email, coupon_code')
     .is('notified_at', null);
 
   if (fetchError) {
@@ -99,25 +176,48 @@ const notify = async (req, res) => {
 
   for (const signup of signups) {
     try {
+      // Auto-generate coupon if not already done
+      let code = signup.coupon_code;
+      if (!code) {
+        code = await createWaitlistCoupon();
+        await supabaseAdmin.from('waitlist').update({ coupon_code: code }).eq('id', signup.id);
+      }
+
       await resend.emails.send({
         from: FROM_EMAIL,
         to: signup.email,
-        subject: 'PimSuea เปิดให้บริการแล้ว! 🚀',
+        subject: 'PimSuea เปิดให้บริการแล้ว! + โค้ดส่วนลดพิเศษสำหรับคุณ 🎁',
         html: emailWrapper(`
           <h2 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#111;">รอคอยมานานแล้ว — วันนี้มาถึงแล้ว! 🚀</h2>
-          <p style="color:#555;line-height:1.7;margin:0 0 24px;">
+          <p style="color:#555;line-height:1.7;margin:0 0 20px;">
             ขอบคุณที่รอคอยเรา — <strong>PimSuea</strong> พร้อมให้คุณออกแบบและสั่งพิมพ์เสื้อยืดในแบบของคุณเองได้แล้ววันนี้!
           </p>
-          <a href="https://pimsuea.com" style="display:inline-block;padding:14px 28px;background:#08636D;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px;">
+
+          <div style="border-top:1px solid #e5e7eb;padding-top:20px;margin-top:4px;">
+            <h3 style="margin:0 0 10px;font-size:17px;font-weight:700;color:#111;">ของขวัญพิเศษจาก PimSuea 🎁</h3>
+            <p style="color:#555;line-height:1.7;margin:0 0 16px;">
+              เพื่อเป็นการขอบคุณที่คุณสมัครรอตั้งแต่แรก เราขอมอบ<strong>ส่วนลด 20% สำหรับออเดอร์แรก</strong> (สูงสุด ฿200) เป็นพิเศษสำหรับคุณ
+            </p>
+            <p style="color:#555;line-height:1.7;margin:0 0 16px;">กรอกโค้ดนี้ที่หน้าชำระเงิน:</p>
+            <div style="background:#f0fafa;border:2px solid #08636D;border-radius:10px;padding:16px 24px;text-align:center;margin:0 0 16px;">
+              <span style="font-family:monospace;font-size:26px;font-weight:700;letter-spacing:3px;color:#08636D;">${code}</span>
+            </div>
+            <p style="color:#9ca3af;font-size:12px;margin:0 0 24px;line-height:1.6;">
+              ใช้ได้ 1 ครั้งต่อ 1 บัญชีเท่านั้น · ไม่มีวันหมดอายุ
+            </p>
+          </div>
+
+          <a href="https://pimsuea.com/home" style="display:inline-block;padding:14px 28px;background:#08636D;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:600;font-size:15px;">
             เริ่มออกแบบเลย →
           </a>
         `),
       });
 
       // Mark as notified
+      const now = new Date().toISOString();
       await supabaseAdmin
         .from('waitlist')
-        .update({ notified_at: new Date().toISOString() })
+        .update({ notified_at: now, coupon_sent_at: now })
         .eq('id', signup.id);
 
       sent++;
@@ -130,4 +230,4 @@ const notify = async (req, res) => {
   return res.status(200).json({ sent, failed, total: signups.length });
 };
 
-module.exports = { signup, notify };
+module.exports = { signup, notify, sendCoupon };
