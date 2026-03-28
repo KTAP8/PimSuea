@@ -16,6 +16,23 @@ export function PriceCard({ priceBreakdown, priceLoading }: Props) {
                     : <span className="text-[9px] text-gray-300">1 ชิ้น</span>
                 }
             </div>
+            {!priceLoading && priceBreakdown && (
+                <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-gray-100">
+                    {priceBreakdown.color_name ? (
+                        <>
+                            {priceBreakdown.color_hex && (
+                                <span
+                                    className="w-2.5 h-2.5 rounded-full border border-gray-200 shrink-0"
+                                    style={{ backgroundColor: priceBreakdown.color_hex }}
+                                />
+                            )}
+                            <span className="text-[10px] text-gray-500 truncate">{priceBreakdown.color_name}</span>
+                        </>
+                    ) : (
+                        <span className="text-[10px] text-gray-400">ราคาเดียวทุกสี</span>
+                    )}
+                </div>
+            )}
 
             {priceLoading ? (
                 <div className="space-y-2 py-1">

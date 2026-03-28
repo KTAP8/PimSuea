@@ -514,11 +514,14 @@ export function useCanvasDesign() {
             }
             if (sideResults.length > 0) {
                 const total_print_per_unit = sideResults.reduce((s, r) => s + r.print_per_unit, 0);
+                const selectedColor = templates.find(t => t.color?.id === colorId)?.color ?? null;
                 setPriceBreakdown({
                     sides: sideResults,
                     shirt_per_unit,
                     total_print_per_unit,
                     total_per_unit: shirt_per_unit + total_print_per_unit,
+                    color_name: selectedColor?.name ?? null,
+                    color_hex: selectedColor?.hex_code ?? null,
                 });
             }
         } catch (err) {

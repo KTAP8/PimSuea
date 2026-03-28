@@ -20,6 +20,8 @@ export interface CanvasPriceBreakdown {
     shirt_per_unit: number;
     total_print_per_unit: number;
     total_per_unit: number;
+    color_name: string | null;  // null = all colors same price
+    color_hex: string | null;
 }
 
 export type SerializableImage = {
