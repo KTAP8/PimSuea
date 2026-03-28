@@ -279,7 +279,15 @@ export default function ProductDetails() {
             
             <TabsContent value="size" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm overflow-hidden">
               {product.size_guide && Object.keys(product.size_guide).length > 0 ? (() => {
-                const entries = Object.entries(product.size_guide as Record<string, Record<string, number>>);
+                const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
+                const entries = Object.entries(product.size_guide as Record<string, Record<string, number>>)
+                  .sort(([a], [b]) => {
+                    const ai = SIZE_ORDER.indexOf(a), bi = SIZE_ORDER.indexOf(b);
+                    if (ai === -1 && bi === -1) return a.localeCompare(b);
+                    if (ai === -1) return 1;
+                    if (bi === -1) return -1;
+                    return ai - bi;
+                  });
                 if (entries.length === 0) return <p className="text-sm text-gray-400">ไม่มีข้อมูลตารางไซส์</p>;
                 const measureKeys = Object.keys(entries[0][1] || {});
                 return (
