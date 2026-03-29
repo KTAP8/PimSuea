@@ -28,6 +28,8 @@ export function PageSEO({
       <meta property="og:url" content={canonical} />
       <meta property="og:type" content="website" />
       <meta property="og:site_name" content="PimSuea" />
+      <meta property="og:locale" content="th_TH" />
+      <meta property="og:locale:alternate" content="en_US" />
       {/* Twitter / X */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />

@@ -26,7 +26,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 function Layout() {
   const location = useLocation();
-  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/onboarding'];
+  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/home', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/studio/');
 

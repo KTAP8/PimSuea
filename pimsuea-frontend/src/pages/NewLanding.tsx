@@ -594,11 +594,6 @@ export default function NewLanding() {
         "@type": "WebSite",
         "name": "PimSuea",
         "url": "https://pimsuea.com",
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": "https://pimsuea.com/catalog?q={search_term_string}",
-          "query-input": "required name=search_term_string",
-        },
       },
     ],
   };
