@@ -41,11 +41,9 @@ export function ImageLibraryPanel({ userUploads, loadingUploads, isUploading, on
                 ) : (
                     userUploads.map((file, i) => (
                         <div key={i}
-                            className="relative w-full pb-[100%] bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer hover:border-black hover:ring-1 hover:ring-black hover:shadow-md transition-all group"
+                            className="relative aspect-square bg-gray-50 border border-gray-200 rounded-xl overflow-hidden cursor-pointer hover:border-black hover:ring-1 hover:ring-black hover:shadow-md transition-all group"
                             onClick={() => onAddImage(file.url)}>
-                            <div className="absolute inset-0 p-2 flex items-center justify-center bg-gray-50/50">
-                                <img src={file.url} alt={file.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200" />
-                            </div>
+                            <img src={file.url} alt={file.name} className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200" />
                             <button
                                 className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600"
                                 onClick={e => { e.stopPropagation(); onDeleteRequest(file.name); }}>

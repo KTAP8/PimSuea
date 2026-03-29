@@ -6,6 +6,18 @@ import type { Order } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
+function getFirstPreview(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    const m = JSON.parse(raw);
+    if (m && typeof m === 'object' && !Array.isArray(m)) {
+      const first = Object.values(m)[0];
+      if (typeof first === 'string') return first;
+    }
+  } catch { /* not JSON */ }
+  return raw;
+}
+
 const statusMap: Record<string, { label: string; color: string }> = {
   pending_payment: { label: "รอชำระเงิน", color: "bg-yellow-100 text-yellow-800" },
   pending: { label: "รอดำเนินการ", color: "bg-blue-50 text-blue-800" },
@@ -266,8 +278,8 @@ export default function MyOrders() {
                             {selectedOrder.items && selectedOrder.items.length > 0 ? (
                                 selectedOrder.items.map((item) => (
                                     <div key={item.id} className="flex gap-6 border p-4 rounded-xl hover:bg-gray-50 transition-colors">
-                                        <img 
-                                            src={item.image || "https://via.placeholder.com/100"} 
+                                        <img
+                                            src={getFirstPreview(item.image) || "https://via.placeholder.com/100"} 
                                             alt={item.product_name} 
                                             className="w-20 h-20 object-cover rounded-lg bg-gray-100 border"
                                         />
