@@ -404,7 +404,19 @@ export function CanvasStage({
                         rotationSnapTolerance={10}
                         boundBoxFunc={(oldBox, newBox) => {
                             if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10) return oldBox;
-                            return newBox;
+                            if (!printZone) return newBox;
+                            const pzL = printZone.left;
+                            const pzT = printZone.top;
+                            const pzR = printZone.left + printZone.width;
+                            const pzB = printZone.top + printZone.height;
+                            // Clamp position to zone
+                            const x = Math.max(pzL, Math.min(newBox.x, pzR - Math.abs(newBox.width)));
+                            const y = Math.max(pzT, Math.min(newBox.y, pzB - Math.abs(newBox.height)));
+                            // Clamp size so right/bottom edges stay inside zone
+                            const width  = newBox.width  > 0 ? Math.min(newBox.width,  pzR - x) : Math.max(newBox.width,  -(x - pzL));
+                            const height = newBox.height > 0 ? Math.min(newBox.height, pzB - y) : Math.max(newBox.height, -(y - pzT));
+                            if (Math.abs(width) < 10 || Math.abs(height) < 10) return oldBox;
+                            return { ...newBox, x, y, width, height };
                         }}
                     />
 
