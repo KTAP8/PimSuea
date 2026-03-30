@@ -296,6 +296,7 @@ export function useCanvasDesign() {
     const handleColorSelect = (colorId: string) => {
         saveCurrentSide();
         setSelectedColorId(colorId);
+        markDirty();
         const sameSide = templates.find(t => t.color?.id === colorId && t.side === currentTemplate?.side);
         const first = sameSide ?? templates.find(t => t.color?.id === colorId);
         if (first) setCurrentTemplate(first);
