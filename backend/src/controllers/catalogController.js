@@ -31,7 +31,10 @@ exports.getProducts = async (req, res) => {
         description:details,
         is_beginner_friendly,
         category_id,
-        product_images (image_url, is_hover, display_order)
+        product_images (image_url, is_hover, display_order),
+        product_print_methods (
+          print_method:print_methods (id, name)
+        )
       `)
       .eq('is_active', true);
 
@@ -58,8 +61,12 @@ exports.getProducts = async (req, res) => {
             hover_image_url: hoverImg ? hoverImg.image_url : null,
             starting_price: p.min_price ?? null,
             price: p.min_price ?? p.price,
+            print_methods: p.product_print_methods
+                ? p.product_print_methods.map(ppm => ppm.print_method).filter(Boolean)
+                : [],
         };
     });
+    formattedProducts.forEach(p => delete p.product_print_methods);
 
     res.json(formattedProducts);
   } catch (error) {

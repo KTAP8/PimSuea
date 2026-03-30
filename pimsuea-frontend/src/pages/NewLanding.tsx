@@ -7,9 +7,10 @@ import type { Product } from "@/types/api";
 import {
   MousePointer2, Type, Image as ImageIcon, Layers,
   Upload, ArrowRight, Package, Zap, Truck, Loader2, Globe,
-  ShieldCheck, Clock, Scissors, Activity
+  ShieldCheck, Clock, Scissors, Activity, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PrintMethodBadges } from "@/components/catalog/PrintMethodBadges";
 import { type Language, translations } from "@/translations/landing";
 
 const LandingLangContext = createContext<{ lang: Language; t: typeof translations['en']; setLang: (l: Language) => void }>({
@@ -415,6 +416,68 @@ function HowItWorksSection() {
   );
 }
 
+// ─── FAQ ──────────────────────────────────────────────────────────────────
+
+function FAQSection() {
+  const { t } = useLandingLang();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const faqs = [
+    { q: t.faqQ1, a: t.faqA1 },
+    { q: t.faqQ2, a: t.faqA2 },
+    { q: t.faqQ3, a: t.faqA3 },
+    { q: t.faqQ4, a: t.faqA4 },
+    { q: t.faqQ5, a: t.faqA5 },
+    { q: t.faqQ6, a: t.faqA6 },
+  ];
+
+  return (
+    <section className="py-24 border-t border-border">
+      <div className="max-w-3xl mx-auto px-6">
+        <div className="text-center mb-14">
+          <h2 className="font-black text-4xl md:text-5xl mb-4">{t.faqTitle}</h2>
+          <p className="text-muted-foreground font-light text-lg">{t.faqSubtitle}</p>
+        </div>
+        <div className="divide-y divide-border">
+          {faqs.map((item, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div key={i}>
+                <button
+                  className="w-full flex items-center justify-between gap-4 py-5 text-left"
+                  onClick={() => setOpenIndex(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                >
+                  <span className="font-bold text-base md:text-lg leading-snug">{item.q}</span>
+                  <ChevronDown
+                    className={`w-5 h-5 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      key="answer"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <p className="pb-5 text-muted-foreground font-light leading-relaxed">
+                        {item.a}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Who We Are ───────────────────────────────────────────────────────────
 
 function WhoWeAreSection() {
@@ -793,6 +856,7 @@ export default function NewLanding() {
                   </div>
                   <div className="p-5 space-y-3">
                     <h3 className="font-bold text-base leading-tight">{product.name}</h3>
+                    <PrintMethodBadges print_methods={product.print_methods} />
                     <p className="text-sm text-muted-foreground font-light">
                       {t.catalogStartingAt}{" "}
                       <span className="font-bold text-foreground">
@@ -815,6 +879,9 @@ export default function NewLanding() {
           )}
         </div>
       </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────────── */}
+      <FAQSection />
 
       {/* ── Who We Are ───────────────────────────────────────────────── */}
       <WhoWeAreSection />

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { PrintMethodBadges } from "@/components/catalog/PrintMethodBadges";
 import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { getCategories, getProducts } from "@/services/api";
 import type { Category, Product } from "@/types/api";
@@ -135,6 +136,7 @@ export default function Catalog() {
                                 </Badge>
                               )}
                           </div>
+                          <PrintMethodBadges print_methods={product.print_methods} />
                           <div className="mt-auto flex items-end justify-between pt-4">
                             <div>
                               <p className="text-[10px] sm:text-xs text-gray-400 font-medium mb-0.5 sm:mb-1 uppercase tracking-wider">ราคาเริ่มต้น</p>

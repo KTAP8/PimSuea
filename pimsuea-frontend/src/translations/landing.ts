@@ -45,7 +45,21 @@ export const translations = {
     stage4: "Shipped!",
     daysLeft: "5–14 days",
     canvasPrintTier: "DTF Print (3×4\" tier)",
-    canvasGarment: "Garment (White / S)"
+    canvasGarment: "Garment (White / S)",
+    faqTitle: "Frequently Asked Questions",
+    faqSubtitle: "Everything you need to know before you order.",
+    faqQ1: "What's the difference between DTF and DTG?",
+    faqA1: "DTF (Direct to Film) transfers a full-color print from a PET film onto the garment using heat. It works on any shirt color, produces vibrant results, and holds up very well over time. DTG (Direct to Garment) prints ink directly onto the fabric — perfect for highly detailed artwork, but works best on white or very light shirts because the ink sits on top of the fibers.",
+    faqQ2: "Which print method should I choose?",
+    faqA2: "DTF is available on white and black shirts only. DTG is available on white, black, and other colors. So if you want a non-white, non-black shirt — DTG is your only option. If you're choosing between white or black: pick DTF for bold, vivid colors that really pop; pick DTG if you need fine detail or a softer feel on the print.",
+    faqQ3: "Is there a minimum order quantity?",
+    faqA3: "No minimums, ever. Order a single shirt for yourself or 500 for your whole crew — the platform handles both exactly the same way.",
+    faqQ4: "How long does it take to receive my order?",
+    faqA4: "5–14 days or faster.",
+    faqQ5: "What file formats do you accept for artwork?",
+    faqA5: "We recommend PNG with a transparent background for the cleanest result. SVG is also supported. Aim for at least 150 DPI at the intended print size — the studio will warn you if your file is too low-resolution.",
+    faqQ6: "Can I see the price before I commit to anything?",
+    faqA6: "Yes — pricing updates live as you place and resize your artwork in the design studio. You'll always know your exact per-unit cost before adding anything to your cart."
   },
   th: {
     navStartDesigning: "เริ่มออกแบบ",
@@ -91,6 +105,20 @@ export const translations = {
     stage4: "จัดส่งแล้ว!",
     daysLeft: "5–14 วัน",
     canvasPrintTier: "พิมพ์ DTF (ขนาด 3×4\")",
-    canvasGarment: "เสื้อยืด (สีขาว / ไซส์ S)"
+    canvasGarment: "เสื้อยืด (สีขาว / ไซส์ S)",
+    faqTitle: "คำถามที่พบบ่อย",
+    faqSubtitle: "ทุกอย่างที่คุณควรรู้ก่อนสั่งซื้อ",
+    faqQ1: "DTF กับ DTG ต่างกันอย่างไร?",
+    faqA1: "DTF (Direct to Film) พิมพ์ลงบนฟิล์ม PET แล้วรีดติดเสื้อด้วยความร้อน เหมาะกับเสื้อทุกสี ให้สีสันสดใส และทนทานมากขึ้นตามกาลเวลา ส่วน DTG (Direct to Garment) พิมพ์หมึกลงบนผ้าโดยตรง เหมาะกับงานละเอียดสูง แต่ให้ผลดีที่สุดบนเสื้อสีขาวหรือสีอ่อน เพราะหมึกจะนอนบนเส้นใยผ้า",
+    faqQ2: "ควรเลือกวิธีพิมพ์แบบไหน?",
+    faqA2: "DTF มีให้เลือกเฉพาะเสื้อสีขาวและสีดำเท่านั้น ส่วน DTG มีให้เลือกทั้งสีขาว สีดำ และสีอื่นๆ ดังนั้นถ้าต้องการเสื้อสีอื่น DTG เป็นตัวเลือกเดียว แต่ถ้าเลือกระหว่างขาวหรือดำ: เลือก DTF ถ้าอยากได้สีสันสดใสเตะตา หรือเลือก DTG ถ้าต้องการดีไซน์ที่ละเอียดหรือสัมผัสนุ่มกว่า",
+    faqQ3: "มีขั้นต่ำในการสั่งซื้อไหม?",
+    faqA3: "ไม่มีขั้นต่ำเลย สั่งเพียงตัวเดียวหรือหลายร้อยตัวก็ได้ ระบบรองรับทุกจำนวน",
+    faqQ4: "ต้องรอรับสินค้านานแค่ไหน?",
+    faqA4: "5–14 วัน หรืออาจเร็วกว่านั้น",
+    faqQ5: "รองรับไฟล์ภาพรูปแบบใดบ้าง?",
+    faqA5: "แนะนำให้ใช้ PNG พื้นหลังโปร่งใสเพื่อผลลัพธ์ที่สะอาดที่สุด รองรับ SVG ด้วย ควรใช้ความละเอียดอย่างน้อย 150 DPI ที่ขนาดพิมพ์จริง ระบบจะแจ้งเตือนถ้าไฟล์ความละเอียดต่ำเกินไป",
+    faqQ6: "ดูราคาได้ก่อนตัดสินใจซื้อไหม?",
+    faqA6: "ได้เลย ราคาอัปเดตแบบเรียลไทม์ขณะที่คุณวางและปรับขนาดลายในสตูดิโอออกแบบ คุณจะทราบราคาต่อชิ้นที่แน่นอนก่อนเพิ่มลงตะกร้าเสมอ"
   }
 };
