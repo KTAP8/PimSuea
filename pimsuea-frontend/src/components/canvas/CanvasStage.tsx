@@ -33,7 +33,7 @@ const SNAP_THRESHOLD = 8;
 const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315];
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 8;
-const ZOOM_FACTOR = 1.15;
+const ZOOM_FACTOR = 1.11;
 
 function computeSnap(
     node: Konva.Node,
@@ -256,9 +256,9 @@ export function CanvasStage({
             const stage = stageRef.current;
             if (!stage) return;
             if (e.ctrlKey) {
-                // Pinch gesture or Ctrl+scroll → zoom
+                // Pinch gesture or Ctrl+scroll → zoom (proportional to delta)
                 const pointer = stage.getPointerPosition();
-                const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+                const factor = Math.pow(0.999, e.deltaY);
                 applyZoom(stageScaleRef.current * factor, pointer?.x, pointer?.y);
             } else {
                 // 2-finger pan
