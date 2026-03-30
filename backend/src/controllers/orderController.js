@@ -230,7 +230,7 @@ exports.createOrder = async (req, res) => {
 
       const colorId = item.color_id || item.color;
       const color_name = colorMap.get(colorId);
-      if (!color_name || !['White', 'Black'].includes(color_name)) {
+      if (!color_name) {
         console.warn(`Color '${colorId}' not priceable; using client price`);
         return { ...item, verifiedUnitPrice: item.price };
       }

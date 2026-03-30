@@ -6,7 +6,6 @@ const { supabaseAdmin } = require('../config/supabaseClient');
 
 const VALID_PRINTING_TYPES = ['DTG', 'DTF'];
 const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
-const VALID_COLORS = ['White', 'Black'];
 const VALID_TIERS = ['3x4in', 'A5', 'A4', 'A3'];
 
 router.post('/', requireAuth, async (req, res) => {
@@ -51,11 +50,6 @@ router.post('/', requireAuth, async (req, res) => {
   }
 
   const color_name = colorRow.name;
-  if (!VALID_COLORS.includes(color_name)) {
-    return res.status(422).json({
-      error: `Color '${color_name}' is not supported for pricing. Supported colors: White, Black`,
-    });
-  }
 
   try {
     const breakdown = await calculatePrice({
@@ -86,8 +80,8 @@ router.get('/estimate', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'quantity must be a positive integer' });
   if (!productId)
     return res.status(400).json({ error: 'productId is required' });
-  if (!VALID_COLORS.includes(colorName))
-    return res.status(400).json({ error: 'colorName must be White or Black' });
+  if (!colorName)
+    return res.status(400).json({ error: 'colorName is required' });
   if (!VALID_SIZES.includes(size))
     return res.status(400).json({ error: 'Invalid size' });
   if (!VALID_PRINTING_TYPES.includes(printingType))

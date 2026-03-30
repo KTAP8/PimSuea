@@ -1,6 +1,16 @@
 const { supabaseAdmin } = require('../config/supabaseClient');
 
 /**
+ * Maps any shirt color name to the pricing category used in print_pricing / shirt_pricing.
+ * DTG has two tiers: White and Other (all non-white colors).
+ * @param {string} colorName
+ * @returns {'White'|'Other'}
+ */
+function toColorCategory(colorName) {
+  return colorName === 'White' ? 'White' : 'Other';
+}
+
+/**
  * Determine print tier from rotated AABB dimensions (in cm).
  * @param {number} w_cm
  * @param {number} h_cm
@@ -26,7 +36,7 @@ function getPrintTier(w_cm, h_cm) {
  *   aabb_h_cm: number,
  *   quantity: number,
  *   productId: string,
- *   color_name: 'White'|'Black',
+ *   color_name: string,
  *   size: 'S'|'M'|'L'|'XL'|'XXL'
  * }} input
  * @returns {Promise<{
@@ -50,7 +60,7 @@ async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, sh
     .from('shirt_pricing')
     .select('price_per_unit_thb')
     .eq('product_id', productId)
-    .eq('color_name', color_name)
+    .eq('color_name', toColorCategory(color_name))
     .eq('size', size)
     .lte('min_qty', shirtQuantity)
     .or(`max_qty.is.null,max_qty.gte.${shirtQuantity}`)
@@ -72,7 +82,7 @@ async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, sh
     .or(`max_qty.is.null,max_qty.gte.${printQuantity}`);
 
   if (printingType === 'DTG') {
-    printQuery = printQuery.eq('color_name', color_name);
+    printQuery = printQuery.eq('color_name', toColorCategory(color_name));
   } else {
     printQuery = printQuery.is('color_name', null);
   }
@@ -130,7 +140,7 @@ async function lookupPrintPrice({ printingType, size_tier, color_name, quantity 
     .or(`max_qty.is.null,max_qty.gte.${quantity}`);
 
   if (printingType === 'DTG') {
-    query = query.eq('color_name', color_name);
+    query = query.eq('color_name', toColorCategory(color_name));
   } else {
     query = query.is('color_name', null);
   }
@@ -142,4 +152,4 @@ async function lookupPrintPrice({ printingType, size_tier, color_name, quantity 
   return Number(data.price_per_unit_thb);
 }
 
-module.exports = { getPrintTier, calculatePrice, getDeliveryFee, lookupPrintPrice };
+module.exports = { getPrintTier, calculatePrice, getDeliveryFee, lookupPrintPrice, toColorCategory };

@@ -187,8 +187,8 @@ export default function DesignStudio() {
                         <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} />
                     </div>
 
-                    {/* Top-left overlay: size editor (desktop) + remove button */}
-                    <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 z-10 pointer-events-none origin-top-left">
+                    {/* Top-center overlay: size editor (desktop) + remove button */}
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 md:top-6 flex flex-row items-center gap-2 md:gap-3 z-10 pointer-events-none origin-top">
                         <div className="hidden md:block">
                             <SizeEditor displaySizeIn={d.displaySizeIn} onApply={d.applySizeIn} />
                         </div>
