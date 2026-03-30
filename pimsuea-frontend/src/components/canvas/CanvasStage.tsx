@@ -404,11 +404,6 @@ export function CanvasStage({
                         rotationSnapTolerance={10}
                         boundBoxFunc={(oldBox, newBox) => {
                             if (Math.abs(newBox.width) < 10 || Math.abs(newBox.height) < 10) return oldBox;
-                            if (!printZone) return newBox;
-                            const pzR = printZone.left + printZone.width;
-                            const pzB = printZone.top + printZone.height;
-                            if (newBox.x < printZone.left || newBox.y < printZone.top ||
-                                newBox.x + newBox.width > pzR || newBox.y + newBox.height > pzB) return oldBox;
                             return newBox;
                         }}
                     />

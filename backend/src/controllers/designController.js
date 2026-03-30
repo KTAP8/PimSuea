@@ -233,22 +233,17 @@ exports.deleteDesign = async (req, res) => {
     if (error) throw error;
 
     // Clean up R2 files (best-effort — don't fail the request if R2 delete fails)
-    // print_file_url is stored as JSON: {"front":"https://...","back":"https://..."}
-    const printUrls = [];
-    if (design.print_file_url) {
+    // Both preview_image_url and print_file_url are stored as JSON maps of URLs.
+    const parseUrls = (raw) => {
+      if (!raw) return [];
       try {
-        const parsed = JSON.parse(design.print_file_url);
-        if (typeof parsed === 'object' && parsed !== null) {
-          printUrls.push(...Object.values(parsed));
-        } else {
-          printUrls.push(design.print_file_url); // legacy plain URL
-        }
-      } catch {
-        printUrls.push(design.print_file_url); // legacy plain URL
-      }
-    }
+        const parsed = JSON.parse(raw);
+        if (typeof parsed === 'object' && parsed !== null) return Object.values(parsed);
+      } catch { /* not JSON */ }
+      return [raw]; // legacy plain URL
+    };
 
-    const urlsToDelete = [design.preview_image_url, ...printUrls].filter(Boolean);
+    const urlsToDelete = [...parseUrls(design.preview_image_url), ...parseUrls(design.print_file_url)];
     for (const url of urlsToDelete) {
       const loc = getLocationFromUrl(url);
       if (loc) {
