@@ -6,6 +6,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { TermsModal } from "@/components/TermsModal";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,6 +22,7 @@ export default function Login() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
+  const [termsOpen, setTermsOpen] = useState(false);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,6 +130,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">ยินดีต้อนรับกลับมา</h1>
@@ -204,6 +207,17 @@ export default function Login() {
           <Button type="submit" className="w-full py-6 text-lg" disabled={loading || oauthLoading}>
             {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
           </Button>
+
+          <p className="text-center text-xs text-gray-400 mt-3">
+            การเข้าสู่ระบบถือว่าคุณยอมรับ{" "}
+            <button type="button" onClick={() => setTermsOpen(true)} className="underline underline-offset-2 hover:text-gray-600">
+              ข้อตกลงและเงื่อนไขการใช้บริการ
+            </button>
+            {" "}และ{" "}
+            <button type="button" onClick={() => setTermsOpen(true)} className="underline underline-offset-2 hover:text-gray-600">
+              Terms of Service
+            </button>
+          </p>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-500">
