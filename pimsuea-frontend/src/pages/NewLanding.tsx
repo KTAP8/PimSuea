@@ -499,41 +499,57 @@ function WhoWeAreSection() {
             transition={{ duration: 0.7, ease: "easeOut" }}
             className="relative order-last lg:order-first w-full max-w-lg mx-auto lg:mx-0"
           >
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 relative z-10">
-              
-              {/* Photo 1 (shifted down - Touch) */}
-              <div className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
-                <img 
-                  src="/photos/Founder_Touch.jpg" 
-                  alt="Founder Touch" 
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 relative z-10">
+
+              {/* Photo 1 (shifted down - Haka) */}
+              <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
+                <img
+                  src="/photos/Founder_Haka.jpg"
+                  alt="Founder Haka"
+                  className="absolute inset-0 w-full h-full object-cover object-[center_top] group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
-                <div className="absolute bottom-5 left-5 right-5 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                  <p className="text-white font-bold text-sm sm:text-base tracking-wide drop-shadow-md">Touch</p>
-                  <p className="text-white/70 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-light mt-0.5">Co-Founder</p>
+                <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">Haka</p>
+                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">COO · CBO</p>
                 </div>
               </div>
 
-              {/* Photo 2 (shifted up - Haka) */}
-              <div className="relative aspect-[3/4] sm:aspect-[4/5] overflow-hidden rounded-2xl bg-foreground shadow-xl mb-8 md:mb-12 group">
-                <img 
-                  src="/photos/Founder_Haka.jpg" 
-                  alt="Founder Haka" 
-                  className="absolute inset-0 w-full h-full object-cover object-[center_top] group-hover:scale-105 transition-transform duration-700" 
+              {/* Photo 2 (center, no offset - Touch) */}
+              <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl group">
+                <img
+                  src="/photos/Founder_Touch.jpg"
+                  alt="Founder Touch"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
-                <div className="absolute bottom-5 left-5 right-5 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                  <p className="text-white font-bold text-sm sm:text-base tracking-wide drop-shadow-md">Haka</p>
-                  <p className="text-white/70 text-[10px] sm:text-[11px] uppercase tracking-[0.2em] font-light mt-0.5">Co-Founder</p>
+                <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">Touch</p>
+                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">CEO · CTO</p>
+                </div>
+              </div>
+
+              {/* Photo 3 (shifted down - Khaopan) */}
+              <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
+                <img
+                  src="/photos/Founder_Khaopan.jpg"
+                  alt="Founder Khaopan"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">Khaopan</p>
+                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">CMO</p>
                 </div>
               </div>
             </div>
 
-            {/* Location badge overlaying the gap */}
-            <div className="absolute -bottom-6 md:-bottom-2 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:-right-6 bg-white/90 backdrop-blur-md border border-border/50 shadow-xl rounded-xl px-5 py-3 flex items-center gap-3 z-20 w-max">
-              <div className="w-2.5 h-2.5 rounded-full bg-action animate-pulse shrink-0" />
-              <span className="text-foreground text-sm font-semibold tracking-wide">Bangkok, Thailand</span>
+            {/* Location badge */}
+            <div className="flex justify-center mt-6">
+              <div className="bg-white/90 backdrop-blur-md border border-border/50 shadow-xl rounded-xl px-5 py-3 flex items-center gap-3 w-max">
+                <div className="w-2.5 h-2.5 rounded-full bg-action animate-pulse shrink-0" />
+                <span className="text-foreground text-sm font-semibold tracking-wide">Bangkok, Thailand</span>
+              </div>
             </div>
 
             {/* Subtle shadow accent */}
