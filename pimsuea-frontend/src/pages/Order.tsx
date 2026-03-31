@@ -30,8 +30,15 @@ function parsePreviewUrls(raw: string | null | undefined): Record<string, string
 }
 
 function resolvePreview(map: Record<string, string> | undefined, colorId: string, fallback: string): string {
-  if (!map) return fallback;
-  return map[colorId] ?? map['__legacy'] ?? fallback;
+  if (map) {
+    if (map[colorId]) return map[colorId];
+    if (map['__legacy']) return map['__legacy'];
+    const first = Object.values(map)[0];
+    if (first) return first;
+  }
+  // fallback may itself be a raw JSON map (preview_url === preview_image_url)
+  const fallbackMap = parsePreviewUrls(fallback);
+  return Object.values(fallbackMap)[0] ?? fallback;
 }
 
 interface CartItem {
