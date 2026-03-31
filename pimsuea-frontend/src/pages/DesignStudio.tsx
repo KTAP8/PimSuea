@@ -52,7 +52,12 @@ export default function DesignStudio() {
                         <input
                             value={d.designName}
                             onChange={e => d.handleDesignNameChange(e.target.value)}
-                            className="relative z-10 bg-transparent hover:bg-gray-100/60 focus:bg-white border text-center border-transparent focus:border-gray-200 rounded-xl px-2 md:px-4 py-1.5 text-xs md:text-sm font-bold text-gray-800 w-32 min-w-[120px] md:w-64 focus:outline-none focus:ring-4 focus:ring-gray-100/50 transition-all placeholder-gray-400 cursor-pointer focus:cursor-text truncate"
+                            ref={el => { if (el && d.nameError) el.focus(); }}
+                            className={`relative z-10 bg-transparent hover:bg-gray-100/60 focus:bg-white border text-center rounded-xl px-2 md:px-4 py-1.5 text-xs md:text-sm font-bold text-gray-800 w-32 min-w-[120px] md:w-64 focus:outline-none transition-all placeholder-gray-400 cursor-pointer focus:cursor-text truncate ${
+                                d.nameError
+                                    ? 'border-red-400 ring-4 ring-red-100 bg-red-50/40 animate-[shake_0.35s_ease-in-out]'
+                                    : 'border-transparent focus:border-gray-200 focus:ring-4 focus:ring-gray-100/50'
+                            }`}
                             placeholder="Untitled Design"
                         />
                         <div className={`absolute top-full left-1/2 -translate-x-1/2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-0 pointer-events-none flex justify-center ${d.isDirty ? 'opacity-100 translate-y-1' : 'opacity-0 -translate-y-2 scale-95'}`}>

@@ -52,6 +52,7 @@ export function useCanvasDesign() {
     const [printingType, setPrintingType] = useState<string>(printingTypeParam ?? 'DTG');
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+    const [nameError, setNameError] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const markDirty = () => setIsDirty(true);
 
@@ -285,6 +286,7 @@ export function useCanvasDesign() {
 
     const handleDesignNameChange = (name: string) => {
         setDesignName(name);
+        setNameError(false);
         markDirty();
     };
 
@@ -643,6 +645,7 @@ export function useCanvasDesign() {
         const trimmedName = designName.trim();
         if (!trimmedName || trimmedName.toLowerCase() === 'untitled design') {
             setSaveStatus('error');
+            setNameError(true);
             return null;
         }
         setIsSaving(true);
@@ -791,7 +794,7 @@ export function useCanvasDesign() {
         // Color picker
         activeColorIds, setActiveColorIds, showColorPicker, setShowColorPicker,
         // Save + pricing
-        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, isDirty, markDirty, priceBreakdown, priceLoading,
+        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, nameError, isDirty, markDirty, priceBreakdown, priceLoading,
         // Sidebar
         showImageLibrary, setShowImageLibrary, showLayerPanel, setShowLayerPanel,
         userUploads, loadingUploads, isUploading,
