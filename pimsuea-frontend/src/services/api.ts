@@ -188,6 +188,7 @@ export interface CouponValidationResult {
     discount_value?: number;
     max_discount_thb?: number | null;
     max_qty?: number | null;
+    allowed_printing_types?: string[] | null;
 }
 
 export const validateCoupon = async (code: string): Promise<CouponValidationResult> => {

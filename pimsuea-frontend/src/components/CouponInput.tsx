@@ -10,6 +10,13 @@ export interface AppliedCoupon {
   discount_value: number;
   max_discount_thb: number | null;
   max_qty: number | null;
+  allowed_printing_types: string[] | null;
+}
+
+export interface CouponItem {
+  printingType?: string;
+  price: number;
+  quantity: number;
 }
 
 /** Mirror of backend computeCouponDiscount — used for client-side preview only. */
@@ -25,15 +32,30 @@ export function computeDiscount(coupon: AppliedCoupon, subtotal: number, totalQt
   return Math.min(coupon.discount_value, discountableSubtotal);
 }
 
+/** Filter items by allowed_printing_types and return their subtotal + qty. */
+function filterTotals(items: CouponItem[], types: string[] | null): { subtotal: number; qty: number } {
+  if (!types?.length) {
+    return {
+      subtotal: items.reduce((s, i) => s + i.price * i.quantity, 0),
+      qty: items.reduce((s, i) => s + i.quantity, 0),
+    };
+  }
+  const lower = types.map(t => t.toLowerCase());
+  const filtered = items.filter(i => i.printingType && lower.includes(i.printingType.toLowerCase()));
+  return {
+    subtotal: filtered.reduce((s, i) => s + i.price * i.quantity, 0),
+    qty: filtered.reduce((s, i) => s + i.quantity, 0),
+  };
+}
+
 interface CouponInputProps {
-  subtotal: number;
-  totalQty: number;
+  items: CouponItem[];
   onApply: (coupon: AppliedCoupon, discount: number) => void;
   onClear: () => void;
   appliedCoupon: AppliedCoupon | null;
 }
 
-export default function CouponInput({ subtotal, totalQty, onApply, onClear, appliedCoupon }: CouponInputProps) {
+export default function CouponInput({ items, onApply, onClear, appliedCoupon }: CouponInputProps) {
   const [inputCode, setInputCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +76,10 @@ export default function CouponInput({ subtotal, totalQty, onApply, onClear, appl
         discount_value: result.discount_value!,
         max_discount_thb: result.max_discount_thb ?? null,
         max_qty: result.max_qty ?? null,
+        allowed_printing_types: result.allowed_printing_types ?? null,
       };
-      const discount = computeDiscount(coupon, subtotal, totalQty);
+      const { subtotal, qty } = filterTotals(items, coupon.allowed_printing_types);
+      const discount = computeDiscount(coupon, subtotal, qty);
       onApply(coupon, discount);
       setInputCode('');
     } catch {
@@ -72,7 +96,8 @@ export default function CouponInput({ subtotal, totalQty, onApply, onClear, appl
   };
 
   if (appliedCoupon) {
-    const discount = computeDiscount(appliedCoupon, subtotal, totalQty);
+    const { subtotal, qty } = filterTotals(items, appliedCoupon.allowed_printing_types);
+    const discount = computeDiscount(appliedCoupon, subtotal, qty);
     return (
       <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 text-sm">
         <div className="flex items-center gap-2 text-green-700">

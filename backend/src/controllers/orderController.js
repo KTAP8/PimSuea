@@ -111,7 +111,7 @@ exports.getOrderDetails = async (req, res) => {
 async function fetchAndValidateCoupon(code, userId) {
   const { data: coupon, error } = await supabaseAdmin
     .from('coupons')
-    .select('id, code, discount_type, discount_value, max_discount_thb, max_uses_per_user, max_total_uses, max_qty, expires_at, is_active')
+    .select('id, code, discount_type, discount_value, max_discount_thb, max_uses_per_user, max_total_uses, max_qty, expires_at, is_active, allowed_printing_types')
     .eq('code', code)
     .maybeSingle();
 
@@ -223,28 +223,30 @@ exports.createOrder = async (req, res) => {
     const pricedItems = await Promise.all(itemDesignData.map(async ({ item, design }) => {
       const designId = (item.designId && item.designId !== 'custom') ? item.designId : null;
 
+      const printingType = design?.printing_type ?? null;
+
       if (!designId || !design) {
         console.warn(`Order item has no design_id; using client price: ${item.price}`);
-        return { ...item, verifiedUnitPrice: item.price };
+        return { ...item, verifiedUnitPrice: item.price, printingType };
       }
 
       const colorId = item.color_id || item.color;
       const color_name = colorMap.get(colorId);
       if (!color_name) {
         console.warn(`Color '${colorId}' not priceable; using client price`);
-        return { ...item, verifiedUnitPrice: item.price };
+        return { ...item, verifiedUnitPrice: item.price, printingType };
       }
 
       const dims = design.print_dimensions;
       if (!dims || typeof dims !== 'object' || !design.printing_type) {
         console.warn(`Design ${designId} missing dims/printing_type; using client price`);
-        return { ...item, verifiedUnitPrice: item.price };
+        return { ...item, verifiedUnitPrice: item.price, printingType };
       }
 
       const entries = Object.entries(dims).filter(([, d]) => d.w > 0 && d.h > 0);
       if (entries.length === 0) {
         console.warn(`Design ${designId} has no valid print sides; using client price`);
-        return { ...item, verifiedUnitPrice: item.price };
+        return { ...item, verifiedUnitPrice: item.price, printingType };
       }
 
       const shirt_qty = shirtGroupQty.get(`${design.base_product_id}:${colorId}`) ?? item.quantity;
@@ -265,10 +267,10 @@ exports.createOrder = async (req, res) => {
         })));
         const verifiedUnitPrice = sideResults[0].shirt_per_unit
           + sideResults.reduce((s, r) => s + r.print_per_unit, 0);
-        return { ...item, verifiedUnitPrice };
+        return { ...item, verifiedUnitPrice, printingType };
       } catch (priceErr) {
         console.warn(`Pricing lookup failed for design ${designId}: ${priceErr.message}; using client price`);
-        return { ...item, verifiedUnitPrice: item.price };
+        return { ...item, verifiedUnitPrice: item.price, printingType };
       }
     }));
 
@@ -289,7 +291,18 @@ exports.createOrder = async (req, res) => {
       const code = req.body.coupon_code.trim().toUpperCase();
       try {
         const coupon = await fetchAndValidateCoupon(code, userId);
-        discountAmount = computeCouponDiscount(coupon, verifiedItemsTotal, totalQty);
+        // Filter items by allowed_printing_types if the coupon restricts them
+        let couponSubtotal = verifiedItemsTotal;
+        let couponQty = totalQty;
+        if (coupon.allowed_printing_types && coupon.allowed_printing_types.length > 0) {
+          const allowedTypes = coupon.allowed_printing_types.map(t => t.toLowerCase());
+          const filteredItems = pricedItems.filter(
+            item => item.printingType && allowedTypes.includes(item.printingType.toLowerCase())
+          );
+          couponSubtotal = filteredItems.reduce((s, item) => s + item.verifiedUnitPrice * item.quantity, 0);
+          couponQty = filteredItems.reduce((s, item) => s + item.quantity, 0);
+        }
+        discountAmount = computeCouponDiscount(coupon, couponSubtotal, couponQty);
         appliedCouponCode = code;
         appliedCouponId = coupon.id;
       } catch (couponErr) {

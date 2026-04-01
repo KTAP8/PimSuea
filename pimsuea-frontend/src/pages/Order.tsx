@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee } from "@/services/api";
-import CouponInput, { type AppliedCoupon, computeDiscount } from "@/components/CouponInput";
+import CouponInput, { type AppliedCoupon, type CouponItem, computeDiscount } from "@/components/CouponInput";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
@@ -213,12 +213,18 @@ export default function Order() {
     }).catch(() => { /* keep previous fee on error */ });
   }, [totalItems]);
 
-  // Recompute discount preview whenever subtotal or qty changes
+  // Recompute discount preview whenever cart changes
   useEffect(() => {
     if (appliedCoupon) {
-      setDiscountAmount(computeDiscount(appliedCoupon, totalPrice, totalItems));
+      const types = appliedCoupon.allowed_printing_types;
+      const relevant: CouponItem[] = cartItems
+        .filter(i => !types?.length || (i.printingType && types.map(t => t.toLowerCase()).includes(i.printingType.toLowerCase())))
+        .map(i => ({ printingType: i.printingType, price: i.price, quantity: i.quantity }));
+      const filteredSubtotal = relevant.reduce((s, i) => s + i.price * i.quantity, 0);
+      const filteredQty = relevant.reduce((s, i) => s + i.quantity, 0);
+      setDiscountAmount(computeDiscount(appliedCoupon, filteredSubtotal, filteredQty));
     }
-  }, [appliedCoupon, totalPrice, totalItems]);
+  }, [appliedCoupon, cartItems]);
 
   // Phase 1: Initialize Cart
   useEffect(() => {
@@ -947,8 +953,7 @@ export default function Order() {
                    ))}
                        <div className="pt-2 border-t">
                        <CouponInput
-                           subtotal={totalPrice}
-                           totalQty={totalItems}
+                           items={cartItems.map(i => ({ printingType: i.printingType, price: i.price, quantity: i.quantity }))}
                            appliedCoupon={appliedCoupon}
                            onApply={(coupon, discount) => { setAppliedCoupon(coupon); setDiscountAmount(discount); }}
                            onClear={() => { setAppliedCoupon(null); setDiscountAmount(0); }}

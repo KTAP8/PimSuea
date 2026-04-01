@@ -21,7 +21,7 @@ exports.validateCoupon = async (req, res) => {
     // Fetch coupon
     const { data: coupon, error } = await supabaseAdmin
       .from('coupons')
-      .select('id, code, discount_type, discount_value, max_discount_thb, max_uses_per_user, max_total_uses, max_qty, expires_at, is_active')
+      .select('id, code, discount_type, discount_value, max_discount_thb, max_uses_per_user, max_total_uses, max_qty, expires_at, is_active, allowed_printing_types')
       .eq('code', code)
       .maybeSingle();
 
@@ -68,6 +68,7 @@ exports.validateCoupon = async (req, res) => {
       discount_value: Number(coupon.discount_value),
       max_discount_thb: coupon.max_discount_thb != null ? Number(coupon.max_discount_thb) : null,
       max_qty: coupon.max_qty ?? null,
+      allowed_printing_types: coupon.allowed_printing_types ?? null,
     });
   } catch (err) {
     console.error('Error validating coupon:', err);
