@@ -39,11 +39,11 @@ SHIRT_SIDE  = "front"   # 'front' or 'back'
 MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/front_white_mock_template.png"
 
 # Mockup canvas size and print-area placement (pixels)
-_MOCKUP_W = 752
-_MOCKUP_H = 829
+_MOCKUP_W = 2048
+_MOCKUP_H = 1742
 _PLACEMENTS = {
-    "front": {"x": 242, "y": 267, "w": 263, "h": 350},
-    "back":  {"x": 242, "y": 191, "w": 263, "h": 350},
+    "front": {"x": 647, "y": 431, "w": 716, "h": 955},
+    "back":  {"x": 647, "y": 287, "w": 716, "h": 955},
 }
 
 # Back side only: leftmost pixel of the shirt body in the back mockup image.
@@ -98,8 +98,8 @@ COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # One-shot pipeline: annotate each side, then combine into a single image.
 # Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
 BATCH_SIDES = [
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_5.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/front_white_mock_template.png", "side": "front", "show_tag": True},
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_printfile.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/back_white_mock_template.png", "side": "back", "show_tag": False}
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_5.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/merch_white_front.JPG", "side": "front", "show_tag": True},
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_new.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/merch_white_back.JPG", "side": "back", "show_tag": False}
     # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
     # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},
 ]
