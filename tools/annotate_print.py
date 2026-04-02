@@ -42,16 +42,16 @@ MOCKUP_IMAGE_PATH = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_da
 _MOCKUP_W = 2048
 _MOCKUP_H = 1742
 _PLACEMENTS = {
-    "front": {"x": 647, "y": 431, "w": 716, "h": 955},
-    "back":  {"x": 647, "y": 287, "w": 716, "h": 955},
+    "front": {"x": 668, "y": 431, "w": 716, "h": 955},
+    "back":  {"x": 668, "y": 287, "w": 716, "h": 955},
 }
 
 # Back side only: leftmost pixel of the shirt body in the back mockup image.
 # Used as the reference point for horizontal offset (instead of shirt center).
-BACK_SHIRT_LEFT_PX = 169
+BACK_SHIRT_LEFT_PX = 420
 
 # Collar positions in each mockup image (px from the top of the image)
-COLLAR_Y = {"front": 223, "back": 144}
+COLLAR_Y = {"front": 252, "back": 108}
 # Fixed real-world distance from collar to the top of the print area
 COLLAR_TO_PRINT_AREA_IN = 3.0
 
@@ -63,7 +63,7 @@ SHOW_TAG           = False                      # ← toggle tag on/off globally
 TAG_IMAGE_PATH     = "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/Tag.png"                   # e.g. "tools/assets/tag.png"
 TAG_PHYS_W_IN      = 1.5                   # physical width of the tag (inches)
 TAG_SRC_W, TAG_SRC_H = 2400, 1212            # source image px — gives aspect ratio
-TAG_COLLAR_Y_FRONT = 134                   # px from top of front mockup where collar sits
+TAG_COLLAR_Y_FRONT = 104                   # px from top of front mockup where collar sits
 TAG_OFFSET_IN      = 0.5                   # inches below collar to place tag top edge
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -75,16 +75,16 @@ WHITE       = (255, 255, 255, 255)
 DASH_LEN    = 12
 GAP_LEN     = 7
 LINE_W      = 2
-FONT_SIZE   = 14
+FONT_SIZE   = 22
 PAD         = 14        # spacing between annotation lines and the bounding box
 TICK        = 8         # tick mark half-length
 PREVIEW_DIV = 6         # downscale divisor: 3600/6 = 600px wide preview
 MARGIN_LEFT = 150       # left margin reserved for Y measurement line + label
 MARGIN_TOP  = 60        # top margin reserved for X offset line + label
 SIDE_PAD_LEFT      = 30   # gap between mockup right edge and side graphic
-SIDE_PPI           = 30   # display scale for side graphic (px per inch) — keeps all graphics proportional
+SIDE_PPI           = 55   # display scale for side graphic (px per inch) — keeps all graphics proportional
 SIDE_MIN_PX        = 60   # minimum side graphic dimension in px (prevents tiny logos being unreadable)
-SIDE_MARGIN_RIGHT  = 120  # room for height bracket + label to the right
+SIDE_MARGIN_RIGHT  = 180  # room for height bracket + label to the right
 SIDE_MARGIN_BOTTOM = 50   # room for width bracket + label below
 
 # ─── COMBINE CONFIG ──────────────────────────────────────────────────────────
