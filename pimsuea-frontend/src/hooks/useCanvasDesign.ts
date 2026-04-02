@@ -134,12 +134,14 @@ export function useCanvasDesign() {
                     }
 
                     const canvasData = design.canvas_data;
+                    const firstColorId = design.available_colors?.[0] ?? null;
                     if (canvasData?.renderer === 'konva') {
                         if (canvasData.sides) {
                             if (canvasData.activeSide) {
                                 // New format: sides keyed by side name ("front"/"back")
                                 pendingSideData.current = canvasData.sides;
-                                const saved = data.find(t => t.side === canvasData.activeSide)
+                                const saved = (firstColorId ? data.find(t => t.side === canvasData.activeSide && t.color?.id === firstColorId) : null)
+                                    ?? data.find(t => t.side === canvasData.activeSide)
                                     ?? data.find(t => canvasData.sides[t.side]);
                                 if (saved) { targetTemplate = saved; setSelectedColorId(saved.color?.id ?? null); }
                             } else {
@@ -151,6 +153,7 @@ export function useCanvasDesign() {
                                 }
                                 pendingSideData.current = converted;
                                 const saved = data.find(t => t.id === canvasData.activeTemplateId)
+                                    ?? (firstColorId ? data.find(t => canvasData.sides[t.id] && t.color?.id === firstColorId) : null)
                                     ?? data.find(t => canvasData.sides[t.id]);
                                 if (saved) { targetTemplate = saved; setSelectedColorId(saved.color?.id ?? null); }
                             }
