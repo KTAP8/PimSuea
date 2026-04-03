@@ -1,12 +1,15 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
 import type { CanvasPriceBreakdown } from '../../types/canvas';
+
+const DTF_GUIDE_URL = '/news/1'; // ← update with the real article ID from Supabase
 
 interface Props {
     priceBreakdown: CanvasPriceBreakdown | null;
     priceLoading: boolean;
+    printingType: string;
 }
 
-export function PriceCard({ priceBreakdown, priceLoading }: Props) {
+export function PriceCard({ priceBreakdown, priceLoading, printingType }: Props) {
     return (
         <div className="w-48 bg-white p-3 rounded-xl shadow-xl border border-gray-100">
             <div className="flex items-center justify-between mb-2">
@@ -59,6 +62,18 @@ export function PriceCard({ priceBreakdown, priceLoading }: Props) {
                 </>
             ) : (
                 <p className="text-xs text-gray-300 text-center py-3">บันทึกเพื่อดูราคา</p>
+            )}
+            {printingType === 'DTF' && (
+                <div className="mt-2 pt-2 border-t border-amber-100 bg-amber-50 -mx-3 -mb-3 px-3 pb-3 rounded-b-xl">
+                    <div className="flex items-start justify-between gap-1">
+                        <p className="text-[9px] text-amber-700 leading-relaxed">
+                            ⚠ DTF: เส้นกราฟิกต้องหนา ≥ 2mm ถ้าหากเล็กกว่า 2mm แนะนำให้เพิ่มพื้นหลังสีขาวเพื่อให้กาวยึดติดดีขึ้น
+                        </p>
+                        <a href={DTF_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="shrink-0 text-amber-500 hover:text-amber-700 transition-colors mt-0.5">
+                            <HelpCircle className="w-3 h-3" />
+                        </a>
+                    </div>
+                </div>
             )}
         </div>
     );

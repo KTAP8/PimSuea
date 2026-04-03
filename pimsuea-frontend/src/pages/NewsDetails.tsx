@@ -101,6 +101,19 @@ export default function NewsDetails() {
 
             <hr className="border-gray-100" />
 
+            {/* YouTube embed */}
+            {news.youtube_video_id && (
+                <div className="aspect-video w-full rounded-xl overflow-hidden bg-black">
+                    <iframe
+                        src={`https://www.youtube.com/embed/${news.youtube_video_id}`}
+                        title={news.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                    />
+                </div>
+            )}
+
             <div className="prose prose-lg max-w-none text-gray-700">
                 {news.content ? (
                      <ReactMarkdown>{news.content}</ReactMarkdown>

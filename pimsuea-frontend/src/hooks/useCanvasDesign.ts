@@ -797,7 +797,7 @@ export function useCanvasDesign() {
         // Color picker
         activeColorIds, setActiveColorIds, showColorPicker, setShowColorPicker,
         // Save + pricing
-        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, nameError, isDirty, markDirty, priceBreakdown, priceLoading,
+        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, nameError, isDirty, markDirty, priceBreakdown, priceLoading, printingType,
         // Sidebar
         showImageLibrary, setShowImageLibrary, showLayerPanel, setShowLayerPanel,
         userUploads, loadingUploads, isUploading,

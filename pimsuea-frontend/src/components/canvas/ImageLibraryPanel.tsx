@@ -20,12 +20,13 @@ export function ImageLibraryPanel({ userUploads, loadingUploads, isUploading, on
                 </button>
             </div>
 
-            <div className="p-4 border-b">
+            <div className="p-4 border-b space-y-2">
                 <label className={`w-full h-11 text-white rounded-xl flex items-center justify-center cursor-pointer gap-2 transition-all shadow-sm ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}>
                     {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     <span className="text-sm font-semibold">{isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่'}</span>
                     <input type="file" className="hidden" accept="image/*" onChange={onUpload} disabled={isUploading} />
                 </label>
+                <p className="text-xs text-gray-400 text-center">รองรับ PNG, JPG · แนะนำ 300 DPI ขึ้นไป</p>
             </div>
 
             <div className="flex-1 overflow-y-auto">

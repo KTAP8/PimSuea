@@ -28,6 +28,8 @@ OUTPUT_PATH   = None                        # None = auto: <input>_annotated.png
 PHYSICAL_W_IN = 12.0                        # inches
 PHYSICAL_H_IN = 16.0                        # inches
 
+LABEL_DECIMALS = 2  # decimal places for all measurement labels (1 = "3.1 in", 2 = "3.07 in")
+
 ALPHA_THRESHOLD = 200  # pixels with alpha <= this are treated as empty (higher = ignores antialiased edges)
 WHITE_THRESHOLD = 245  # for RGB images: channels all above this = background
 
@@ -98,8 +100,8 @@ COMBINE_GAP    = 20          # horizontal gap between images in pixels
 # One-shot pipeline: annotate each side, then combine into a single image.
 # Set BATCH_SIDES to a list of dicts; leave empty ([]) to use single-file mode.
 BATCH_SIDES = [
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_5.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/merch_white_front.JPG", "side": "front", "show_tag": True},
-    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_back_new.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/merch_white_back.JPG", "side": "back", "show_tag": False}
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/real_data/Jett_front.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/merch_white_front.JPG", "side": "front", "show_tag": False},
+    {"input":"/Volumes/My Passport/Personal_Project/PimSuea/tools/real_data/Jett_back.png", "mockup": "/Volumes/My Passport/Personal_Project/PimSuea/tools/templates/merch_white_back.JPG", "side": "back", "show_tag": False}
     # {"input": "...front_print.png", "mockup": "...front_template.png", "side": "front"},
     # {"input": "...back_print.png",  "mockup": "...back_template.png",  "side": "back"},
 ]
@@ -275,7 +277,7 @@ def composite_on_mockup(
     draw.line([(collar_x, collar_y), (collar_x, elem_top_y)], fill=ORANGE, width=LINE_W)
     draw.line([(collar_x - TICK, collar_y),    (collar_x + TICK, collar_y)],    fill=ORANGE, width=LINE_W)
     draw.line([(collar_x - TICK, elem_top_y),  (collar_x + TICK, elem_top_y)],  fill=ORANGE, width=LINE_W)
-    y_total_label = f"{measurements['collar_to_elem_in']:.1f} in ({measurements['collar_to_elem_in'] * 2.54:.1f} cm)"
+    y_total_label = f"{measurements['collar_to_elem_in']:.{LABEL_DECIMALS}f} in ({measurements['collar_to_elem_in'] * 2.54:.{LABEL_DECIMALS}f} cm)"
     # Y label: hugs the collar tick from below, left side — always above X label
     draw_label(draw, y_total_label, collar_x - TICK - 30, collar_y + FONT_SIZE // 2 + 4, font)
 
@@ -289,7 +291,7 @@ def composite_on_mockup(
             draw.line([(shirt_x, elem_top_y - TICK), (shirt_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
             draw.line([(bx0,     elem_top_y - TICK), (bx0,     elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
             xfs = measurements["x_from_shirt_in"]
-            x_label_text = f"{xfs:.1f} in ({xfs * 2.54:.1f} cm) from shirt left"
+            x_label_text = f"{xfs:.{LABEL_DECIMALS}f} in ({xfs * 2.54:.{LABEL_DECIMALS}f} cm) from shirt left"
             mid_h = (shirt_x + bx0) // 2
             draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
         # else centered → no X annotation
@@ -299,7 +301,7 @@ def composite_on_mockup(
             draw_dashed_line(draw, collar_x, elem_top_y, bx0, elem_top_y, color=ORANGE)
             draw.line([(collar_x, elem_top_y - TICK), (collar_x, elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
             draw.line([(bx0,      elem_top_y - TICK), (bx0,      elem_top_y + TICK)], fill=ORANGE, width=LINE_W)
-            x_label_text = f"{measurements['x_offset_in']:.1f} in ({measurements['x_offset_in'] * 2.54:.1f} cm) {x_dir}"
+            x_label_text = f"{measurements['x_offset_in']:.{LABEL_DECIMALS}f} in ({measurements['x_offset_in'] * 2.54:.{LABEL_DECIMALS}f} cm) {x_dir}"
             mid_h = (collar_x + bx0) // 2
             draw_label(draw, x_label_text, mid_h, elem_top_y - FONT_SIZE // 2 - 4, font)
         else:
@@ -321,7 +323,7 @@ def composite_on_mockup(
         draw.line([(tag_line_x, TAG_COLLAR_Y_FRONT), (tag_line_x, ty)], fill=ORANGE, width=LINE_W)
         draw.line([(tag_line_x - TICK, TAG_COLLAR_Y_FRONT), (tag_line_x + TICK, TAG_COLLAR_Y_FRONT)], fill=ORANGE, width=LINE_W)
         draw.line([(tag_line_x - TICK, ty),                 (tag_line_x + TICK, ty)],                 fill=ORANGE, width=LINE_W)
-        tag_y_label = f"{TAG_OFFSET_IN:.1f} in ({TAG_OFFSET_IN * 2.54:.1f} cm)"
+        tag_y_label = f"{TAG_OFFSET_IN:.{LABEL_DECIMALS}f} in ({TAG_OFFSET_IN * 2.54:.{LABEL_DECIMALS}f} cm)"
         draw_label(draw, tag_y_label, tag_line_x + TICK + 35, (TAG_COLLAR_Y_FRONT + ty) // 2, font)
         # X: tag is always centered
         draw_label(draw, "centered", tx + tw // 2, ty + th + FONT_SIZE // 2 + 4, font)
@@ -398,8 +400,8 @@ def composite_on_mockup(
     draw2 = ImageDraw.Draw(expanded)
 
     # Brackets for print element
-    w_label = f"{measurements['elem_w_in']:.1f} in ({measurements['elem_w_in'] * 2.54:.1f} cm)  [{measurements['tier']}]"
-    h_label = f"{measurements['elem_h_in']:.1f} in ({measurements['elem_h_in'] * 2.54:.1f} cm)"
+    w_label = f"{measurements['elem_w_in']:.{LABEL_DECIMALS}f} in ({measurements['elem_w_in'] * 2.54:.{LABEL_DECIMALS}f} cm)  [{measurements['tier']}]"
+    h_label = f"{measurements['elem_h_in']:.{LABEL_DECIMALS}f} in ({measurements['elem_h_in'] * 2.54:.{LABEL_DECIMALS}f} cm)"
     draw_dimension_bracket(draw2, elem_x, sg_y + side_gh + PAD,
                            elem_x + side_gw, sg_y + side_gh + PAD,
                            w_label, font, 'horizontal')
@@ -409,8 +411,8 @@ def composite_on_mockup(
 
     # Brackets for tag
     if tag_panel_img is not None:
-        tw_label = f"{tag_panel_w_in:.1f} in ({tag_panel_w_in * 2.54:.1f} cm)"
-        th_label = f"{tag_panel_h_in:.1f} in ({tag_panel_h_in * 2.54:.1f} cm)"
+        tw_label = f"{tag_panel_w_in:.{LABEL_DECIMALS}f} in ({tag_panel_w_in * 2.54:.{LABEL_DECIMALS}f} cm)"
+        th_label = f"{tag_panel_h_in:.{LABEL_DECIMALS}f} in ({tag_panel_h_in * 2.54:.{LABEL_DECIMALS}f} cm)"
         draw_dimension_bracket(draw2, tag_x, tag_y + tag_panel_h + PAD,
                                tag_x + tag_panel_w, tag_y + tag_panel_h + PAD,
                                tw_label, font, 'horizontal')
@@ -539,7 +541,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
     # Horizontal connector from the left margin line to the element's top edge
     draw_dashed_line(draw, vx, by0, bx0, by0, color=ORANGE)
     mid_y = (img_top + by0) // 2
-    y_label = "0.0 in from top" if y_in < 0.005 else f"{y_in:.1f} in ({y_in * 2.54:.1f} cm) from top"
+    y_label = "0.0 in from top" if y_in < 0.005 else f"{y_in:.{LABEL_DECIMALS}f} in ({y_in * 2.54:.{LABEL_DECIMALS}f} cm) from top"
     draw_label(draw, y_label, MARGIN_LEFT // 2, mid_y, font)
 
     # 3. X offset — horizontal line in top margin
@@ -548,7 +550,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
         # Back side: measure from shirt left edge (off-canvas) to graphic left.
         # Shirt edge is outside the canvas, so just drop a tick + connector at bx0.
         if x_dir != "centered":
-            x_label = f"{x_from_shirt_in:.1f} in ({x_from_shirt_in * 2.54:.1f} cm) from shirt left"
+            x_label = f"{x_from_shirt_in:.{LABEL_DECIMALS}f} in ({x_from_shirt_in * 2.54:.{LABEL_DECIMALS}f} cm) from shirt left"
             draw.line([(bx0, hy - TICK), (bx0, hy + TICK)], fill=ORANGE, width=LINE_W)
             draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
             draw_label(draw, x_label, bx0, hy // 2 + 4, font)
@@ -560,11 +562,11 @@ def annotate(input_path: str, output_path: str | None = None, *,
         draw.line([(bx0,  hy - TICK), (bx0,  hy + TICK)], fill=ORANGE, width=LINE_W)
         draw_dashed_line(draw, bx0, hy, bx0, by0, color=ORANGE)
         x_label = ("centered" if x_dir == "centered"
-                   else f"{x_offset_in:.1f} in ({x_offset_in * 2.54:.1f} cm) {x_dir}")
+                   else f"{x_offset_in:.{LABEL_DECIMALS}f} in ({x_offset_in * 2.54:.{LABEL_DECIMALS}f} cm) {x_dir}")
         draw_label(draw, x_label, (cx_s + bx0) // 2, hy // 2 + 4, font)
 
     # 4. Size + tier label below the bounding box
-    size_text = f"{elem_w_in:.1f}\" × {elem_h_in:.1f}\" ({elem_w_in * 2.54:.1f} × {elem_h_in * 2.54:.1f} cm)  [{tier}]"
+    size_text = f"{elem_w_in:.{LABEL_DECIMALS}f}\" × {elem_h_in:.{LABEL_DECIMALS}f}\" ({elem_w_in * 2.54:.{LABEL_DECIMALS}f} × {elem_h_in * 2.54:.{LABEL_DECIMALS}f} cm)  [{tier}]"
     draw_label(draw, size_text, (bx0 + bx1) // 2, by1 + PAD + FONT_SIZE // 2, font)
 
     canvas.save(out)

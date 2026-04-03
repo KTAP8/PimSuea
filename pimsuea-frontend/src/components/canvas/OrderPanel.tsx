@@ -1,4 +1,6 @@
-import { Loader2, Minus, Plus, ShoppingCart, X, Zap } from 'lucide-react';
+import { Loader2, Minus, Plus, ShoppingCart, X, Zap, HelpCircle } from 'lucide-react';
+
+const DTF_GUIDE_URL = '/news/1'; // ← update with the real article ID from Supabase
 import type { CanvasPriceBreakdown } from '../../types/canvas';
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -14,6 +16,7 @@ interface Props {
     onAddToCart: () => void;
     onOrderNow: () => void;
     onClose: () => void;
+    printingType: string;
 }
 
 export function OrderPanel({
@@ -22,6 +25,7 @@ export function OrderPanel({
     priceBreakdown,
     isAddingToCart, isSaving,
     onAddToCart, onOrderNow, onClose,
+    printingType,
 }: Props) {
     const busy = isAddingToCart || isSaving;
     const pricePerUnit = priceBreakdown?.total_per_unit ?? null;
@@ -99,6 +103,21 @@ export function OrderPanel({
                     )}
                     {!priceBreakdown && (
                         <p className="text-xs text-gray-400 text-center">บันทึกดีไซน์เพื่อดูราคา</p>
+                    )}
+
+                    {/* DTF advisory */}
+                    {printingType === 'DTF' && (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                            <div className="flex items-center justify-between mb-0.5">
+                                <p className="text-xs text-amber-700 font-medium">⚠ ข้อแนะนำสำหรับ DTF</p>
+                                <a href={DTF_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-700 transition-colors">
+                                    <HelpCircle className="w-4 h-4" />
+                                </a>
+                            </div>
+                            <p className="text-xs text-amber-600 leading-relaxed">
+                                เส้นกราฟิกและตัวอักษรควรหนาอย่างน้อย 2mm ถ้าหากเล็กกว่า 2mm แนะนำให้เพิ่มพื้นหลังสีขาวเพื่อให้กาวยึดติดดีขึ้น
+                            </p>
+                        </div>
                     )}
 
                     {/* Buttons */}

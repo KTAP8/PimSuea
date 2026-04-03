@@ -115,6 +115,7 @@ export interface News {
     published_at?: string;
     color_class?: string; // For UI styling if needed
     created_at?: string;
+    youtube_video_id?: string; // YouTube video ID (e.g. "dQw4w9WgXcQ")
 }
 
 export interface ShippingInfo {

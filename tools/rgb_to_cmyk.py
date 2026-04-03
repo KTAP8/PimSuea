@@ -20,7 +20,7 @@ import urllib.request
 from PIL import Image, ImageCms
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH  = "/Volumes/My Passport/Personal_Project/PimSuea/tools/test_data/IBC_front_printfile_5.png"    # ← set to your RGB PNG path; leave "" to use BATCH_PATHS
+INPUT_PATH  = "/Volumes/My Passport/Personal_Project/PimSuea/tools/real_data/Jett_front.png"    # ← set to your RGB PNG path; leave "" to use BATCH_PATHS
 OUTPUT_PATH = None  # None = auto: <input>_cmyk.tif alongside the original
 
 # Batch mode: list of input paths; leave [] to use INPUT_PATH above
@@ -101,7 +101,14 @@ def convert(input_path: str, output_path: str | None = None) -> Path:
     icc_path = get_icc_path(ICC_PROFILE)
     print(f"  ICC     : {icc_path}")
 
-    img = Image.open(src).convert("RGB")
+    raw = Image.open(src)
+    if raw.mode in ("RGBA", "LA") or (raw.mode == "P" and "transparency" in raw.info):
+        raw = raw.convert("RGBA")
+        background = Image.new("RGB", raw.size, (255, 255, 255))
+        background.paste(raw, mask=raw.split()[3])
+        img = background
+    else:
+        img = raw.convert("RGB")
     print(f"  Size    : {img.width} × {img.height} px  ({PRINT_DPI} DPI)")
 
     srgb  = ImageCms.createProfile("sRGB")
