@@ -37,3 +37,7 @@ next-env.d.ts
 
 .DS_Store
 ._*
+
+# tools data
+tools/real_data/
+tools/test_data/
