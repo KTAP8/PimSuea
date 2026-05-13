@@ -12,15 +12,17 @@ ICC profile:
   automatically on first run. Internet access required once.
 
 Dependencies:
-  pip install pillow
+  pip install pillow numpy tifffile imagecodecs
 """
 
 from pathlib import Path
 import urllib.request
+import numpy as np
+import tifffile
 from PIL import Image, ImageCms
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
-INPUT_PATH  = "/Volumes/My Passport/Personal_Project/PimSuea/tools/real_data/Jett_front.png"    # ← set to your RGB PNG path; leave "" to use BATCH_PATHS
+INPUT_PATH  = "/Volumes/My Passport/Personal_Project/PimSuea/tools/real_data/Print_file_TU_shirt.png"    # ← set to your RGB PNG path; leave "" to use BATCH_PATHS
 OUTPUT_PATH = None  # None = auto: <input>_cmyk.tif alongside the original
 
 # Batch mode: list of input paths; leave [] to use INPUT_PATH above
@@ -101,26 +103,60 @@ def convert(input_path: str, output_path: str | None = None) -> Path:
     icc_path = get_icc_path(ICC_PROFILE)
     print(f"  ICC     : {icc_path}")
 
-    raw = Image.open(src)
-    if raw.mode in ("RGBA", "LA") or (raw.mode == "P" and "transparency" in raw.info):
-        raw = raw.convert("RGBA")
-        background = Image.new("RGB", raw.size, (255, 255, 255))
-        background.paste(raw, mask=raw.split()[3])
-        img = background
-    else:
-        img = raw.convert("RGB")
-    print(f"  Size    : {img.width} × {img.height} px  ({PRINT_DPI} DPI)")
+    original = Image.open(src)
+    has_alpha = (original.mode in ("RGBA", "LA") or
+                 (original.mode == "P" and "transparency" in original.info))
 
-    srgb  = ImageCms.createProfile("sRGB")
-    cmyk  = ImageCms.getOpenProfile(str(icc_path))
+    # Read embedded ICC profile before any conversion loses it
+    embedded = original.info.get("icc_profile")
+
+    if has_alpha:
+        rgba = original.convert("RGBA")
+        r, g, b, a = rgba.split()
+        rgb_img = Image.merge("RGB", (r, g, b))  # raw RGB, no alpha compositing
+        alpha_arr = np.array(a)
+    else:
+        rgb_img = original.convert("RGB")
+
+    print(f"  Size    : {rgb_img.width} × {rgb_img.height} px  ({PRINT_DPI} DPI)")
+    print(f"  Alpha   : {'yes — preserved' if has_alpha else 'no'}")
+
+    # Use the embedded input profile if present; fall back to sRGB
+    if embedded:
+        from io import BytesIO
+        input_profile = ImageCms.getOpenProfile(BytesIO(embedded))
+        print(f"  Source  : embedded ICC profile")
+    else:
+        input_profile = ImageCms.createProfile("sRGB")
+        print(f"  Source  : sRGB (no embedded profile found)")
+
+    cmyk_profile = ImageCms.getOpenProfile(str(icc_path))
     xform = ImageCms.buildTransform(
-        srgb, cmyk, "RGB", "CMYK",
-        renderingIntent=1,  # 1 = Relative Colorimetric
-        flags=0x2000,  # Black Point Compensation
+        input_profile, cmyk_profile, "RGB", "CMYK",
+        renderingIntent=1,  # Relative Colorimetric
+        flags=0x2000,       # Black Point Compensation
     )
 
-    cmyk_img = ImageCms.applyTransform(img, xform)
-    cmyk_img.save(out, compression=TIFF_COMPRESSION, dpi=(PRINT_DPI, PRINT_DPI))
+    cmyk_img = ImageCms.applyTransform(rgb_img, xform)
+
+    if has_alpha:
+        # Stack CMYK (H,W,4) + alpha (H,W,1) → 5-channel array, save via tifffile
+        cmyka = np.concatenate(
+            [np.array(cmyk_img), alpha_arr[:, :, np.newaxis]], axis=2
+        )
+        tifffile.imwrite(
+            str(out),
+            cmyka,
+            photometric='separated',
+            extrasamples=(2,),          # 2 = unassociated (straight) alpha
+            compression='lzw',
+            resolution=(PRINT_DPI, PRINT_DPI),
+            resolutionunit='inch',
+            extratags=[(34675, 7, None, icc_path.read_bytes(), True)],  # InterColorProfile
+        )
+    else:
+        cmyk_img.save(out, compression=TIFF_COMPRESSION, dpi=(PRINT_DPI, PRINT_DPI),
+                      icc_profile=icc_path.read_bytes())
 
     size_mb = out.stat().st_size / 1_048_576
     print(f"  Done    → {out}  ({size_mb:.1f} MB)\n")
