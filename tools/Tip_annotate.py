@@ -374,7 +374,7 @@ def composite_on_mockup(
 
     draw2 = ImageDraw.Draw(expanded)
 
-    w_label = f"{format_krabiad(measurements['elem_w_in'])} × {format_krabiad(measurements['elem_h_in'])}  [{measurements['tier']}]"
+    w_label = f"{format_krabiad(measurements['elem_w_in'])}  [{measurements['tier']}]"
     h_label = format_krabiad(measurements['elem_h_in'])
     draw_dimension_bracket(draw2, elem_x, sg_y + side_gh + PAD,
                            elem_x + side_gw, sg_y + side_gh + PAD,
