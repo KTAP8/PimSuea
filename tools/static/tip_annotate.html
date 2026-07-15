@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tip Annotate</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #1a1d24;
+      --border: #2c313c;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --accent: #ff6b35;
+      --accent-dim: #c44f22;
+      --ok: #3dd68c;
+      --err: #f07178;
+      --input: #12151b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 800px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem;
+    }
+    .card h2 {
+      margin: 0 0 0.9rem;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin: 0.7rem 0 0.3rem;
+    }
+    input[type="file"],
+    select {
+      width: 100%;
+      background: var(--input);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.9rem;
+    }
+    .row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.85rem;
+    }
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin: 0;
+    }
+    .check input { accent-color: var(--accent); }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1.15rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button:hover:not(:disabled) { background: var(--accent-dim); }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .status {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .status.error { color: var(--err); }
+    .status.ok { color: var(--ok); }
+    .metrics {
+      display: grid;
+      gap: 0.75rem;
+    }
+    .metric {
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+    }
+    .previews {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+    .preview {
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .preview header {
+      padding: 0.65rem 0.8rem;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .preview header span {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .preview a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .preview img {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #fff;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tip Annotate</h1>
+    <p>Upload print files · pick templates · same Pillow output as the CLI</p>
+  </header>
+
+  <main>
+    <form id="form">
+      <div class="grid">
+        <section class="card" id="front-card">
+          <h2>Front <span class="badge">optional</span></h2>
+          <label for="front_print">Print PNG</label>
+          <input type="file" id="front_print" name="front_print" accept="image/png,image/*,.png" />
+          <label for="front_mockup">Mockup template</label>
+          <select id="front_mockup" name="front_mockup"></select>
+          <div class="row">
+            <label class="check">
+              <input type="checkbox" id="front_show_tag" name="front_show_tag" />
+              Show tag
+            </label>
+            <label for="front_text_color" style="margin:0">Text color</label>
+            <select id="front_text_color" name="front_text_color" style="width:auto;min-width:7rem">
+              <option value="black">black</option>
+              <option value="red">red</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="card" id="back-card">
+          <h2>Back <span class="badge">optional</span></h2>
+          <label for="back_print">Print PNG</label>
+          <input type="file" id="back_print" name="back_print" accept="image/png,image/*,.png" />
+          <label for="back_mockup">Mockup template</label>
+          <select id="back_mockup" name="back_mockup"></select>
+          <div class="row">
+            <label class="check">
+              <input type="checkbox" id="back_show_tag" name="back_show_tag" />
+              Show tag
+            </label>
+            <label for="back_text_color" style="margin:0">Text color</label>
+            <select id="back_text_color" name="back_text_color" style="width:auto;min-width:7rem">
+              <option value="black">black</option>
+              <option value="red">red</option>
+            </select>
+          </div>
+        </section>
+      </div>
+
+      <section class="card">
+        <div class="actions">
+          <button type="submit" id="generate" disabled>Generate</button>
+          <button type="button" class="secondary" id="reset">Reset</button>
+          <span class="status" id="status">Select at least one print file.</span>
+        </div>
+      </section>
+    </form>
+
+    <section class="card hidden" id="results">
+      <h2>Results</h2>
+      <div class="metrics" id="metrics"></div>
+      <div class="previews" id="previews" style="margin-top:1rem"></div>
+    </section>
+  </main>
+
+  <script>
+    const frontPrint = document.getElementById("front_print");
+    const backPrint = document.getElementById("back_print");
+    const frontMockup = document.getElementById("front_mockup");
+    const backMockup = document.getElementById("back_mockup");
+    const generateBtn = document.getElementById("generate");
+    const statusEl = document.getElementById("status");
+    const form = document.getElementById("form");
+    const results = document.getElementById("results");
+    const metrics = document.getElementById("metrics");
+    const previews = document.getElementById("previews");
+
+    const FRONT_HINTS = ["front", "merch_white_front", "merch_black_front"];
+    const BACK_HINTS = ["back", "merch_white_back"];
+
+    function pickDefault(names, hints) {
+      for (const hint of hints) {
+        const found = names.find(n => n.toLowerCase().includes(hint));
+        if (found) return found;
+      }
+      return names[0] || "";
+    }
+
+    function updateGenerateState() {
+      const ok = !!(frontPrint.files[0] || backPrint.files[0]);
+      generateBtn.disabled = !ok;
+      if (!ok) {
+        statusEl.textContent = "Select at least one print file.";
+        statusEl.className = "status";
+      } else if (!statusEl.classList.contains("error") && !statusEl.classList.contains("ok")) {
+        statusEl.textContent = "Ready to generate.";
+        statusEl.className = "status";
+      }
+    }
+
+    async function loadTemplates() {
+      const res = await fetch("/api/templates");
+      const data = await res.json();
+      const names = data.templates || [];
+      for (const sel of [frontMockup, backMockup]) {
+        sel.innerHTML = "";
+        for (const name of names) {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          sel.appendChild(opt);
+        }
+      }
+      frontMockup.value = pickDefault(names, FRONT_HINTS);
+      backMockup.value = pickDefault(names, BACK_HINTS);
+    }
+
+    function formatInches(n) {
+      return (Math.round(n * 100) / 100).toFixed(2);
+    }
+
+    function renderResults(data) {
+      results.classList.remove("hidden");
+      metrics.innerHTML = "";
+      previews.innerHTML = "";
+
+      for (const m of data.measurements || []) {
+        const div = document.createElement("div");
+        div.className = "metric";
+        const xExtra = m.x_dir === "centered" ? "" : ` ${m.x_dir}`;
+        div.textContent =
+`[${m.side}]
+  Element    : ${formatInches(m.elem_w_in)}" × ${formatInches(m.elem_h_in)}"  [${m.tier}]
+  Y from top : ${formatInches(m.y_in)} in  (${m.y_label})
+  X offset   : ${formatInches(m.x_offset_in)} in  (${m.x_label})${xExtra}
+  Image      : ${m.image_w} × ${m.image_h} px`;
+        metrics.appendChild(div);
+      }
+
+      for (const f of data.files || []) {
+        const card = document.createElement("div");
+        card.className = "preview";
+        const preview = f.preview !== false
+          ? `<img src="${f.url}" alt="${f.label}" loading="lazy" />`
+          : `<div style="padding:1.25rem;color:var(--muted);font-size:0.85rem;text-align:center">TIFF file — use Download</div>`;
+        card.innerHTML = `
+          <header>
+            <span>${f.label}</span>
+            <a href="${f.url}" download="${f.name}">Download</a>
+          </header>
+          ${preview}
+        `;
+        previews.appendChild(card);
+      }
+    }
+
+    frontPrint.addEventListener("change", updateGenerateState);
+    backPrint.addEventListener("change", updateGenerateState);
+
+    document.getElementById("reset").addEventListener("click", () => {
+      form.reset();
+      results.classList.add("hidden");
+      metrics.innerHTML = "";
+      previews.innerHTML = "";
+      statusEl.textContent = "Select at least one print file.";
+      statusEl.className = "status";
+      loadTemplates().then(updateGenerateState);
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!frontPrint.files[0] && !backPrint.files[0]) {
+        statusEl.textContent = "Upload at least one print file (front and/or back).";
+        statusEl.className = "status error";
+        return;
+      }
+
+      const fd = new FormData();
+      if (frontPrint.files[0]) {
+        fd.append("front_print", frontPrint.files[0]);
+        fd.append("front_mockup", frontMockup.value);
+        fd.append("front_show_tag", document.getElementById("front_show_tag").checked ? "true" : "false");
+        fd.append("front_text_color", document.getElementById("front_text_color").value);
+      }
+      if (backPrint.files[0]) {
+        fd.append("back_print", backPrint.files[0]);
+        fd.append("back_mockup", backMockup.value);
+        fd.append("back_show_tag", document.getElementById("back_show_tag").checked ? "true" : "false");
+        fd.append("back_text_color", document.getElementById("back_text_color").value);
+      }
+
+      generateBtn.disabled = true;
+      statusEl.textContent = "Processing…";
+      statusEl.className = "status";
+
+      try {
+        const res = await fetch("/api/process", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Processing failed");
+        }
+        renderResults(data);
+        statusEl.textContent = `Done — ${data.files.length} file(s).`;
+        statusEl.className = "status ok";
+      } catch (err) {
+        statusEl.textContent = err.message || String(err);
+        statusEl.className = "status error";
+        results.classList.add("hidden");
+      } finally {
+        updateGenerateState();
+      }
+    });
+
+    loadTemplates()
+      .then(updateGenerateState)
+      .catch(err => {
+        statusEl.textContent = "Failed to load templates: " + err.message;
+        statusEl.className = "status error";
+      });
+  </script>
+</body>
+</html>
