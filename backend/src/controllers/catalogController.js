@@ -1,6 +1,6 @@
 const { supabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
-const { filterActivePrintMethods } = require('../constants/printing');
+const { filterActivePrintMethods, productHasActivePrintMethod } = require('../constants/printing');
 
 exports.getCategories = async (req, res) => {
   try {
@@ -51,7 +51,9 @@ exports.getProducts = async (req, res) => {
 
     if (error) throw error;
 
-    const formattedProducts = products.map(p => {
+    const formattedProducts = products
+      .filter(p => productHasActivePrintMethod(p.product_print_methods))
+      .map(p => {
         const gallery = p.product_images
             ? p.product_images.filter(img => !img.is_hover).sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
             : [];
@@ -69,6 +71,7 @@ exports.getProducts = async (req, res) => {
             ),
         };
     });
+
     formattedProducts.forEach(p => delete p.product_print_methods);
 
     res.json(formattedProducts);
@@ -124,6 +127,10 @@ exports.getProductById = async (req, res) => {
         ? product.product_print_methods.map(ppm => ppm.print_method)
         : []
     );
+
+    if (printMethods.length === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
 
     const startingPrice = product.min_price ?? null;
 

@@ -3,6 +3,7 @@ import { PageSEO } from "@/components/PageSEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { getProducts } from "@/services/api";
+import { filterActivePrintMethods } from "@/constants/printing";
 import type { Product } from "@/types/api";
 import {
   MousePointer2, Type, Image as ImageIcon, Layers,
@@ -10,7 +11,6 @@ import {
   ShieldCheck, Clock, Scissors, Activity, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PrintMethodBadges } from "@/components/catalog/PrintMethodBadges";
 import { type Language, translations } from "@/translations/landing";
 
 const LandingLangContext = createContext<{ lang: Language; t: typeof translations['en']; setLang: (l: Language) => void }>({
@@ -648,7 +648,7 @@ export default function NewLanding() {
 
   useEffect(() => {
     getProducts()
-      .then(setProducts)
+      .then(data => setProducts(data.filter(p => filterActivePrintMethods(p.print_methods).length > 0)))
       .catch(console.error)
       .finally(() => setLoadingProducts(false));
   }, []);
@@ -872,7 +872,6 @@ export default function NewLanding() {
                   </div>
                   <div className="p-5 space-y-3">
                     <h3 className="font-bold text-base leading-tight">{product.name}</h3>
-                    <PrintMethodBadges print_methods={product.print_methods} />
                     <p className="text-sm text-muted-foreground font-light">
                       {t.catalogStartingAt}{" "}
                       <span className="font-bold text-foreground">

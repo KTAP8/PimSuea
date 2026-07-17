@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { PrintMethodBadges } from "@/components/catalog/PrintMethodBadges";
+import { filterActivePrintMethods } from "@/constants/printing";
 import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { getCategories, getProducts } from "@/services/api";
 import type { Category, Product } from "@/types/api";
@@ -37,7 +38,9 @@ export default function Catalog() {
         setError(null);
         const categoryId = activeTab === "all" ? null : (activeTab as number);
         const data = await getProducts({ category_id: categoryId, is_beginner_friendly: isBeginner });
-        setProducts(data);
+        setProducts(
+          data.filter(p => filterActivePrintMethods(p.print_methods).length > 0)
+        );
       } catch (err) {
         console.error("Failed to load products:", err);
         setError("เกิดข้อผิดพลาดในการโหลดสินค้า");

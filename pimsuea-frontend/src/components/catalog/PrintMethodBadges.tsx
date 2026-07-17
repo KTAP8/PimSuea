@@ -5,6 +5,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { filterActivePrintMethods } from "@/constants/printing"
 
 const PRINT_META: Record<string, { description: string; className: string }> = {
   DTG: {
@@ -19,14 +20,14 @@ interface Props {
 }
 
 export function PrintMethodBadges({ print_methods, className }: Props) {
-  if (!print_methods?.length) return null
+  const activeMethods = filterActivePrintMethods(print_methods)
+  if (!activeMethods.length) return null
   return (
     <TooltipProvider>
       <div className={`flex flex-wrap gap-1.5 ${className ?? ""}`}>
-        {print_methods
-          .filter(m => m.name.toUpperCase() !== 'DTF')
-          .map(m => {
-          const meta = PRINT_META[m.name.toUpperCase()]
+        {activeMethods.map(m => {
+          const metaKey = m.name.toUpperCase().includes('DTG') ? 'DTG' : m.name.toUpperCase()
+          const meta = PRINT_META[metaKey]
           return (
             <Tooltip key={m.id}>
               <TooltipTrigger asChild>
