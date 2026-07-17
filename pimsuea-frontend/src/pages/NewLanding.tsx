@@ -681,7 +681,7 @@ export default function NewLanding() {
     <LandingLangContext.Provider value={{ lang, t, setLang }}>
     <PageSEO
       title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
-      description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG & DTF printing. Fast delivery across Thailand."
+      description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG printing. Fast delivery across Thailand."
       canonical="https://pimsuea.com/"
     />
     <script

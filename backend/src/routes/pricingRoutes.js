@@ -4,7 +4,7 @@ const requireAuth = require('../middleware/requireAuth');
 const { calculatePrice, lookupPrintPrice } = require('../utils/pricing');
 const { supabaseAdmin } = require('../config/supabaseClient');
 
-const VALID_PRINTING_TYPES = ['DTG', 'DTF'];
+const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
 const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
 const VALID_TIERS = ['3x4in', 'A5', 'A4', 'A3'];
 
@@ -12,8 +12,8 @@ router.post('/', requireAuth, async (req, res) => {
   const { printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_id, size } = req.body;
 
   // Validate required fields
-  if (!printingType || !VALID_PRINTING_TYPES.includes(printingType)) {
-    return res.status(400).json({ error: 'printingType must be DTG or DTF' });
+  if (!printingType || !ACTIVE_PRINTING_TYPES.includes(printingType)) {
+    return res.status(400).json({ error: 'printingType must be DTG' });
   }
   if (typeof aabb_w_cm !== 'number' || aabb_w_cm <= 0 ||
       typeof aabb_h_cm !== 'number' || aabb_h_cm <= 0) {
@@ -84,8 +84,8 @@ router.get('/estimate', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'colorName is required' });
   if (!VALID_SIZES.includes(size))
     return res.status(400).json({ error: 'Invalid size' });
-  if (!VALID_PRINTING_TYPES.includes(printingType))
-    return res.status(400).json({ error: 'printingType must be DTG or DTF' });
+  if (!ACTIVE_PRINTING_TYPES.includes(printingType))
+    return res.status(400).json({ error: 'printingType must be DTG' });
   if (!frontTier && !backTier)
     return res.status(400).json({ error: 'At least one of frontTier or backTier is required' });
   if (frontTier && !VALID_TIERS.includes(frontTier))

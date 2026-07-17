@@ -189,7 +189,7 @@ export default function DesignStudio() {
 
                     {/* Top-right overlay: price card — desktop only */}
                     <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 hidden md:block">
-                        <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} printingType={d.printingType} />
+                        <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} />
                     </div>
 
                     {/* Top-center overlay: size editor (desktop) + remove button */}

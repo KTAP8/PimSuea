@@ -197,6 +197,13 @@ exports.createOrder = async (req, res) => {
       return { item, design: design ?? null };
     }));
 
+    const dtfDesign = itemDesignData.find(({ design }) => design?.printing_type === 'DTF');
+    if (dtfDesign) {
+      return res.status(400).json({
+        error: 'DTF printing is no longer available. Please create a new design with DTG.',
+      });
+    }
+
     const colorIds = [...new Set(items.map(i => i.color_id || i.color).filter(Boolean))];
     const colorEntries = await Promise.all(colorIds.map(async (id) => {
       const { data } = await supabaseAdmin.from('colors').select('name').eq('id', id).single();

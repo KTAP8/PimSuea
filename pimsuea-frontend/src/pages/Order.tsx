@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee } from "@/services/api";
 import CouponInput, { type AppliedCoupon, type CouponItem, computeDiscount } from "@/components/CouponInput";
+import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from "@/constants/printing";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
@@ -203,6 +204,7 @@ export default function Order() {
   // Calculate Total
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const hasDtfItems = cartItems.some(item => isLegacyDtfPrintingType(item.printingType));
 
   // Fetch delivery fee whenever cart quantity changes
   useEffect(() => {
@@ -548,6 +550,14 @@ export default function Order() {
   };
 
   const handleNext = () => {
+      if (hasDtfItems) {
+          setNotification({
+              type: 'error',
+              title: 'ไม่สามารถดำเนินการต่อได้',
+              message: DTF_DISCONTINUED_MESSAGE,
+          });
+          return;
+      }
       if (step === 2) {
           const fields: (keyof ShippingInfo)[] = ['fullName', 'phone', 'province', 'district', 'postalCode', 'addressLine1'];
           setTouchedFields(new Set(fields));
@@ -638,6 +648,14 @@ export default function Order() {
   };
 
   const handleSubmit = async () => {
+      if (hasDtfItems) {
+          setNotification({
+              type: 'error',
+              title: 'ไม่สามารถสั่งซื้อได้',
+              message: DTF_DISCONTINUED_MESSAGE,
+          });
+          return;
+      }
       setLoading(true);
       setNotification(null);
       try {
@@ -705,6 +723,14 @@ export default function Order() {
       {step === 1 && (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center"><ShoppingCart className="mr-2" /> ตะกร้าสินค้า</h2>
+
+            {hasDtfItems && (
+                <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-800">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle className="font-semibold">ไม่สามารถสั่งซื้องาน DTF ได้</AlertTitle>
+                    <AlertDescription>{DTF_DISCONTINUED_MESSAGE}</AlertDescription>
+                </Alert>
+            )}
             
              {cartItems.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed rounded-xl">
@@ -1074,11 +1100,11 @@ export default function Order() {
             ) : null}
 
             {step < 3 ? (
-                <Button onClick={handleNext} disabled={cartItems.length === 0}>
+                <Button onClick={handleNext} disabled={cartItems.length === 0 || hasDtfItems}>
                     ดำเนินการต่อ <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
             ) : (
-                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700" disabled={loading}>
+                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700" disabled={loading || hasDtfItems}>
                     {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                     ยืนยันการสั่งซื้อ
                 </Button>

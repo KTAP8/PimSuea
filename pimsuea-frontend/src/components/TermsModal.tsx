@@ -42,7 +42,7 @@ const content = {
       },
       {
         title: '3. The "Screen to Fabric" Disclaimer (Hardware Tolerances)',
-        body: 'We bridge digital software with physical hardware (DTG and DTF printing). By ordering, you acknowledge the following manufacturing realities:',
+        body: 'We bridge digital software with physical hardware (DTG printing). By ordering, you acknowledge the following manufacturing realities:',
         bullets: [
           { bold: 'Color Variances:', text: 'Digital mockups on our web canvas are displayed in RGB, while our industrial printers operate in CMYK. Minor color shifts, particularly a softer, matte finish on DTG prints, are expected and do not constitute a defect.' },
           { bold: 'Placement & Scale:', text: 'The 3D web canvas is an accurate representation, but physical garment printing carries an industry-standard placement tolerance of 0.5 to 1 inch.' },
@@ -62,7 +62,7 @@ const content = {
         body: 'Because Pimsuea operates on a zero-minimum, print-on-demand model, every piece of clothing is uniquely engineered for the specific user.',
         bullets: [
           { bold: 'No "Buyer\'s Remorse":', text: 'We do not hold inventory. Therefore, we cannot accept returns, exchanges, or issue refunds if you order the incorrect size, select the wrong garment color, or change your mind after the order is placed. Please review the size charts carefully before checkout.' },
-          { bold: 'Defects & Errors:', text: 'If your item arrives with a clear manufacturing defect (e.g., a torn garment, peeling DTF film, or a massive printing error that deviates entirely from your uploaded file), we will gladly replace it. You must submit a claim with photo evidence to our support team within 7 days of receiving your package.' },
+          { bold: 'Defects & Errors:', text: 'If your item arrives with a clear manufacturing defect (e.g., a torn garment, peeling print, or a massive printing error that deviates entirely from your uploaded file), we will gladly replace it. You must submit a claim with photo evidence to our support team within 7 days of receiving your package.' },
           { bold: 'Order Finality:', text: 'Once an order is placed and the design enters our automated production queue, it cannot be modified, scaled, or canceled.' },
         ],
       },
@@ -109,7 +109,7 @@ const content = {
       },
       {
         title: '3. ข้อจำกัด "จากหน้าจอสู่เนื้อผ้า" (ความคลาดเคลื่อนทางฮาร์ดแวร์)',
-        body: 'เราเชื่อมต่อซอฟต์แวร์ดิจิทัลเข้ากับฮาร์ดแวร์จริง (การพิมพ์ DTG และ DTF) เมื่อทำการสั่งซื้อ คุณรับทราบถึงข้อจำกัดในการผลิตดังต่อไปนี้:',
+        body: 'เราเชื่อมต่อซอฟต์แวร์ดิจิทัลเข้ากับฮาร์ดแวร์จริง (การพิมพ์ DTG) เมื่อทำการสั่งซื้อ คุณรับทราบถึงข้อจำกัดในการผลิตดังต่อไปนี้:',
         bullets: [
           { bold: 'ความคลาดเคลื่อนของสี:', text: 'ภาพม็อคอัพดิจิทัลบนหน้าเว็บแสดงผลเป็น RGB ในขณะที่เครื่องพิมพ์อุตสาหกรรมของเราทำงานในระบบ CMYK สีอาจมีการคลาดเคลื่อนเล็กน้อย โดยเฉพาะงานพิมพ์ DTG ที่สีจะมีความซอฟต์และแมตต์ขึ้น ซึ่งถือเป็นเรื่องปกติและไม่ใช่ข้อบกพร่อง' },
           { bold: 'ตำแหน่งและสัดส่วน:', text: 'แคนวาส 3D บนหน้าเว็บเป็นการจำลองที่แม่นยำ แต่การพิมพ์ลงบนเสื้อผ้าจริงอาจมีความคลาดเคลื่อนของตำแหน่งตามมาตรฐานอุตสาหกรรมที่ 0.5 ถึง 1 นิ้ว' },
@@ -129,7 +129,7 @@ const content = {
         body: 'เนื่องจาก Pimsuea ดำเนินงานในรูปแบบ Print-on-Demand แบบไม่มีขั้นต่ำ เสื้อผ้าทุกชิ้นจึงถูกผลิตขึ้นมาใหม่เพื่อผู้ใช้แต่ละรายโดยเฉพาะ',
         bullets: [
           { bold: 'ไม่รับคืนสินค้ากรณีเปลี่ยนใจ:', text: 'เราไม่มีการสต็อกสินค้า ดังนั้นเราจึงไม่สามารถรับคืนสินค้า เปลี่ยนสินค้า หรือคืนเงินได้ ในกรณีที่คุณสั่งผิดไซส์ เลือกสีเสื้อผิด หรือเปลี่ยนใจหลังจากทำรายการสั่งซื้อไปแล้ว โปรดตรวจสอบตารางไซส์อย่างละเอียดก่อนชำระเงิน' },
-          { bold: 'สินค้ามีตำหนิหรือข้อผิดพลาด:', text: 'หากสินค้าของคุณส่งถึงมือพร้อมข้อบกพร่องจากการผลิตที่ชัดเจน (เช่น เสื้อขาด ฟิล์ม DTF ลอก หรือการสกรีนผิดพลาดอย่างร้ายแรงและไม่ตรงกับไฟล์ที่คุณอัปโหลด) เรายินดีที่จะผลิตและจัดส่งให้ใหม่ โดยคุณต้องส่งคำร้องพร้อมหลักฐานรูปถ่ายมายังทีมซัพพอร์ตของเราภายใน 7 วัน นับจากวันที่ได้รับพัสดุ' },
+          { bold: 'สินค้ามีตำหนิหรือข้อผิดพลาด:', text: 'หากสินค้าของคุณส่งถึงมือพร้อมข้อบกพร่องจากการผลิตที่ชัดเจน (เช่น เสื้อขาด งานพิมพ์ลอก หรือการสกรีนผิดพลาดอย่างร้ายแรงและไม่ตรงกับไฟล์ที่คุณอัปโหลด) เรายินดีที่จะผลิตและจัดส่งให้ใหม่ โดยคุณต้องส่งคำร้องพร้อมหลักฐานรูปถ่ายมายังทีมซัพพอร์ตของเราภายใน 7 วัน นับจากวันที่ได้รับพัสดุ' },
           { bold: 'ความสิ้นสุดของคำสั่งซื้อ:', text: 'เมื่อคำสั่งซื้อเสร็จสมบูรณ์และดีไซน์เข้าสู่คิวการผลิตอัตโนมัติของเราแล้ว จะไม่สามารถแก้ไข ปรับขนาด หรือยกเลิกได้' },
         ],
       },

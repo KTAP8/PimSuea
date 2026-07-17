@@ -7,6 +7,7 @@ import api, { getProductTemplates, uploadFile, r2ProxyUrl, getPrice } from '../s
 import { compositeSingleSide, OUTPUT_SCALE } from '../utils/mockupCompositor';
 import { injectPngDpi } from '../utils/canvasExporter';
 import { useAuth } from '../contexts/AuthContext';
+import { isLegacyDtfPrintingType } from '../constants/printing';
 import type { ProductTemplate, Color } from '../types/api';
 import type { CanvasImage, SerializableImage, CanvasPriceBreakdown } from '../types/canvas';
 
@@ -20,6 +21,13 @@ export function useCanvasDesign() {
     const designIdParam = searchParams.get('designId');
     const printingTypeParam = (searchParams.get('printingType') || searchParams.get('printing_type'))?.toUpperCase();
     const { user } = useAuth();
+
+    // Block new DTF studio entry via URL param
+    useEffect(() => {
+        if (printingTypeParam === 'DTF' && !designIdParam && id) {
+            navigate(`/studio/${id}?printingType=DTG`, { replace: true });
+        }
+    }, [printingTypeParam, designIdParam, id, navigate]);
 
     // Konva refs
     const stageRef = useRef<Konva.Stage>(null);
@@ -49,7 +57,9 @@ export function useCanvasDesign() {
     // Save state
     const [designId, setDesignId] = useState<string | null>(null);
     const [designName, setDesignName] = useState('Untitled Design');
-    const [printingType, setPrintingType] = useState<string>(printingTypeParam ?? 'DTG');
+    const [printingType, setPrintingType] = useState<string>(
+        printingTypeParam === 'DTF' && !designIdParam ? 'DTG' : (printingTypeParam ?? 'DTG')
+    );
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
     const [nameError, setNameError] = useState(false);
@@ -762,6 +772,7 @@ export function useCanvasDesign() {
     // ── Add to cart ───────────────────────────────────────────────────────────
     const handleAddToCart = async (navigateToOrder: boolean) => {
         if (!currentTemplate || !user) return;
+        if (isLegacyDtfPrintingType(printingType)) return;
         setIsAddingToCart(true);
         try {
             const result = await handleSave();

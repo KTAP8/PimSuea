@@ -202,6 +202,7 @@ export default function ProductDetails() {
 
           <div className="space-y-8 py-2">
             {/* Print Method Selection */}
+            {(product.print_methods?.length ?? 0) > 1 && (
             <div className="space-y-4">
                 <Label className="flex items-center text-lg font-bold text-gray-900 border-l-4 border-primary pl-3">
                    เลือกรูปแบบการพิมพ์
@@ -231,6 +232,7 @@ export default function ProductDetails() {
                     ))}
                 </div>
             </div>
+            )}
 
 
           </div>

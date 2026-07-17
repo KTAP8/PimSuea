@@ -1,5 +1,6 @@
 const { supabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
+const { filterActivePrintMethods } = require('../constants/printing');
 
 exports.getCategories = async (req, res) => {
   try {
@@ -61,9 +62,11 @@ exports.getProducts = async (req, res) => {
             hover_image_url: hoverImg ? hoverImg.image_url : null,
             starting_price: p.min_price ?? null,
             price: p.min_price ?? p.price,
-            print_methods: p.product_print_methods
-                ? p.product_print_methods.map(ppm => ppm.print_method).filter(Boolean)
-                : [],
+            print_methods: filterActivePrintMethods(
+                p.product_print_methods
+                    ? p.product_print_methods.map(ppm => ppm.print_method).filter(Boolean)
+                    : []
+            ),
         };
     });
     formattedProducts.forEach(p => delete p.product_print_methods);
@@ -116,9 +119,11 @@ exports.getProductById = async (req, res) => {
     }
 
     // Process print methods and their associated pricing tiers
-    const printMethods = product.product_print_methods
-      ? product.product_print_methods.map(ppm => ppm.print_method)
-      : [];
+    const printMethods = filterActivePrintMethods(
+      product.product_print_methods
+        ? product.product_print_methods.map(ppm => ppm.print_method)
+        : []
+    );
 
     const startingPrice = product.min_price ?? null;
 

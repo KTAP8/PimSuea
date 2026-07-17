@@ -7,10 +7,6 @@ import {
 } from "@/components/ui/tooltip"
 
 const PRINT_META: Record<string, { description: string; className: string }> = {
-  DTF: {
-    description: "พิมพ์ฟิล์มแล้วรีดติด — เหมาะทุกสีเสื้อ สีสันสดใส",
-    className: "border-transparent bg-teal-100 text-teal-800 hover:bg-teal-100 cursor-default",
-  },
   DTG: {
     description: "พิมพ์ลงผ้าโดยตรง — เหมาะสำหรับเสื้อสีขาว ดีไซน์ละเอียด",
     className: "border-transparent bg-purple-100 text-purple-800 hover:bg-purple-100 cursor-default",
@@ -27,7 +23,9 @@ export function PrintMethodBadges({ print_methods, className }: Props) {
   return (
     <TooltipProvider>
       <div className={`flex flex-wrap gap-1.5 ${className ?? ""}`}>
-        {print_methods.map(m => {
+        {print_methods
+          .filter(m => m.name.toUpperCase() !== 'DTF')
+          .map(m => {
           const meta = PRINT_META[m.name.toUpperCase()]
           return (
             <Tooltip key={m.id}>

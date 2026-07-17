@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from "@/constants/printing";
 
 function getFirstPreview(raw: string | null | undefined): string {
   if (!raw) return '';
@@ -134,11 +135,20 @@ export default function MyProducts() {
 
               {/* Action Buttons Footer (Mobile Accessible) */}
               <div className="mt-auto grid grid-cols-5 gap-2 pt-4 border-t border-gray-100">
+                  {isLegacyDtfPrintingType(design.printing_type) ? (
+                    <div className="col-span-3">
+                      <Button variant="default" className="w-full rounded-xl h-11 font-bold" disabled>
+                        <ShoppingCart className="w-4 h-4 mr-2" /> สั่งผลิต
+                      </Button>
+                      <p className="text-[10px] text-amber-600 mt-1.5 leading-snug">{DTF_DISCONTINUED_MESSAGE}</p>
+                    </div>
+                  ) : (
                   <Link to={`/checkout?initialDesignId=${design.id}`} className="col-span-3">
                       <Button variant="default" className="w-full rounded-xl shadow-sm hover:shadow-primary/20 bg-primary font-bold h-11">
                           <ShoppingCart className="w-4 h-4 mr-2" /> สั่งผลิต
                       </Button>
                   </Link>
+                  )}
                   <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} className="col-span-1">
                       <Button variant="outline" className="w-full rounded-xl border-gray-200 hover:border-primary/50 text-gray-600 px-0 hover:bg-primary/5 h-11">
                           <Edit2 className="w-4 h-4" />

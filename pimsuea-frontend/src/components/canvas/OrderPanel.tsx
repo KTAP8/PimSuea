@@ -1,7 +1,6 @@
-import { Loader2, Minus, Plus, ShoppingCart, X, Zap, HelpCircle } from 'lucide-react';
-
-const DTF_GUIDE_URL = '/news/1'; // ← update with the real article ID from Supabase
+import { Loader2, Minus, Plus, ShoppingCart, X, Zap } from 'lucide-react';
 import type { CanvasPriceBreakdown } from '../../types/canvas';
+import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from '../../constants/printing';
 
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
@@ -27,7 +26,9 @@ export function OrderPanel({
     onAddToCart, onOrderNow, onClose,
     printingType,
 }: Props) {
+    const isDtfLegacy = isLegacyDtfPrintingType(printingType);
     const busy = isAddingToCart || isSaving;
+    const checkoutDisabled = busy || isDtfLegacy;
     const pricePerUnit = priceBreakdown?.total_per_unit ?? null;
     const totalPrice = pricePerUnit != null ? pricePerUnit * quantity : null;
 
@@ -105,17 +106,10 @@ export function OrderPanel({
                         <p className="text-xs text-gray-400 text-center">บันทึกดีไซน์เพื่อดูราคา</p>
                     )}
 
-                    {/* DTF advisory */}
-                    {printingType === 'DTF' && (
+                    {isDtfLegacy && (
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                            <div className="flex items-center justify-between mb-0.5">
-                                <p className="text-xs text-amber-700 font-medium">⚠ ข้อแนะนำสำหรับ DTF</p>
-                                <a href={DTF_GUIDE_URL} target="_blank" rel="noopener noreferrer" className="text-amber-500 hover:text-amber-700 transition-colors">
-                                    <HelpCircle className="w-4 h-4" />
-                                </a>
-                            </div>
-                            <p className="text-xs text-amber-600 leading-relaxed">
-                                เส้นกราฟิกและตัวอักษรควรหนาอย่างน้อย 2mm ถ้าหากเล็กกว่า 2mm แนะนำให้เพิ่มพื้นหลังสีขาวเพื่อให้กาวยึดติดดีขึ้น
+                            <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                                {DTF_DISCONTINUED_MESSAGE}
                             </p>
                         </div>
                     )}
@@ -124,14 +118,14 @@ export function OrderPanel({
                     <div className="flex flex-col gap-2">
                         <button
                             onClick={onOrderNow}
-                            disabled={busy}
+                            disabled={checkoutDisabled}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-sm hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all">
                             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                             สั่งซื้อทันที
                         </button>
                         <button
                             onClick={onAddToCart}
-                            disabled={busy}
+                            disabled={checkoutDisabled}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all">
                             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
                             เพิ่มลงตะกร้า

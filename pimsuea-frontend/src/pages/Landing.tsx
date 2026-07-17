@@ -76,7 +76,7 @@ const content = {
       items: [
         { q: 'PimSuea คืออะไร?',                           a: 'แพลตฟอร์มออกแบบและพิมพ์เสื้อยืด Custom แบบครบวงจร คุณออกแบบเองบนเบราว์เซอร์และสั่งพิมพ์ได้ทันที' },
         { q: 'มีจำนวนขั้นต่ำในการสั่งซื้อไหม?',            a: 'ไม่มี! สั่งได้ตั้งแต่ 1 ตัว ยิ่งสั่งมากราคายิ่งถูกลง' },
-        { q: 'ใช้เทคนิคการพิมพ์อะไร?',                    a: 'DTG (Direct-to-Garment) และ DTF (Direct-to-Film) ให้สีสันคมชัดและทนทาน' },
+        { q: 'ใช้เทคนิคการพิมพ์อะไร?',                    a: 'DTG (Direct-to-Garment) ให้สีสันคมชัดและทนทาน' },
         { q: 'ระยะเวลาในการผลิตและจัดส่งนานแค่ไหน?',      a: 'รวม 5-14 วัน ขึ้นอยู่กับพื้นที่' },
         { q: 'ออกแบบบนมือถือได้ไหม?',                    a: 'ได้ แต่แนะนำให้ใช้บน Desktop เพื่อประสบการณ์ที่ดีที่สุด' },
       ],
@@ -150,7 +150,7 @@ const content = {
       items: [
         { q: 'What is PimSuea?',                       a: 'An all-in-one custom t-shirt design and print platform. Design in your browser and order in minutes.' },
         { q: 'Is there a minimum order quantity?',     a: 'No minimum! Order from just 1 piece. The more you order, the better the price.' },
-        { q: 'What printing techniques do you use?',  a: 'DTG (Direct-to-Garment) and DTF (Direct-to-Film) — sharp colors, durable prints.' },
+        { q: 'What printing techniques do you use?',  a: 'DTG (Direct-to-Garment) — sharp colors, durable prints.' },
         { q: 'How long does production take?',        a: '5-14 days depending on your location.' },
         { q: 'Can I design on mobile?',               a: 'Yes! We recommend desktop for the best design experience.' },
       ],

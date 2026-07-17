@@ -47,6 +47,8 @@ export interface PrintPricingTier {
 export type PrintTier = '3x4in' | 'A5' | 'A4' | 'A3' | 'A2';
 export type PrintingType = 'DTG' | 'DTF';
 
+export { ACTIVE_PRINTING_TYPES } from '../constants/printing';
+
 export interface PriceInput {
     printingType: PrintingType;
     aabb_w_cm: number;

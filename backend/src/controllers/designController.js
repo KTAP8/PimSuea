@@ -3,7 +3,7 @@ const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config
 const { isUUID, isPositiveInt } = require('../utils/validate');
 const { getLocationFromUrl, deleteObject } = require('../config/r2Client');
 
-const PRINTING_TYPES = ['DTG', 'DTF'];
+const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
 
 exports.getUserDesigns = async (req, res) => {
   const userId = req.user.id; // From requireAuth
@@ -76,7 +76,7 @@ exports.saveDesign = async (req, res) => {
   }
 
   const printingType = req.body.printing_type || null;
-  if (printingType && !PRINTING_TYPES.includes(printingType)) {
+  if (printingType && !ACTIVE_PRINTING_TYPES.includes(printingType)) {
     return res.status(400).json({ error: 'printing_type ไม่ถูกต้อง' });
   }
 
@@ -130,9 +130,6 @@ exports.updateDesign = async (req, res) => {
   }
 
   const updatePrintingType = req.body.printing_type || undefined;
-  if (updatePrintingType && !PRINTING_TYPES.includes(updatePrintingType)) {
-    return res.status(400).json({ error: 'printing_type ไม่ถูกต้อง' });
-  }
 
   const safeUpdateName = (design_name && typeof design_name === 'string')
     ? design_name.slice(0, 200)
@@ -146,13 +143,21 @@ exports.updateDesign = async (req, res) => {
     // 1. Fetch current design to handle file cleanup
     const { data: oldDesign, error: fetchError } = await db
         .from('user_designs')
-        .select('print_file_url, design_hash')
+        .select('print_file_url, design_hash, printing_type')
         .eq('id', id)
         .eq('user_id', userId)
         .single();
         
     if (fetchError || !oldDesign) {
         return res.status(404).json({ error: 'Design not found' });
+    }
+
+    if (updatePrintingType) {
+      const isExistingLegacyDtf =
+        oldDesign.printing_type === 'DTF' && updatePrintingType === 'DTF';
+      if (!isExistingLegacyDtf && !ACTIVE_PRINTING_TYPES.includes(updatePrintingType)) {
+        return res.status(400).json({ error: 'printing_type ไม่ถูกต้อง' });
+      }
     }
 
     // 2. Cleanup old print files if a new one is provided

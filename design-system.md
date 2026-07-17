@@ -126,12 +126,12 @@ Focus ring uses `--ring` which is set to `#F05A25` (Action Orange). This is alre
 **Regular T-Shirt**
 - Colors: White (`#FFFFFF`), Black (`#000000`)
 - Sizes: S, M, L, XL, XXL — SKUs: `REG-WHITE-S` … `REG-BLACK-XXL`
-- Printing: DTG + DTF — Base price: ฿130
+- Printing: DTG — Base price: ฿130
 
 **Oversize T-Shirt**
 - Colors: White (`#FFFFFF`), Black (`#000000`)
 - Sizes: S, M, L, XL, XXL — SKUs: `OS-WHITE-S` … `OS-BLACK-XXL`
-- Printing: DTG + DTF — Base price: ฿150
+- Printing: DTG — Base price: ฿150
 
 ---
 
