@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Setup — PimSuea Ops{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Configuration required</h2>
+  <p>The ops console reads credentials from your local env file (same as the backend API).</p>
+</div>
+
+<div class="card">
+  <h2>Missing variables</h2>
+  <ul>
+    {% for m in missing %}
+      <li><code>{{ m }}</code></li>
+    {% endfor %}
+  </ul>
+  <p class="muted">Env files checked:</p>
+  <ul class="mono muted">
+    <li>{{ backend_env }} — {% if backend_exists %}found{% else %}<strong>not found</strong>{% endif %}</li>
+    <li>{{ tools_env }} — {% if tools_exists %}found{% else %}not found{% endif %}</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Create backend/.env</h2>
+  <p>Copy from the main README and fill in your Supabase + R2 values:</p>
+<pre class="mono muted"># backend/.env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your-service-role-key
+
+CLOUDFLARE_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_PUBLIC_URL_ASSETS=https://...
+R2_PUBLIC_URL_PRINT=https://...
+R2_PUBLIC_URL_PRINT_ORDERED=https://...</pre>
+  <p class="muted">Use <code>SUPABASE_SECRET_KEY</code> (service role) so ops can write products and orders. Restart the ops server after creating the file.</p>
+</div>
+{% endblock %}

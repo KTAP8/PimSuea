@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}{{ product.title }} — PimSuea Ops{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('products_list') }}">← Products</a></p>
+
+<div class="card">
+  <h2>{{ product.title }}</h2>
+  <p class="mono muted">{{ product.id }}</p>
+</div>
+
+<form method="post">
+  <input type="hidden" name="action" value="save_meta" />
+  <div class="card">
+    <h2>Metadata</h2>
+    <div class="grid-2">
+      <div>
+        <label>Title</label>
+        <input type="text" name="title" value="{{ product.title or '' }}" required />
+      </div>
+      <div>
+        <label>Category</label>
+        <select name="category_id">
+          <option value="">— none —</option>
+          {% for c in categories %}
+            <option value="{{ c.id }}" {% if product.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Base price (฿)</label>
+        <input type="number" step="0.01" name="base_price" value="{{ product.base_price or '' }}" />
+      </div>
+      <div>
+        <label>Min / starting price (฿)</label>
+        <input type="number" step="0.01" name="min_price" value="{{ product.min_price or '' }}" />
+      </div>
+    </div>
+    <label>Details</label>
+    <textarea name="details">{{ product.details or '' }}</textarea>
+    <label>Care instructions</label>
+    <textarea name="care_instructions">{{ product.care_instructions or '' }}</textarea>
+    <div class="row" style="margin-top:0.75rem;">
+      <label><input type="checkbox" name="is_active" {% if product.is_active %}checked{% endif %} /> Active in catalog</label>
+      <label><input type="checkbox" name="is_beginner_friendly" {% if product.is_beginner_friendly %}checked{% endif %} /> Beginner friendly</label>
+    </div>
+    <div style="margin-top:0.75rem;">
+      <label>Print methods</label>
+      <div class="row">
+        {% for pm in print_methods %}
+          <label style="flex:0;">
+            <input type="checkbox" name="print_methods" value="{{ pm.id }}"
+              {% if pm.id in selected_print_methods %}checked{% endif %} />
+            {{ pm.name }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    <p style="margin-top:1rem;"><button type="submit" class="btn">Save metadata</button></p>
+  </div>
+</form>
+
+<div class="card">
+  <h2>R2 catalog assets</h2>
+  <p class="muted">Files under <code>design-assets/catalog/{{ product.id }}/</code></p>
+  <form method="post" style="margin-bottom:0.75rem;">
+    <input type="hidden" name="action" value="migrate_r2" />
+    <button type="submit" class="btn secondary">Copy Supabase template URLs → R2</button>
+  </form>
+  {% if r2_assets %}
+    <ul class="mono muted">
+      {% for a in r2_assets %}
+        <li><a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No R2 catalog files yet. Upload below or run migration.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Gallery images</h2>
+  <table>
+    <thead><tr><th>Preview</th><th>Order</th><th>Hover</th><th>URL</th><th></th></tr></thead>
+    <tbody>
+      {% for img in images %}
+      <tr>
+        <td><img class="thumb" src="{{ img.image_url }}" alt="" /></td>
+        <td>{{ img.display_order }}</td>
+        <td>{% if img.is_hover %}yes{% else %}—{% endif %}</td>
+        <td class="mono">{{ img.image_url }}</td>
+        <td>
+          <form method="post" class="inline-form">
+            <input type="hidden" name="action" value="delete_gallery" />
+            <input type="hidden" name="image_id" value="{{ img.id }}" />
+            <button type="submit" class="btn small danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">No gallery images.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
+    <input type="hidden" name="action" value="add_gallery" />
+    <div class="row">
+      <div><label>Upload file</label><input type="file" name="gallery_file" accept="image/*" /></div>
+      <div><label>Or paste URL</label><input type="url" name="gallery_url" placeholder="https://..." /></div>
+      <div><label>Display order</label><input type="number" name="display_order" value="0" /></div>
+      <div><label><input type="checkbox" name="is_hover" /> Hover image</label></div>
+      <div style="flex:0;"><label>&nbsp;</label><button type="submit" class="btn secondary">Add</button></div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Templates (canvas + mockup)</h2>
+  {% for tpl in templates %}
+  <div class="template-block">
+    <form method="post">
+      <input type="hidden" name="action" value="save_template" />
+      <input type="hidden" name="template_id" value="{{ tpl.id }}" />
+      <div class="row">
+        <div>
+          <label>Side</label>
+          <select name="side">
+            {% for s in template_sides %}
+              <option value="{{ s }}" {% if tpl.side == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>Color</label>
+          <select name="color_id">
+            {% for c in colors %}
+              <option value="{{ c.id }}" {% if tpl.color_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div><label><input type="checkbox" name="is_default" {% if tpl.is_default %}checked{% endif %} /> Default for side</label></div>
+      </div>
+      <label>Canvas template URL</label>
+      <input type="url" name="image_url" value="{{ tpl.image_url or '' }}" />
+      <div class="grid-2">
+        <div>
+          <p class="muted">Print area (canvas px)</p>
+          {% set pa = tpl.print_area_config or {} %}
+          <div class="row">
+            <div><label>x</label><input type="number" name="pa_x" value="{{ pa.x or 0 }}" /></div>
+            <div><label>y</label><input type="number" name="pa_y" value="{{ pa.y or 0 }}" /></div>
+            <div><label>width</label><input type="number" name="pa_width" value="{{ pa.width or 0 }}" /></div>
+            <div><label>height</label><input type="number" name="pa_height" value="{{ pa.height or 0 }}" /></div>
+          </div>
+          <div class="row">
+            <div><label>physical_w_cm</label><input type="number" step="0.01" name="physical_w_cm" value="{{ pa.physical_w_cm or 30.48 }}" /></div>
+            <div><label>physical_h_cm</label><input type="number" step="0.01" name="physical_h_cm" value="{{ pa.physical_h_cm or 40.64 }}" /></div>
+          </div>
+        </div>
+        <div>
+          <p class="muted">Mockup (3D composite)</p>
+          {% set mc = tpl.mockup_config or {} %}
+          {% set mp = mc.placement or {} %}
+          <label>Mockup image URL</label>
+          <input type="url" name="mockup_image_url" value="{{ mc.image_url or '' }}" />
+          <div class="row">
+            <div><label>x</label><input type="number" step="0.1" name="mp_x" value="{{ mp.x or 647 }}" /></div>
+            <div><label>y</label><input type="number" step="0.1" name="mp_y" value="{{ mp.y or 431 }}" /></div>
+            <div><label>w</label><input type="number" step="0.1" name="mp_w" value="{{ mp.w or 716.4 }}" /></div>
+            <div><label>h</label><input type="number" step="0.1" name="mp_h" value="{{ mp.h or 955.2 }}" /></div>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:0.5rem;">
+        <button type="submit" class="btn small">Save template</button>
+      </div>
+    </form>
+    <form method="post" class="inline-form" style="margin-top:0.35rem;">
+      <input type="hidden" name="action" value="delete_template" />
+      <input type="hidden" name="template_id" value="{{ tpl.id }}" />
+      <button type="submit" class="btn small danger">Delete</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">No templates. Clone from another product or add rows in Supabase.</p>
+  {% endfor %}
+
+  <h3 style="margin-top:1.25rem;">Add template</h3>
+  <form method="post">
+    <input type="hidden" name="action" value="save_template" />
+    <div class="row">
+      <div>
+        <label>Side</label>
+        <select name="side"><option value="front">front</option><option value="back">back</option></select>
+      </div>
+      <div>
+        <label>Color</label>
+        <select name="color_id">{% for c in colors %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    <label>Canvas template URL</label>
+    <input type="url" name="image_url" required />
+    <button type="submit" class="btn secondary" style="margin-top:0.5rem;">Add template</button>
+  </form>
+
+  <div class="grid-2" style="margin-top:1rem;">
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="upload_template_image" />
+      <label>Upload canvas PNG/JPG</label>
+      <input type="file" name="template_file" accept="image/*" />
+      <select name="side"><option value="front">front</option><option value="back">back</option></select>
+      <button type="submit" class="btn small secondary" style="margin-top:0.35rem;">Upload canvas</button>
+    </form>
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="upload_mockup_image" />
+      <label>Upload mockup JPG/PNG</label>
+      <input type="file" name="mockup_file" accept="image/*" />
+      <select name="side"><option value="front">front</option><option value="back">back</option></select>
+      <button type="submit" class="btn small secondary" style="margin-top:0.35rem;">Upload mockup</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Shirt pricing</h2>
+  {% for row in shirt_pricing %}
+  <form method="post" class="template-block">
+    <input type="hidden" name="action" value="save_pricing" />
+    <input type="hidden" name="pricing_id" value="{{ row.id }}" />
+    <div class="row">
+      <div>
+        <label>Color category</label>
+        <select name="color_name">
+          {% for cc in color_categories %}
+            <option value="{{ cc }}" {% if row.color_name == cc %}selected{% endif %}>{{ cc }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Size</label>
+        <select name="size">
+          {% for sz in shirt_sizes %}
+            <option value="{{ sz }}" {% if row.size == sz %}selected{% endif %}>{{ sz }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div><label>Min qty</label><input type="number" name="min_qty" value="{{ row.min_qty }}" /></div>
+      <div><label>Max qty</label><input type="number" name="max_qty" value="{{ row.max_qty or '' }}" placeholder="∞" /></div>
+      <div><label>Price (฿)</label><input type="number" step="0.01" name="price_per_unit_thb" value="{{ row.price_per_unit_thb }}" /></div>
+      <div style="flex:0;">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn small">Save</button>
+      </div>
+    </div>
+  </form>
+  <form method="post" class="inline-form" style="margin:-0.5rem 0 0.75rem;">
+    <input type="hidden" name="action" value="delete_pricing" />
+    <input type="hidden" name="pricing_id" value="{{ row.id }}" />
+    <button type="submit" class="btn small danger">Delete row</button>
+  </form>
+  {% else %}
+  <p class="muted">No shirt pricing rows.</p>
+  {% endfor %}
+  <h3 style="margin-top:1rem;">Add pricing row</h3>
+  <form method="post">
+    <input type="hidden" name="action" value="save_pricing" />
+    <div class="row">
+      <div>
+        <label>Color category</label>
+        <select name="color_name">{% for cc in color_categories %}<option value="{{ cc }}">{{ cc }}</option>{% endfor %}</select>
+      </div>
+      <div>
+        <label>Size</label>
+        <select name="size">{% for sz in shirt_sizes %}<option value="{{ sz }}">{{ sz }}</option>{% endfor %}</select>
+      </div>
+      <div><label>Min qty</label><input type="number" name="min_qty" value="1" /></div>
+      <div><label>Max qty</label><input type="number" name="max_qty" placeholder="blank = no limit" /></div>
+      <div><label>Price</label><input type="number" step="0.01" name="price_per_unit_thb" required /></div>
+      <div style="flex:0;"><label>&nbsp;</label><button type="submit" class="btn secondary">Add</button></div>
+    </div>
+  </form>
+</div>
+{% endblock %}

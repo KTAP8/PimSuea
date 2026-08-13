@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Products — PimSuea Ops{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Products</h2>
+  <p class="muted">New products are created by cloning an existing shirt, then editing templates and pricing.</p>
+</div>
+
+<div class="card">
+  <h2>Clone product</h2>
+  <form method="post" action="{{ url_for('product_clone') }}">
+    <div class="row">
+      <div>
+        <label for="source_id">Source product</label>
+        <select name="source_id" id="source_id" required>
+          <option value="">— select —</option>
+          {% for p in products %}
+            <option value="{{ p.id }}">{{ p.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="title">New title (optional)</label>
+        <input type="text" name="title" id="title" placeholder="Premium Tee (copy)" />
+      </div>
+      <div style="flex:0;">
+        <label>&nbsp;</label>
+        <button type="submit" class="btn">Clone</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Status</th>
+        <th>From price</th>
+        <th>Templates</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td>{{ p.title }}</td>
+        <td>
+          {% if p.is_active %}
+            <span class="badge active">Active</span>
+          {% else %}
+            <span class="badge inactive">Inactive</span>
+          {% endif %}
+        </td>
+        <td>{% if p.min_price %}฿{{ p.min_price }}{% else %}—{% endif %}</td>
+        <td>{{ p.template_count }}</td>
+        <td><a class="btn small secondary" href="{{ url_for('product_edit', product_id=p.id) }}">Edit</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">No products in database.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -3,3 +3,7 @@ numpy
 flask
 tifffile
 imagecodecs
+boto3
+python-dotenv
+supabase
+requests

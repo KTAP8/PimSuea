@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { type User, type Session } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { type AuthChangeEvent, type User, type Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export interface UserProfile {
@@ -41,14 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    setProfileLoading(true);
+  const profileUserIdRef = useRef<string | null>(null);
+
+  const fetchProfile = useCallback(async (userId: string, { showLoading = true } = {}) => {
+    const isInitialLoad = profileUserIdRef.current !== userId;
+    if (showLoading && isInitialLoad) {
+      setProfileLoading(true);
+    }
     const { data } = await supabase
       .from('profiles')
       .select('id, first_name, last_name, age, design_purpose, referral_source, onboarding_completed')
       .eq('id', userId)
       .single();
     setProfile(data ?? null);
+    profileUserIdRef.current = userId;
     setProfileLoading(false);
   }, []);
 
@@ -68,13 +74,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        // Token refresh on tab focus must not refetch profile — that unmounts the whole app.
+        if (event !== 'TOKEN_REFRESHED') {
+          fetchProfile(session.user.id);
+        }
       } else {
+        profileUserIdRef.current = null;
         setProfile(null);
         setProfileLoading(false);
       }

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Orders — PimSuea Ops{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Orders</h2>
+  <form method="get" class="row">
+    <div>
+      <label>Filter by status</label>
+      <select name="status" onchange="this.form.submit()">
+        <option value="">All</option>
+        {% for st in order_statuses %}
+          <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Order</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Items</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td class="mono">{{ o.id[:8] }}…</td>
+        <td>{{ o.created_at[:19].replace('T', ' ') if o.created_at else '—' }}</td>
+        <td><span class="badge">{{ o.status }}</span></td>
+        <td>{{ o.item_count }}</td>
+        <td>฿{{ o.total_amount }}</td>
+        <td><a class="btn small secondary" href="{{ url_for('order_detail', order_id=o.id) }}">Open</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No orders.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

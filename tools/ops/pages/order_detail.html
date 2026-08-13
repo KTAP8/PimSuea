@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Order {{ order.id[:8] }} — PimSuea Ops{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('orders_list') }}">← Orders</a></p>
+
+<div class="card">
+  <h2>Order {{ order.id[:8] }}…</h2>
+  <p class="muted">Customer: {{ customer_email or order.user_id }}</p>
+  <p>Status: <span class="badge">{{ order.status }}</span></p>
+  <p>Total: <strong>฿{{ order.total_amount }}</strong>
+    {% if order.delivery_fee %} (delivery ฿{{ order.delivery_fee }}){% endif %}
+    {% if order.discount_amount %} — discount ฿{{ order.discount_amount }}{% endif %}
+  </p>
+  {% if order.coupon_code %}<p>Coupon: {{ order.coupon_code }}</p>{% endif %}
+  {% if order.tracking_number %}<p>Tracking: {{ order.tracking_number }}</p>{% endif %}
+</div>
+
+<div class="card">
+  <h2>Update status</h2>
+  <form method="post">
+    <input type="hidden" name="action" value="update_status" />
+    <div class="row">
+      <div>
+        <label>Status</label>
+        <select name="status">
+          {% for st in order_statuses %}
+            <option value="{{ st }}" {% if order.status == st %}selected{% endif %}>{{ st }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Tracking number</label>
+        <input type="text" name="tracking_number" value="{{ order.tracking_number or '' }}" />
+      </div>
+      <div style="flex:0;"><label>&nbsp;</label><button type="submit" class="btn">Save</button></div>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Shipping address</h2>
+  {% set addr = order.shipping_address or {} %}
+  <pre class="mono muted">{{ addr | tojson(indent=2) }}</pre>
+</div>
+
+<div class="card">
+  <h2>Line items</h2>
+  {% for item in items %}
+  <div class="template-block">
+    {% set design = item.user_design or {} %}
+    <p><strong>{{ design.design_name or 'Custom design' }}</strong> — {{ item.color }} / {{ item.size }} × {{ item.quantity }} @ ฿{{ item.unit_price }}</p>
+    {% set prints = item.print_file_url %}
+    <p class="muted">Print files (ordered bucket):</p>
+    <pre class="mono">{{ prints }}</pre>
+    <form method="post" style="margin-top:0.75rem;">
+      <input type="hidden" name="action" value="prepare_print" />
+      <input type="hidden" name="item_id" value="{{ item.id }}" />
+      <div class="row">
+        <div><label><input type="checkbox" name="show_tag" /> Show tag (front)</label></div>
+        <div>
+          <label>Label color</label>
+          <select name="text_color"><option value="black">black</option><option value="red">red</option></select>
+        </div>
+        <div style="flex:0;"><label>&nbsp;</label><button type="submit" class="btn">Prepare print files</button></div>
+      </div>
+      <p class="muted">Downloads print PNGs from R2, picks mockup from product template, runs Tip annotate + CMYK.</p>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">No line items.</p>
+  {% endfor %}
+</div>
+{% endblock %}

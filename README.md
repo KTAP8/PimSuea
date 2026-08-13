@@ -50,48 +50,30 @@ cd ../pimsuea-frontend && npm install
 
 ### 2. Environment variables
 
-Create `backend/.env` and `pimsuea-frontend/.env` (never commit these files).
+Copy the example files and fill in your credentials (never commit `.env` files):
 
-**Backend** (`backend/.env`):
-
-```env
-PORT=3000
-
-# Supabase
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-SUPABASE_SECRET_KEY=your-secret-key
-
-# Cloudflare R2
-CLOUDFLARE_ACCOUNT_ID=your-account-id
-R2_ACCESS_KEY_ID=your-access-key
-R2_SECRET_ACCESS_KEY=your-secret-key
-R2_PUBLIC_URL_PREVIEWS=https://your-previews-public-url
-R2_PUBLIC_URL_PRINT=https://your-print-public-url
-R2_PUBLIC_URL_ASSETS=https://your-assets-public-url
-R2_PUBLIC_URL_PRINT_ORDERED=https://your-ordered-print-public-url
-
-# Optional
-FRONTEND_URL=http://localhost:5173
-RESEND_API_KEY=your-resend-key
-RESEND_FROM_EMAIL=PimSuea <hello@pimsuea.com>
+```bash
+cp backend/.env.example backend/.env
+cp pimsuea-frontend/.env.example pimsuea-frontend/.env
 ```
 
-**Frontend** (`pimsuea-frontend/.env`):
+See [`backend/.env.example`](backend/.env.example) and [`pimsuea-frontend/.env.example`](pimsuea-frontend/.env.example) for the full list. Minimum for local dev:
 
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-publishable-key
-VITE_PUBLIC_GOOGLE_FONTS_API_KEY=your-google-fonts-key
+| Variable | Where | Required? |
+|----------|-------|-----------|
+| `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` | backend | Yes — without both, API uses a mock Supabase client |
+| `SUPABASE_SECRET_KEY` | backend | Yes — admin routes (orders, waitlist, etc.) |
+| `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | frontend | Yes — auth and direct Supabase reads |
+| R2 `CLOUDFLARE_*` / `R2_*` vars | backend | Yes — design uploads and print files |
+| `RESEND_API_KEY` | backend | No — server starts without it; waitlist emails are skipped |
+| `VITE_API_URL` | frontend | No — defaults to `http://localhost:3000/api` |
 
-# Points to local backend by default if omitted
-VITE_API_URL=http://localhost:3000/api
+**Where to find Supabase keys:** Supabase dashboard → Project Settings → API → Project URL, `anon` (publishable), and `service_role` (secret).
 
-# Optional — shown on checkout / order pages
-VITE_LINE_ID=@your-line-id
-VITE_LINE_QR_URL=https://example.com/line-qr.png
-VITE_PROMPTPAY_QR_URL=https://example.com/promptpay-qr.png
-```
+**Troubleshooting startup:**
+
+- `Supabase URL or Publishable Key is missing` — add `SUPABASE_PUBLISHABLE_KEY` to `backend/.env` (having only `SUPABASE_SECRET_KEY` is not enough).
+- Waitlist works without `RESEND_API_KEY`; confirmation emails are skipped until you add a key from [resend.com](https://resend.com).
 
 ### 3. Run both servers
 

@@ -442,7 +442,8 @@ def annotate(input_path: str, output_path: str | None = None, *,
              shirt_side: str | None = None,
              mockup_image_path: str | None = None,
              show_tag: bool | None = None,
-             text_color: str | None = None) -> dict:
+             text_color: str | None = None,
+             placement: dict | None = None) -> dict:
     """Annotate a print file and optionally composite onto a mockup.
 
     Returns a dict with:
@@ -605,7 +606,15 @@ def annotate(input_path: str, output_path: str | None = None, *,
     mockup_path = _mockup_img or str(
         Path(__file__).parent / "mockups" / f"{SHIRT_COLOR}_{_side}.png"
     )
-    placement = _PLACEMENTS[_side]
+    if placement is not None:
+        resolved_placement = {
+            "x": int(placement.get("x", 0)),
+            "y": int(placement.get("y", 0)),
+            "w": int(placement.get("w", placement.get("width", 716))),
+            "h": int(placement.get("h", placement.get("height", 955))),
+        }
+    else:
+        resolved_placement = _PLACEMENTS[_side]
     mockup_out = out.with_stem(mockup_src_stem + f"_mockup_{_side}")
     measurements = {
         "x_min": x_min, "y_min": y_min, "x_max": x_max, "y_max": y_max,
@@ -622,7 +631,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
         "x_offset_in": x_offset_in,
     }
     mockup_ok = composite_on_mockup(
-        img_full, mockup_path, placement, mockup_out,
+        img_full, mockup_path, resolved_placement, mockup_out,
         measurements, side=_side, show_tag=_show_tag,
         text_color=_text_color)
 
@@ -711,6 +720,7 @@ def run_batch_entries(sides, output_path=None) -> dict:
             mockup_image_path=entry["mockup"],
             show_tag=entry.get("show_tag"),
             text_color=entry.get("text_color"),
+            placement=entry.get("placement"),
         )
         side_results.append(result)
         if result.get("mockup"):

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Print prep — PimSuea Ops{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('order_detail', order_id=order.id) }}">← Back to order</a></p>
+
+<div class="card">
+  <h2>Print prep complete</h2>
+  <p class="muted">Sides processed: {{ print_result.sides_processed | join(', ') }}</p>
+  {% if print_result.measurements %}
+    <ul>
+      {% for m in print_result.measurements %}
+        {% if m %}
+          <li>{{ m.size_label or m.tier }} — Y: {{ m.y_label }}, X: {{ m.x_label }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Downloads</h2>
+  <ul>
+    {% for f in print_result.files %}
+      <li>
+        <a href="{{ url_for('download_file', session_id=print_result.session_id, filename=f.name) }}">{{ f.label }}</a>
+        {% if not f.preview %}<span class="muted"> (TIFF)</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% if print_result.files %}
+<div class="card">
+  <h2>Previews</h2>
+  <div class="preview-grid">
+    {% for f in print_result.files if f.preview %}
+      <figure>
+        <img src="{{ url_for('download_file', session_id=print_result.session_id, filename=f.name) }}" alt="{{ f.label }}" />
+        <figcaption class="muted">{{ f.label }}</figcaption>
+      </figure>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

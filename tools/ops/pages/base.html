@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}PimSuea Ops{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='ops.css') }}" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>PimSuea Ops</h1>
+    <nav>
+      <a href="{{ url_for('products_list') }}">Products</a>
+      <a href="{{ url_for('orders_list') }}">Orders</a>
+    </nav>
+  </header>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

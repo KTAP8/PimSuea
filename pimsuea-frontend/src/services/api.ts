@@ -165,13 +165,16 @@ export const clearCartInDB = async (): Promise<void> => {
 const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000/api';
 
 /**
- * Converts a Cloudflare R2 public URL (pub-*.r2.dev) to a backend proxy URL.
- * This works around CORS limitations on the r2.dev public subdomain — the backend
- * fetches the asset server-side and returns it with Access-Control-Allow-Origin: *.
- * Non-R2 URLs are returned unchanged.
+ * Routes Cloudflare R2 URLs through the backend proxy so canvas/mockup code can load
+ * them with crossOrigin: 'anonymous' without browser CORS errors.
+ * Handles both r2.dev public domains and *.r2.cloudflarestorage.com bucket URLs.
  */
 export function r2ProxyUrl(url: string): string {
-  if (!url || !url.includes('.r2.dev/')) return url;
+  if (!url || url.startsWith('blob:') || url.startsWith('data:')) return url;
+  const isR2 =
+    url.includes('.r2.dev/') ||
+    url.includes('.r2.cloudflarestorage.com/');
+  if (!isR2) return url;
   return `${API_BASE}/uploads/proxy?url=${encodeURIComponent(url)}`;
 }
 // Public endpoint — no auth required

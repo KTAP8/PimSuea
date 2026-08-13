@@ -6,7 +6,9 @@ export function ProtectedRoute() {
   const { user, loading, profile, profileLoading } = useAuth();
   const location = useLocation();
 
-  if (loading || profileLoading) {
+  // Only block on first auth/profile load — not on background profile refreshes.
+  const awaitingInitialProfile = Boolean(user && profileLoading && !profile);
+  if (loading || awaitingInitialProfile) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
