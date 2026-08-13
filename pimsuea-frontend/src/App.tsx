@@ -23,52 +23,80 @@ import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { RedirectToApp } from './components/RedirectToApp';
+import { AppRootRedirect } from './components/AppRootRedirect';
+import { isAppHost } from './lib/site';
 
-function Layout() {
+function MarketingLayout() {
+  const preLaunch = !import.meta.env.DEV && new Date() < LAUNCH_DATE;
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={preLaunch ? <Landing /> : <NewLanding />}
+      />
+      <Route path="/home" element={<Navigate to="/" replace />} />
+      {preLaunch ? (
+        <Route path="*" element={<Navigate to="/" replace />} />
+      ) : (
+        <Route path="*" element={<RedirectToApp />} />
+      )}
+    </Routes>
+  );
+}
+
+function AppLayout() {
   const location = useLocation();
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/home', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/studio/');
+  const preLaunch = !import.meta.env.DEV && new Date() < LAUNCH_DATE;
+
+  if (preLaunch) {
+    return (
+      <Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-50">
       {shouldShowSidebar && <Sidebar />}
       <main className={`flex-1 min-w-0 transition-all duration-300 ${shouldShowSidebar ? 'md:ml-0' : ''}`}>
-        {/* Mobile header spacer — not needed on full-screen pages like DesignStudio */}
         {shouldShowSidebar && <div className="h-16 md:hidden"></div>}
-        
-        <Routes>
-          {/* Waitlist gate: before launch date only / is accessible */}
-          <Route path="/" element={!import.meta.env.DEV && new Date() < LAUNCH_DATE ? <Landing /> : <NewLanding />} />
-          <Route path="/home" element={<Navigate to="/" replace />} />
-          {!import.meta.env.DEV && new Date() < LAUNCH_DATE ? (
-            <Route path="*" element={<Navigate to="/" replace />} />
-          ) : (
-            <>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Protected Routes */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/onboarding" element={<Onboarding />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/news/:id" element={<NewsDetails />} />
-                <Route path="/catalog" element={<Catalog />} />
-                <Route path="/product/:id" element={<ProductDetails />} />
-                <Route path="/studio/:id" element={<DesignStudio />} />
-                <Route path="/orders" element={<MyOrders />} />
-                <Route path="/my-products" element={<MyProducts />} />
-                <Route path="/wallet" element={<Wallet />} />
-                <Route path="/checkout" element={<Order />} />
-                <Route path="/settings" element={<Settings />} />
-              </Route>
-            </>
-          )}
+        <Routes>
+          <Route path="/" element={<AppRootRedirect />} />
+          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          <Route element={<ProtectedRoute />}>
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/news/:id" element={<NewsDetails />} />
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
+            <Route path="/studio/:id" element={<DesignStudio />} />
+            <Route path="/orders" element={<MyOrders />} />
+            <Route path="/my-products" element={<MyProducts />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/checkout" element={<Order />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
     </div>
   );
+}
+
+function Layout() {
+  return isAppHost() ? <AppLayout /> : <MarketingLayout />;
 }
 
 function App() {

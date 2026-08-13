@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { TermsModal } from "@/components/TermsModal";
+import { APP_ORIGIN } from "@/lib/site";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -29,7 +30,7 @@ export default function Login() {
     setForgotLoading(true);
     setForgotError(null);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${APP_ORIGIN}/reset-password`,
     });
     setForgotLoading(false);
     if (error) {
@@ -63,7 +64,7 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${APP_ORIGIN}/dashboard`,
       },
     });
     if (error) {

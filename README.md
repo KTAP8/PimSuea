@@ -2,7 +2,7 @@
 
 Custom print-on-demand platform for Thailand. Customers browse a product catalog, design shirts in a browser-based canvas editor, see live pricing, and place orders. The site is bilingual (Thai / English).
 
-**Production:** [pimsuea.com](https://pimsuea.com)
+**Production:** [pimsuea.com](https://pimsuea.com) (marketing) · [app.pimsuea.com](https://app.pimsuea.com) (product)
 
 ## Tech stack
 
@@ -67,6 +67,9 @@ See [`backend/.env.example`](backend/.env.example) and [`pimsuea-frontend/.env.e
 | R2 `CLOUDFLARE_*` / `R2_*` vars | backend | Yes — design uploads and print files |
 | `RESEND_API_KEY` | backend | No — server starts without it; waitlist emails are skipped |
 | `VITE_API_URL` | frontend | No — defaults to `http://localhost:3000/api` |
+| `VITE_APP_URL` | frontend | No — defaults to `https://app.pimsuea.com`; set to `http://localhost:5173` locally |
+| `VITE_MARKETING_URL` | frontend | No — defaults to `https://pimsuea.com` |
+| `FRONTEND_URL` | backend | Production: `https://app.pimsuea.com` |
 
 **Where to find Supabase keys:** Supabase dashboard → Project Settings → API → Project URL, `anon` (publishable), and `service_role` (secret).
 
@@ -93,6 +96,8 @@ npm run dev
 
 The frontend calls the API at `VITE_API_URL` or falls back to `http://localhost:3000/api`.
 
+**Subdomain split (local dev):** `localhost` behaves as the **app** host (catalog, studio, login). To test marketing-only routing locally, set `VITE_FORCE_MARKETING=true` in `pimsuea-frontend/.env`.
+
 ### 4. Verify
 
 - Backend health: open `http://localhost:3000` — should return `PimSuea Backend API is running!`
@@ -106,6 +111,15 @@ npm run build
 
 ## Deployment
 
+### Domain split
+
+| Host | Purpose |
+|------|---------|
+| `pimsuea.com` | Marketing landing (`NewLanding`), SEO, waitlist |
+| `app.pimsuea.com` | Auth, catalog, design studio, checkout |
+
+One Vercel project serves both domains from the same build; [`pimsuea-frontend/src/lib/site.ts`](pimsuea-frontend/src/lib/site.ts) picks routes by hostname. Login and OAuth run only on the app subdomain.
+
 ### Frontend (Vercel)
 
 The frontend is a static Vite SPA deployed on **Vercel** with SPA routing via [`pimsuea-frontend/vercel.json`](pimsuea-frontend/vercel.json).
@@ -116,9 +130,16 @@ The frontend is a static Vite SPA deployed on **Vercel** with SPA routing via [`
 4. **Output directory:** `dist`
 5. Add environment variables in the Vercel dashboard (same `VITE_*` keys as local `.env`).
 6. Set `VITE_API_URL` to your production API URL, e.g. `https://your-backend.onrender.com/api`.
-7. Point your domain (`pimsuea.com`) to Vercel in Cloudflare DNS.
+7. Set `VITE_APP_URL=https://app.pimsuea.com` and `VITE_MARKETING_URL=https://pimsuea.com`.
+8. **Cloudflare DNS:** point `pimsuea.com` and `app` (CNAME) to Vercel.
+9. **Vercel domains:** add both `pimsuea.com` and `app.pimsuea.com` to the project.
 
-After deploy, confirm the landing page loads and authenticated flows (login, catalog, studio) reach the live API.
+After deploy:
+
+- `pimsuea.com/` → landing; `pimsuea.com/catalog` redirects to `app.pimsuea.com/catalog`
+- `app.pimsuea.com` → login, catalog, studio
+
+Redeploy the frontend after changing any `VITE_*` variable (build-time).
 
 ### Backend (Render or similar)
 
@@ -129,7 +150,7 @@ The API is a standard Node/Express app. It is intended to run on **Render** (see
 3. **Build command:** `npm install`
 4. **Start command:** `npm start`
 5. Add all backend environment variables from the table above.
-6. Set `FRONTEND_URL=https://pimsuea.com` so CORS / origin checks include production.
+6. Set `FRONTEND_URL=https://app.pimsuea.com` (primary app origin for CORS / origin checks).
 7. Copy the public service URL and set `VITE_API_URL=https://<your-service>/api` on Vercel.
 
 Redeploy the frontend after changing `VITE_API_URL`.
@@ -138,7 +159,10 @@ Redeploy the frontend after changing `VITE_API_URL`.
 
 - Run schema migrations and seed data in the Supabase SQL editor as needed.
 - Enable Row Level Security policies for user-scoped tables (`user_designs`, `orders`, etc.).
-- Configure Supabase Auth redirect URLs for production (`https://pimsuea.com`) and local dev (`http://localhost:5173`).
+- **Auth → URL configuration:**
+  - **Site URL:** `https://app.pimsuea.com`
+  - **Redirect URLs:** `https://app.pimsuea.com/**`, `http://localhost:5173/**`
+  - Optionally keep `https://pimsuea.com/**` temporarily for old bookmarks, then remove.
 
 Example maintenance migration: [`backend/migrations/remove_dtf_from_products.sql`](backend/migrations/remove_dtf_from_products.sql).
 
@@ -176,7 +200,8 @@ These are run locally by operators; they are not part of the web deploy.
 
 ## Architecture notes
 
-- **Auth:** Supabase JWT is sent as `Authorization: Bearer <token>` on API requests from the frontend.
+- **Domains:** Marketing on `pimsuea.com`; authenticated product on `app.pimsuea.com`. Cross-links use `appUrl()` from [`site.ts`](pimsuea-frontend/src/lib/site.ts).
+- **Auth:** Supabase JWT is sent as `Authorization: Bearer <token>` on API requests from the frontend. OAuth redirect URLs target `app.pimsuea.com` only.
 - **Design studio:** Route `/studio/:productId` — canvas state saved to `user_designs` with preview and print files in R2.
 - **Pricing:** Shirt + print pricing from Supabase tables; tier derived from design dimensions (see `backend/src/utils/pricing.js`).
 - **Printing:** New orders use **DTG** only. Legacy DTF designs remain viewable but cannot be checked out.

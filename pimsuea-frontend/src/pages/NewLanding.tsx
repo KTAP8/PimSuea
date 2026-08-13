@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Language, translations } from "@/translations/landing";
+import { appUrl } from "@/lib/site";
 
 const LandingLangContext = createContext<{ lang: Language; t: typeof translations['en']; setLang: (l: Language) => void }>({
   lang: 'en',
@@ -708,11 +709,17 @@ export default function NewLanding() {
               <Globe className="w-4 h-4" />
               {lang === 'en' ? 'ไทย' : 'English'}
             </button>
-            <Link to="/catalog">
+            <a
+              href={appUrl('/login')}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
+            >
+              {t.navLogin}
+            </a>
+            <a href={appUrl('/catalog')}>
               <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
                 {t.navStartDesigning} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </header>
@@ -735,14 +742,14 @@ export default function NewLanding() {
               {t.heroSubtitle}
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link to="/catalog">
+              <a href={appUrl('/catalog')}>
                 <Button
                   size="lg"
                   className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-base px-8"
                 >
                   {t.heroStartDesigning} <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-              </Link>
+              </a>
               <a
                 href="#catalog"
                 onClick={scrollToCatalog}
@@ -878,7 +885,7 @@ export default function NewLanding() {
                         ฿{(product.starting_price ?? product.price).toLocaleString()}
                       </span>
                     </p>
-                    <Link to="/catalog" className="block">
+                    <a href={appUrl(`/product/${product.id}`)} className="block">
                       <Button
                         variant="outline"
                         size="sm"
@@ -886,7 +893,7 @@ export default function NewLanding() {
                       >
                         {t.catalogDesignShirt}
                       </Button>
-                    </Link>
+                    </a>
                   </div>
                 </motion.div>
               ))}
@@ -907,14 +914,14 @@ export default function NewLanding() {
           <h2 className="font-black text-5xl md:text-6xl lg:text-7xl leading-tight">
             {t.footerTitle}
           </h2>
-          <Link to="/catalog">
+          <a href={appUrl('/catalog')}>
             <Button
               size="lg"
               className="bg-action text-action-foreground hover:bg-action/90 font-black uppercase tracking-widest text-base px-12 py-6 text-lg mt-4"
             >
               {t.footerEnterCanvas}
             </Button>
-          </Link>
+          </a>
         </div>
         <p className="mt-16 text-background/30 text-sm font-light">
           © {new Date().getFullYear()} {t.footerCopyright}

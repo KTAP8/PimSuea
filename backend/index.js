@@ -20,6 +20,8 @@ const ALLOWED_ORIGINS = [
   'http://localhost:4173',
   'https://pimsuea.com',
   'https://www.pimsuea.com',
+  'https://app.pimsuea.com',
+  'https://www.app.pimsuea.com',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
 ];
 app.use(cors({

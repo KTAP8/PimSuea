@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { AlertCircle, CheckCircle2, Check, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TermsModal } from "@/components/TermsModal";
+import { APP_ORIGIN } from "@/lib/site";
 
 const PASSWORD_RULES = [
   { label: "อย่างน้อย 8 ตัวอักษร",          test: (p: string) => p.length >= 8 },
@@ -66,7 +67,7 @@ export default function Register() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${APP_ORIGIN}/dashboard` },
     });
     if (error) {
       setError(error.message);

@@ -3,6 +3,7 @@ export type Language = 'en' | 'th';
 export const translations = {
   en: {
     navStartDesigning: "Start Designing",
+    navLogin: "Log in",
     heroTitle1: "Custom shirts,",
     heroTitle2: "made simple.",
     heroSubtitle: "Design on the web. Instant pricing. No minimums.",
@@ -63,6 +64,7 @@ export const translations = {
   },
   th: {
     navStartDesigning: "เริ่มออกแบบ",
+    navLogin: "เข้าสู่ระบบ",
     heroTitle1: "สั่งทำเสื้อ,",
     heroTitle2: "ง่ายกว่าที่เคย.",
     heroSubtitle: "ออกแบบบนเว็บ รู้ราคาทันที ไม่มีขั้นต่ำ",
