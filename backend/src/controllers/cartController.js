@@ -1,6 +1,5 @@
 const { getAuthenticatedSupabase } = require('../config/supabaseClient');
-
-const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const { isValidSizeForProduct } = require('../utils/sizes');
 
 exports.getCart = async (req, res) => {
   try {
@@ -18,15 +17,23 @@ exports.getCart = async (req, res) => {
 };
 
 exports.upsertItem = async (req, res) => {
-  const { id, product_id, color_id, size, quantity, design_id, print_file_url, preview_url, design_name } = req.body;
+  const {
+    id, product_id, color_id, size, quantity, design_id, print_file_url, preview_url, design_name,
+    is_gift, gift_message, gift_recipient,
+  } = req.body;
 
-  if (!id || !product_id || !color_id || !VALID_SIZES.includes(size) || !Number.isInteger(quantity) || quantity < 1) {
+  if (!id || !product_id || !color_id || !size || !Number.isInteger(quantity) || quantity < 1) {
     return res.status(400).json({ error: 'Invalid cart item' });
   }
 
   try {
+    const sizeValid = await isValidSizeForProduct(product_id, size);
+    if (!sizeValid) {
+      return res.status(400).json({ error: `size "${size}" ไม่ถูกต้องสำหรับสินค้านี้` });
+    }
+
     const db = getAuthenticatedSupabase(req.headers.authorization);
-    const { error } = await db.from('cart_items').upsert({
+    const row = {
       id,
       user_id: req.user.id,
       product_id,
@@ -37,8 +44,13 @@ exports.upsertItem = async (req, res) => {
       print_file_url: print_file_url || null,
       preview_url: preview_url || null,
       design_name: design_name || null,
+      is_gift: Boolean(is_gift),
+      gift_message: gift_message ?? null,
+      gift_recipient: gift_recipient ?? null,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' });
+    };
+
+    const { error } = await db.from('cart_items').upsert(row, { onConflict: 'id' });
     if (error) throw error;
     res.json({ ok: true });
   } catch (err) {
@@ -49,7 +61,7 @@ exports.upsertItem = async (req, res) => {
 
 exports.updateItem = async (req, res) => {
   const { id } = req.params;
-  const allowed = ['color_id', 'size', 'quantity', 'print_file_url'];
+  const allowed = ['color_id', 'size', 'quantity', 'print_file_url', 'is_gift', 'gift_message', 'gift_recipient'];
   const updates = Object.fromEntries(
     Object.entries(req.body).filter(([k]) => allowed.includes(k))
   );
@@ -62,6 +74,22 @@ exports.updateItem = async (req, res) => {
 
   try {
     const db = getAuthenticatedSupabase(req.headers.authorization);
+
+    if (updates.size) {
+      const { data: existing, error: fetchError } = await db
+        .from('cart_items')
+        .select('product_id')
+        .eq('id', id)
+        .single();
+      if (fetchError || !existing) {
+        return res.status(404).json({ error: 'Cart item not found' });
+      }
+      const sizeValid = await isValidSizeForProduct(existing.product_id, updates.size);
+      if (!sizeValid) {
+        return res.status(400).json({ error: `size "${updates.size}" ไม่ถูกต้องสำหรับสินค้านี้` });
+      }
+    }
+
     const { error } = await db.from('cart_items').update(updates).eq('id', id);
     if (error) throw error;
     res.json({ ok: true });

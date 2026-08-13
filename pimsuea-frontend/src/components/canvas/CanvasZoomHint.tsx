@@ -10,15 +10,15 @@ export function CanvasZoomHint({ scale, isPanMode, onReset }: Props) {
     const pct = Math.round(scale * 100);
 
     return (
-        <div className="absolute bottom-6 right-6 hidden md:flex items-center gap-2 pointer-events-none select-none z-10">
-            {/* Shortcuts hint — fades in when not at 100% or in pan mode */}
-            <div className={`transition-opacity duration-300 ${scale !== 1 || isPanMode ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="absolute top-safe-offset md:top-auto md:bottom-6 right-safe-offset md:right-6 flex items-center gap-2 pointer-events-none select-none z-10">
+            {/* Shortcuts hint — desktop only */}
+            <div className={`hidden md:block transition-opacity duration-300 ${scale !== 1 || isPanMode ? 'opacity-100' : 'opacity-0'}`}>
                 <span className="text-[10px] text-gray-400 font-medium bg-white/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-100 whitespace-nowrap">
                     {isPanMode ? '✋ กำลังเลื่อน' : '⌘0 รีเซ็ต'}
                 </span>
             </div>
 
-            {/* Zoom % badge + reset button */}
+            {/* Zoom % badge + reset button — visible on all screen sizes */}
             <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-sm pointer-events-auto">
                 <span className={`text-xs font-bold tabular-nums transition-colors ${isPanMode ? 'text-blue-500' : 'text-gray-700'}`}>
                     {pct}%
@@ -26,9 +26,9 @@ export function CanvasZoomHint({ scale, isPanMode, onReset }: Props) {
                 {scale !== 1 && (
                     <button
                         onClick={onReset}
-                        className="ml-1 text-gray-400 hover:text-gray-700 transition-colors"
-                        title="Reset zoom (⌘0)">
-                        <RotateCcw className="w-3 h-3" />
+                        className="ml-1 p-1.5 md:p-1 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors rounded-lg hover:bg-gray-100"
+                        title="Reset zoom">
+                        <RotateCcw className="w-3.5 h-3.5" />
                     </button>
                 )}
             </div>

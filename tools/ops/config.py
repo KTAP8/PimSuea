@@ -74,6 +74,6 @@ ORDER_STATUSES = [
     "cancelled",
 ]
 
-SHIRT_SIZES = ["S", "M", "L", "XL", "XXL", "2XL", "3XL"]
+SHIRT_SIZES = ["Free Size", "S", "M", "L", "XL", "XXL", "2XL", "3XL"]
 COLOR_CATEGORIES = ["White", "Other"]
 TEMPLATE_SIDES = ["front", "back", "left_sleeve", "right_sleeve"]

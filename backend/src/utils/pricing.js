@@ -152,4 +152,55 @@ async function lookupPrintPrice({ printingType, size_tier, color_name, quantity 
   return Number(data.price_per_unit_thb);
 }
 
-module.exports = { getPrintTier, calculatePrice, getDeliveryFee, lookupPrintPrice, toColorCategory };
+/**
+ * List all active add-ons (public catalog for checkout).
+ * @returns {Promise<Array<{ code: string, name: string, price_thb: number }>>}
+ */
+async function listActiveAddons() {
+  const { data, error } = await supabaseAdmin
+    .from('addon_pricing')
+    .select('code, name, price_thb')
+    .eq('is_active', true)
+    .order('code');
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    code: row.code,
+    name: row.name,
+    price_thb: Number(row.price_thb),
+  }));
+}
+
+/**
+ * Look up a single active add-on by code. Throws if missing or inactive.
+ * @param {string} code
+ * @returns {Promise<{ code: string, name: string, price_thb: number }>}
+ */
+async function lookupAddonPrice(code) {
+  const { data, error } = await supabaseAdmin
+    .from('addon_pricing')
+    .select('code, name, price_thb')
+    .eq('code', code)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    throw new Error(`Add-on "${code}" is not available`);
+  }
+  return {
+    code: data.code,
+    name: data.name,
+    price_thb: Number(data.price_thb),
+  };
+}
+
+module.exports = {
+  getPrintTier,
+  calculatePrice,
+  getDeliveryFee,
+  lookupPrintPrice,
+  toColorCategory,
+  listActiveAddons,
+  lookupAddonPrice,
+};

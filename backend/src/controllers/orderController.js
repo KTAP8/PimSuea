@@ -1,9 +1,17 @@
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
-const { calculatePrice, getDeliveryFee } = require('../utils/pricing');
+const { calculatePrice, getDeliveryFee, lookupAddonPrice } = require('../utils/pricing');
 const { isUUID, isPositiveInt } = require('../utils/validate');
 const { copyObject, getLocationFromUrl, getPublicUrl } = require('../config/r2Client');
-
-const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const { getSizesByProductIds } = require('../utils/sizes');
+const { consentStamp } = require('../constants/legal');
+const { persistProfileConsentIfNeeded } = require('../utils/consent');
+const {
+  GIFT_SERVICE_CODE,
+  normalizeGiftRecipient,
+  validateGiftRecipient,
+  validateGiftMessage,
+  formatGiftRecipientForClient,
+} = require('../utils/gift');
 
 exports.getUserOrders = async (req, res) => {
   const userId = req.user.id;
@@ -19,6 +27,19 @@ exports.getUserOrders = async (req, res) => {
           id,
           quantity,
           unit_price,
+          is_gift,
+          gift_message,
+          addon_code,
+          addon_fee_thb,
+          gift_recipient:gift_recipients (
+            full_name,
+            phone,
+            address_line1,
+            address_line2,
+            province,
+            district,
+            postal_code
+          ),
           user_design:user_designs (
             design_name,
             preview_image_url
@@ -36,9 +57,14 @@ exports.getUserOrders = async (req, res) => {
         items: order.order_items ? order.order_items.map(item => ({
             id: item.id,
             quantity: item.quantity,
-            price: item.unit_price, // frontend expects 'price' in OrderItem
+            price: item.unit_price,
             product_name: item.user_design?.design_name || 'Custom Design',
-            image: item.user_design?.preview_image_url
+            image: item.user_design?.preview_image_url,
+            is_gift: item.is_gift,
+            gift_message: item.gift_message,
+            addon_code: item.addon_code,
+            addon_fee_thb: item.addon_fee_thb,
+            gift_recipient: formatGiftRecipientForClient(item.gift_recipient),
         })) : []
     }));
 
@@ -68,6 +94,19 @@ exports.getOrderDetails = async (req, res) => {
           id,
           quantity,
           unit_price,
+          is_gift,
+          gift_message,
+          addon_code,
+          addon_fee_thb,
+          gift_recipient:gift_recipients (
+            full_name,
+            phone,
+            address_line1,
+            address_line2,
+            province,
+            district,
+            postal_code
+          ),
           user_design:user_designs (
             design_name,
             preview_image_url
@@ -93,7 +132,12 @@ exports.getOrderDetails = async (req, res) => {
             quantity: item.quantity,
             price: item.unit_price,
             product_name: item.user_design?.design_name || 'Custom Design',
-            image: item.user_design?.preview_image_url
+            image: item.user_design?.preview_image_url,
+            is_gift: item.is_gift,
+            gift_message: item.gift_message,
+            addon_code: item.addon_code,
+            addon_fee_thb: item.addon_fee_thb,
+            gift_recipient: formatGiftRecipientForClient(item.gift_recipient),
         })) : []
     };
 
@@ -174,17 +218,11 @@ exports.createOrder = async (req, res) => {
     if (!isPositiveInt(item.quantity)) {
       return res.status(400).json({ error: 'quantity ต้องเป็นจำนวนเต็มบวก' });
     }
-    if (!VALID_SIZES.includes(item.size)) {
-      return res.status(400).json({ error: `size "${item.size}" ไม่ถูกต้อง` });
-    }
   }
 
   const client = getAuthenticatedSupabase(req.headers.authorization);
 
   try {
-    // 1. Server-side price recalculation for each item
-    // Mirrors the frontend's repriceAll: grouped quantities + per-side pricing.
-
     // Step 1a: Fetch all design data and color names in parallel
     const itemDesignData = await Promise.all(items.map(async (item) => {
       const designId = (item.designId && item.designId !== 'custom') ? item.designId : null;
@@ -196,6 +234,22 @@ exports.createOrder = async (req, res) => {
         .single();
       return { item, design: design ?? null };
     }));
+
+    const productIds = itemDesignData.map(({ item, design }) =>
+      item.productId || item.product_id || design?.base_product_id
+    ).filter(Boolean);
+    const sizesByProduct = await getSizesByProductIds(productIds);
+
+    for (const { item, design } of itemDesignData) {
+      const productId = item.productId || item.product_id || design?.base_product_id;
+      if (!productId) {
+        return res.status(400).json({ error: 'ไม่พบสินค้าสำหรับรายการในตะกร้า' });
+      }
+      const allowed = sizesByProduct.get(productId);
+      if (!allowed?.size || !allowed.has(item.size)) {
+        return res.status(400).json({ error: `size "${item.size}" ไม่ถูกต้องสำหรับสินค้านี้` });
+      }
+    }
 
     const dtfDesign = itemDesignData.find(({ design }) => design?.printing_type === 'DTF');
     if (dtfDesign) {
@@ -286,9 +340,55 @@ exports.createOrder = async (req, res) => {
       0
     );
 
-    // Calculate delivery fee based on total shirt quantity
+    // Gift Service add-on: validate and price per gifted line (flat fee, includes recipient shipping)
+    let giftAddonPrice = null;
+    const giftLineCount = pricedItems.filter((item) => Boolean(item.is_gift)).length;
+    if (giftLineCount > 0) {
+      try {
+        giftAddonPrice = await lookupAddonPrice(GIFT_SERVICE_CODE);
+      } catch (giftPriceErr) {
+        return res.status(400).json({ error: giftPriceErr.message || 'บริการของขวัญไม่พร้อมให้บริการในขณะนี้' });
+      }
+    }
+
+    const giftEnrichedItems = [];
+    for (const item of pricedItems) {
+      if (!item.is_gift) {
+        giftEnrichedItems.push({
+          ...item,
+          gift_message: null,
+          normalizedRecipient: null,
+          addon_code: null,
+          addon_fee_thb: 0,
+        });
+        continue;
+      }
+
+      try {
+        const normalizedRecipient = normalizeGiftRecipient(item.gift_recipient ?? item.giftRecipient);
+        validateGiftRecipient(normalizedRecipient);
+        const giftMessage = validateGiftMessage(item.gift_message ?? item.giftMessage);
+        giftEnrichedItems.push({
+          ...item,
+          gift_message: giftMessage,
+          normalizedRecipient,
+          addon_code: giftAddonPrice.code,
+          addon_fee_thb: giftAddonPrice.price_thb,
+        });
+      } catch (giftErr) {
+        return res.status(400).json({ error: giftErr.message });
+      }
+    }
+
+    const addonFeesTotal = giftEnrichedItems.reduce((sum, item) => sum + (item.addon_fee_thb ?? 0), 0);
+
+    // Delivery fee applies only to non-gift quantity (gift shipping included in add-on fee)
+    const nonGiftQty = giftEnrichedItems
+      .filter((item) => !item.is_gift)
+      .reduce((sum, item) => sum + item.quantity, 0);
+    const { fee: deliveryFee } = nonGiftQty > 0 ? await getDeliveryFee(nonGiftQty) : { fee: 0 };
+
     const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
-    const { fee: deliveryFee } = await getDeliveryFee(totalQty);
 
     // Apply coupon discount (server-side, product subtotal only)
     let discountAmount = 0;
@@ -318,7 +418,8 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    const grandTotal = verifiedItemsTotal - discountAmount + deliveryFee;
+    const grandTotal = verifiedItemsTotal + addonFeesTotal - discountAmount + deliveryFee;
+    const legalStamp = consentStamp();
 
     // 2. Create Order with server-verified total (items + delivery - discount)
     const { data: order, error: orderError } = await client
@@ -332,7 +433,8 @@ exports.createOrder = async (req, res) => {
         status: 'pending_payment',
         shipping_address: shipping,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        ...legalStamp,
       })
       .select()
       .single();
@@ -340,7 +442,7 @@ exports.createOrder = async (req, res) => {
     if (orderError) throw orderError;
 
     // 3. Copy print files from draft bucket → permanent ordered bucket
-    const itemsWithCopiedFiles = await Promise.all(pricedItems.map(async (item) => {
+    const itemsWithCopiedFiles = await Promise.all(giftEnrichedItems.map(async (item) => {
       if (!item.print_file_url) return item;
 
       let urlMap = {};
@@ -366,24 +468,82 @@ exports.createOrder = async (req, res) => {
       return { ...item, print_file_url: JSON.stringify(copiedMap) };
     }));
 
-    // 4. Create Order Items with server-verified unit prices and permanent print URLs
-    const orderItems = itemsWithCopiedFiles.map(item => ({
-      order_id: order.id,
-      user_design_id: (item.designId && item.designId !== 'custom') ? item.designId : null,
-      size: item.size,
-      color: item.color_id || item.color,
-      quantity: item.quantity,
-      unit_price: item.verifiedUnitPrice,
-      print_file_url: item.print_file_url,
-    }));
+    // 4. Create shipments and order items
+    const hasBuyerItems = itemsWithCopiedFiles.some((item) => !item.is_gift);
+    let buyerShipmentId = null;
 
-    const { error: itemsError } = await client
-      .from('order_items')
-      .insert(orderItems);
+    if (hasBuyerItems) {
+      const { data: buyerShipment, error: buyerShipErr } = await client
+        .from('order_shipments')
+        .insert({
+          order_id: order.id,
+          kind: 'buyer',
+          hide_prices: false,
+        })
+        .select('id')
+        .single();
+      if (buyerShipErr) {
+        await client.from('orders').delete().eq('id', order.id);
+        throw buyerShipErr;
+      }
+      buyerShipmentId = buyerShipment.id;
+    }
 
-    if (itemsError) {
-      await client.from('orders').delete().eq('id', order.id);
-      throw itemsError;
+    for (const item of itemsWithCopiedFiles) {
+      let shipmentId = buyerShipmentId;
+      let giftRecipientId = null;
+
+      if (item.is_gift) {
+        const { data: recipientRow, error: recipientErr } = await client
+          .from('gift_recipients')
+          .insert({
+            collected_by_user_id: userId,
+            ...item.normalizedRecipient,
+          })
+          .select('id')
+          .single();
+        if (recipientErr) {
+          await client.from('orders').delete().eq('id', order.id);
+          throw recipientErr;
+        }
+        giftRecipientId = recipientRow.id;
+
+        const { data: giftShipment, error: giftShipErr } = await client
+          .from('order_shipments')
+          .insert({
+            order_id: order.id,
+            kind: 'gift',
+            gift_recipient_id: giftRecipientId,
+            hide_prices: true,
+          })
+          .select('id')
+          .single();
+        if (giftShipErr) {
+          await client.from('orders').delete().eq('id', order.id);
+          throw giftShipErr;
+        }
+        shipmentId = giftShipment.id;
+      }
+
+      const { error: lineErr } = await client.from('order_items').insert({
+        order_id: order.id,
+        user_design_id: (item.designId && item.designId !== 'custom') ? item.designId : null,
+        size: item.size,
+        color: item.color_id || item.color,
+        quantity: item.quantity,
+        unit_price: item.verifiedUnitPrice,
+        print_file_url: item.print_file_url,
+        is_gift: Boolean(item.is_gift),
+        gift_message: item.gift_message,
+        gift_recipient_id: giftRecipientId,
+        addon_code: item.addon_code,
+        addon_fee_thb: item.addon_fee_thb ?? 0,
+        shipment_id: shipmentId,
+      });
+      if (lineErr) {
+        await client.from('orders').delete().eq('id', order.id);
+        throw lineErr;
+      }
     }
 
     // Record coupon usage (admin client bypasses RLS)
@@ -395,6 +555,9 @@ exports.createOrder = async (req, res) => {
         discount_applied: discountAmount,
       });
     }
+
+    // Account-level consent: record if missing, or if published ToS is newer than last accept
+    await persistProfileConsentIfNeeded(userId, legalStamp);
 
     res.status(201).json({ message: 'Order created successfully', orderId: order.id });
 

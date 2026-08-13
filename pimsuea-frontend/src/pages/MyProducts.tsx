@@ -15,18 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from "@/constants/printing";
-
-function getFirstPreview(raw: string | null | undefined): string {
-  if (!raw) return '';
-  try {
-    const m = JSON.parse(raw);
-    if (m && typeof m === 'object' && !Array.isArray(m)) {
-      const first = Object.values(m)[0];
-      if (typeof first === 'string') return first;
-    }
-  } catch { /* not JSON */ }
-  return raw;
-}
+import { getPreviewDisplayUrl } from "@/lib/previews";
 
 export default function MyProducts() {
   const [designs, setDesigns] = useState<any[]>([]);
@@ -96,7 +85,7 @@ export default function MyProducts() {
           <div key={design.id} className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 flex flex-col group hover:-translate-y-1">
             <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} className="block relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
                 <img
-                    src={getFirstPreview(design.preview_image_url) || "https://via.placeholder.com/300?text=No+Preview"}
+                    src={getPreviewDisplayUrl(design.preview_image_url) || "https://via.placeholder.com/300?text=No+Preview"}
                     alt={design.design_name} 
                     className="h-full w-full object-contain drop-shadow-xl group-hover:scale-105 transition-transform duration-500 ease-out" 
                 />
@@ -115,8 +104,13 @@ export default function MyProducts() {
                    )}
                 </div>
                 
-                {/* Subtle Tap Hint overlay for mobile */}
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                {/* Tap hint — always visible on touch devices */}
+                <div className="absolute bottom-3 left-3 right-3 md:hidden pointer-events-none">
+                  <span className="inline-block text-[10px] font-medium text-gray-500 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-100">
+                    แตะเพื่อดูรายละเอียด
+                  </span>
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/5 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block" />
             </Link>
             
             <div className="p-5 sm:p-6 flex-1 flex flex-col bg-gradient-to-b from-white to-gray-50/30">

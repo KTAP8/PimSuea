@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -7,23 +8,60 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
+export const REPRINT_GUARANTEE_SECTION_ID = 'reprint-guarantee';
+export const GIFT_RECIPIENT_PRIVACY_SECTION_ID = 'gift-recipient-privacy';
+
+export type TermsLang = 'en' | 'th';
+
 interface TermsModalProps {
   open: boolean;
   onClose: () => void;
+  initialExpandedSection?: string;
+  lang?: TermsLang;
 }
 
 const content = {
   en: {
     title: 'Pimsuea Terms of Service',
-    updated: 'Last Updated: March 2026',
+    updated: 'Last Updated: August 2026', // CURRENT_TERMS_VERSION = 2
     tldrTitle: 'The Short Version (TL;DR)',
     tldrIntro: 'We believe in keeping things seamless. Before you dive into the legal details below, here are the core rules of using our canvas:',
     tldr: [
       { bold: 'Own your art:', text: 'Do not upload trademarked logos or stolen artwork. You must own the rights to what you print.' },
-      { bold: 'Screens vs. Reality:', text: 'Your screen shows light (RGB); our printers use ink (CMYK). Colors and placements may have minor, industry-standard variations.' },
+      { bold: 'Screens vs. Reality:', text: 'Your screen shows light (RGB); our printers use ink (CMYK). Colors may shift slightly; print position may vary by up to 2 inches — standard manufacturing tolerance (see Mockup Approval & Free Reprints for details).' },
       { bold: 'Custom means custom:', text: 'Because we engineer 1-of-1 items specifically for you, we cannot accept returns if you choose the wrong size or simply change your mind. We only refund or replace if there is a manufacturing defect.' },
       { bold: 'Patience is premium:', text: 'Standard production time is 5 to 14 days before shipping.' },
     ],
+    reprint: {
+      title: 'Mockup Approval & Free Reprints',
+      intro: 'You approve a mockup before we print. If what arrives clearly doesn\'t match that mockup, we reprint free — within 7 days of delivery. This covers print-vs-mockup mismatch only, not general dissatisfaction or refunds.',
+      coveredTitle: 'Covered — we reprint free:',
+      covered: [
+        'Print position off by more than 2 inches, or print size/color that clearly does not match the mockup you approved.',
+        'Print defects — peeling, blank areas, or other manufacturing errors.',
+        'Wrong garment sent (wrong product or color).',
+      ],
+      notCoveredTitle: 'Not covered:',
+      notCovered: [
+        'Print position that differs from the mockup by 2 inches or less is within our standard manufacturing tolerance and does not qualify as a mismatch.',
+        'Typos or design errors you already approved in the mockup.',
+        'Garment fit when you selected the size yourself.',
+        'Normal DTG texture and slight color variance (RGB screen vs CMYK print).',
+        'Damage after delivery.',
+        'Claims submitted more than 7 days after delivery.',
+      ],
+    },
+    giftPrivacy: {
+      title: 'Gift Service & Recipient Privacy (PDPA)',
+      intro: 'When you use Gift Service, you provide information about a third party (the recipient). We treat that person\'s data separately from your account address — it is not stored as an alternate shipping address on your profile.',
+      bullets: [
+        'We collect recipient name, phone, and delivery address only to pack and ship the gift and print the card message you provide.',
+        'We do not market to recipients, create accounts for them, or merge their data with your saved addresses.',
+        'Recipient data is linked to the specific order line and retained only as long as needed for fulfillment, support, and legal compliance.',
+        'Gift packages and packing paperwork omit prices and payment details so recipients do not see what was paid.',
+        'You confirm you have a lawful basis to share the recipient\'s contact details for delivery (e.g. their consent or legitimate gift-giving).',
+      ],
+    },
     sections: [
       {
         title: '1. Acceptance of Terms',
@@ -45,7 +83,7 @@ const content = {
         body: 'We bridge digital software with physical hardware (DTG printing). By ordering, you acknowledge the following manufacturing realities:',
         bullets: [
           { bold: 'Color Variances:', text: 'Digital mockups on our web canvas are displayed in RGB, while our industrial printers operate in CMYK. Minor color shifts, particularly a softer, matte finish on DTG prints, are expected and do not constitute a defect.' },
-          { bold: 'Placement & Scale:', text: 'The 3D web canvas is an accurate representation, but physical garment printing carries an industry-standard placement tolerance of 0.5 to 1 inch.' },
+          { bold: 'Position & proportion:', text: 'Our 3D canvas is an accurate simulation, but real printing may vary in position by up to 2 inches — this is standard manufacturing tolerance and does not qualify for a free reprint (see "Mockup Approval & Free Reprints" above for full terms).' },
           { bold: 'Garment Characteristics:', text: 'Premium heavyweight cotton may exhibit slight variations in dye lots, fabric weave, or sizing tolerances (+/- 1 inch) between different production batches.' },
         ],
       },
@@ -82,15 +120,45 @@ const content = {
   },
   th: {
     title: 'ข้อตกลงและเงื่อนไขการใช้บริการ Pimsuea',
-    updated: 'อัปเดตล่าสุด: มีนาคม 2026',
+    updated: 'อัปเดตล่าสุด: สิงหาคม 2026', // CURRENT_TERMS_VERSION = 2
     tldrTitle: 'สรุปแบบรวบรัด (The Short Version)',
     tldrIntro: 'เราเชื่อในความเรียบง่ายและไร้รอยต่อ ก่อนที่คุณจะอ่านรายละเอียดทางกฎหมายฉบับเต็มด้านล่าง นี่คือกฎพื้นฐานในการใช้งานแพลตฟอร์มของเรา:',
     tldr: [
       { bold: 'ลิขสิทธิ์ต้องเป็นของคุณ:', text: 'ห้ามอัปโหลดโลโก้ที่มีเครื่องหมายการค้าหรืองานศิลปะที่ละเมิดลิขสิทธิ์ คุณต้องเป็นเจ้าของสิทธิ์ในสิ่งที่คุณสั่งพิมพ์' },
-      { bold: 'หน้าจอกับของจริง:', text: 'หน้าจอของคุณแสดงผลด้วยแสง (RGB) แต่เครื่องพิมพ์ของเราใช้หมึก (CMYK) สีและตำแหน่งการวางอาจมีความคลาดเคลื่อนเล็กน้อยตามมาตรฐานการผลิต' },
+      { bold: 'หน้าจอกับของจริง:', text: 'หน้าจอของคุณแสดงผลด้วยแสง (RGB) แต่เครื่องพิมพ์ของเราใช้หมึก (CMYK) สีอาจคลาดเคลื่อนเล็กน้อย ตำแหน่งพิมพ์อาจคลาดเคลื่อนไม่เกิน 2 นิ้ว ซึ่งเป็นค่ามาตรฐานการผลิต (ดูรายละเอียดในหัวข้อ "การอนุมัติม็อคอัพและการพิมพ์ใหม่ฟรี")' },
       { bold: 'สั่งทำพิเศษคือการผลิตเพื่อคุณคนเดียว:', text: 'เนื่องจากเราผลิตสินค้าแบบ 1-of-1 เฉพาะสำหรับคุณ เราจึงไม่สามารถรับคืนสินค้าได้หากคุณเลือกไซส์ผิดหรือเปลี่ยนใจ เราจะคืนเงินหรือส่งสินค้าชิ้นใหม่ให้เฉพาะในกรณีที่มีความบกพร่องจากการผลิตเท่านั้น' },
       { bold: 'ของพรีเมียมต้องใช้เวลา:', text: 'ระยะเวลาการผลิตตามมาตรฐานของเราคือ 5 ถึง 14 วันทำการก่อนทำการจัดส่ง' },
     ],
+    reprint: {
+      title: 'การอนุมัติม็อคอัพและการพิมพ์ใหม่ฟรี',
+      intro: 'คุณอนุมัติม็อคอัพก่อนเราพิมพ์ ถ้าของที่ได้รับไม่ตรงกับม็อคอัพที่อนุมัติอย่างชัดเจน เราพิมพ์ใหม่ให้ฟรีภายใน 7 วันหลังได้รับสินค้า ครอบคลุมเฉพาะกรณีพิมพ์ไม่ตรงม็อคอัพ ไม่ใช่การรับประกันความพอใจหรือการคืนเงิน',
+      coveredTitle: 'ครอบคลุม — พิมพ์ใหม่ฟรี:',
+      covered: [
+        'ตำแหน่งพิมพ์คลาดเคลื่อนเกิน 2 นิ้ว หรือขนาด/สีพิมพ์ไม่ตรงกับม็อคอัพที่คุณอนุมัติอย่างชัดเจน',
+        'ข้อบกพร่องจากการพิมพ์ — หลุด ลอก หรือพื้นที่พิมพ์ว่าง',
+        'ส่งเสื้อผิด (สินค้าหรือสีไม่ตรงที่สั่ง)',
+      ],
+      notCoveredTitle: 'ไม่ครอบคลุม:',
+      notCovered: [
+        'ตำแหน่งงานพิมพ์คลาดเคลื่อนจากม็อคอัพไม่เกิน 2 นิ้ว ถือเป็นค่าความคลาดเคลื่อนมาตรฐานของการผลิต ไม่นับเป็นกรณีพิมพ์ไม่ตรง',
+        'ตัวสะกดผิดหรือข้อผิดพลาดในลายที่คุณอนุมัติในม็อคอัพแล้ว',
+        'ไซส์ไม่พอดีเมื่อคุณเลือกไซส์เอง',
+        'เนื้อสัมผัส DTG และความต่างสีเล็กน้อยตามปกติ (หน้าจอ RGB vs พิมพ์ CMYK)',
+        'ความเสียหายหลังได้รับสินค้าแล้ว',
+        'แจ้งปัญหาหลัง 7 วันนับจากวันที่ได้รับสินค้า',
+      ],
+    },
+    giftPrivacy: {
+      title: 'บริการของขวัญและความเป็นส่วนตัวของผู้รับ (PDPA)',
+      intro: 'เมื่อคุณใช้บริการของขวัญ คุณจะระบุข้อมูลของบุคคลที่สาม (ผู้รับ) เราจัดเก็บข้อมูลนี้แยกจากที่อยู่ในบัญชีของคุณ — ไม่นำไปใช้เป็นที่อยู่จัดส่งสำรองในโปรไฟล์',
+      bullets: [
+        'เราเก็บชื่อ โทรศัพท์ และที่อยู่ผู้รับเฉพาะเพื่อแพ็ก ส่งของขวัญ และพิมพ์ข้อความบนการ์ดที่คุณระบุ',
+        'เราไม่ส่งการตลาดถึงผู้รับ ไม่สร้างบัญชีให้ผู้รับ และไม่รวมข้อมูลเข้ากับที่อยู่ที่คุณบันทึกไว้',
+        'ข้อมูลผู้รับผูกกับรายการสั่งซื้อนั้น และเก็บเท่าที่จำเป็นสำหรับการจัดส่ง การสนับสนุน และข้อกำหนดทางกฎหมาย',
+        'เอกสารในกล่องของขวัญไม่แสดงราคา ใบเสร็จ หรือรายละเอียดการชำระเงิน',
+        'คุณยืนยันว่ามีฐานทางกฎหมายในการให้ข้อมูลติดต่อของผู้รับเพื่อการจัดส่ง (เช่น ได้รับความยินยอมหรือเป็นการมอบของขวัญโดยชอบ)',
+      ],
+    },
     sections: [
       {
         title: '1. การยอมรับข้อตกลง',
@@ -112,7 +180,7 @@ const content = {
         body: 'เราเชื่อมต่อซอฟต์แวร์ดิจิทัลเข้ากับฮาร์ดแวร์จริง (การพิมพ์ DTG) เมื่อทำการสั่งซื้อ คุณรับทราบถึงข้อจำกัดในการผลิตดังต่อไปนี้:',
         bullets: [
           { bold: 'ความคลาดเคลื่อนของสี:', text: 'ภาพม็อคอัพดิจิทัลบนหน้าเว็บแสดงผลเป็น RGB ในขณะที่เครื่องพิมพ์อุตสาหกรรมของเราทำงานในระบบ CMYK สีอาจมีการคลาดเคลื่อนเล็กน้อย โดยเฉพาะงานพิมพ์ DTG ที่สีจะมีความซอฟต์และแมตต์ขึ้น ซึ่งถือเป็นเรื่องปกติและไม่ใช่ข้อบกพร่อง' },
-          { bold: 'ตำแหน่งและสัดส่วน:', text: 'แคนวาส 3D บนหน้าเว็บเป็นการจำลองที่แม่นยำ แต่การพิมพ์ลงบนเสื้อผ้าจริงอาจมีความคลาดเคลื่อนของตำแหน่งตามมาตรฐานอุตสาหกรรมที่ 0.5 ถึง 1 นิ้ว' },
+          { bold: 'ตำแหน่งและสัดส่วน:', text: 'แคนวาส 3D บนหน้าเว็บเป็นการจำลองที่แม่นยำ แต่การพิมพ์ลงบนเสื้อผ้าจริงอาจมีความคลาดเคลื่อนของตำแหน่งไม่เกิน 2 นิ้ว ซึ่งถือเป็นค่ามาตรฐานการผลิตและไม่เข้าเงื่อนไขการพิมพ์ใหม่ฟรี (ดูรายละเอียดในหัวข้อ "การอนุมัติม็อคอัพและการพิมพ์ใหม่ฟรี")' },
           { bold: 'ลักษณะเฉพาะของเนื้อผ้า:', text: 'ผ้าคอตตอนพรีเมียมแบบหนาอาจมีความแตกต่างเล็กน้อยในเรื่องของสีย้อม การทอ หรือไซส์เสื้อ (+/- 1 นิ้ว) ระหว่างล็อตการผลิตที่ต่างกัน' },
         ],
       },
@@ -149,13 +217,47 @@ const content = {
   },
 };
 
-export function TermsModal({ open, onClose }: TermsModalProps) {
-  const [lang, setLang] = useState<'en' | 'th'>('th');
+export function TermsModal({ open, onClose, initialExpandedSection, lang: siteLang }: TermsModalProps) {
+  const [lang, setLang] = useState<TermsLang>(siteLang ?? 'th');
+  const [reprintExpanded, setReprintExpanded] = useState(false);
+  const [giftPrivacyExpanded, setGiftPrivacyExpanded] = useState(false);
+  const reprintRef = useRef<HTMLDivElement>(null);
+  const giftPrivacyRef = useRef<HTMLDivElement>(null);
   const t = content[lang];
+
+  useEffect(() => {
+    if (open && siteLang) {
+      setLang(siteLang);
+    }
+  }, [open, siteLang]);
+
+  useEffect(() => {
+    if (open && initialExpandedSection === REPRINT_GUARANTEE_SECTION_ID) {
+      setReprintExpanded(true);
+    }
+    if (open && initialExpandedSection === GIFT_RECIPIENT_PRIVACY_SECTION_ID) {
+      setGiftPrivacyExpanded(true);
+    }
+  }, [open, initialExpandedSection]);
+
+  useEffect(() => {
+    if (!open || !reprintExpanded || initialExpandedSection !== REPRINT_GUARANTEE_SECTION_ID) return;
+    const timer = window.setTimeout(() => {
+      reprintRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [open, reprintExpanded, initialExpandedSection]);
+
+  useEffect(() => {
+    if (!open) {
+      setReprintExpanded(false);
+      setGiftPrivacyExpanded(false);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0" showCloseButton={false}>
         <DialogHeader className="px-6 pt-6 pb-3 border-b shrink-0">
           <div className="flex items-start justify-between gap-4">
             <DialogTitle className="text-lg font-bold leading-tight">{t.title}</DialogTitle>
@@ -191,6 +293,77 @@ export function TermsModal({ open, onClose }: TermsModalProps) {
                 </li>
               ))}
             </ol>
+          </div>
+
+          <hr />
+
+          {/* Reprint guarantee accordion */}
+          <div id={REPRINT_GUARANTEE_SECTION_ID} ref={reprintRef} className="scroll-mt-6">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between gap-4 text-left"
+              onClick={() => setReprintExpanded((v) => !v)}
+              aria-expanded={reprintExpanded}
+            >
+              <h3 className="font-bold text-base text-gray-900 leading-snug">{t.reprint.title}</h3>
+              <ChevronDown
+                className={`w-5 h-5 shrink-0 text-gray-400 transition-transform duration-300 ${reprintExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {reprintExpanded && (
+              <div className="mt-3 space-y-4">
+                <p className="text-gray-600 leading-relaxed">{t.reprint.intro}</p>
+                <div>
+                  <p className="font-semibold text-gray-900 mb-2">{t.reprint.coveredTitle}</p>
+                  <ul className="space-y-1.5">
+                    {t.reprint.covered.map((item, i) => (
+                      <li key={i} className="flex gap-2 leading-relaxed">
+                        <span className="text-primary mt-0.5 shrink-0">✓</span>
+                        <span className="text-gray-600">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 mb-2">{t.reprint.notCoveredTitle}</p>
+                  <ul className="space-y-1.5">
+                    {t.reprint.notCovered.map((item, i) => (
+                      <li key={i} className="flex gap-2 leading-relaxed">
+                        <span className="text-gray-400 mt-0.5 shrink-0">✗</span>
+                        <span className="text-gray-600">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div id={GIFT_RECIPIENT_PRIVACY_SECTION_ID} ref={giftPrivacyRef} className="scroll-mt-6">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between gap-4 text-left"
+              onClick={() => setGiftPrivacyExpanded((v) => !v)}
+              aria-expanded={giftPrivacyExpanded}
+            >
+              <h3 className="font-bold text-base text-gray-900 leading-snug">{t.giftPrivacy.title}</h3>
+              <ChevronDown
+                className={`w-5 h-5 shrink-0 text-gray-400 transition-transform duration-300 ${giftPrivacyExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {giftPrivacyExpanded && (
+              <div className="mt-3 space-y-3">
+                <p className="text-gray-600 leading-relaxed">{t.giftPrivacy.intro}</p>
+                <ul className="space-y-1.5">
+                  {t.giftPrivacy.bullets.map((item, i) => (
+                    <li key={i} className="flex gap-2 leading-relaxed">
+                      <span className="text-primary mt-0.5 shrink-0">•</span>
+                      <span className="text-gray-600">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <hr />

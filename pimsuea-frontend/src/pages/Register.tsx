@@ -9,6 +9,7 @@ import { AlertCircle, CheckCircle2, Check, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TermsModal } from "@/components/TermsModal";
 import { APP_ORIGIN } from "@/lib/site";
+import { CURRENT_TERMS_VERSION, markPendingTermsAcceptance } from "@/lib/legal";
 
 const PASSWORD_RULES = [
   { label: "อย่างน้อย 8 ตัวอักษร",          test: (p: string) => p.length >= 8 },
@@ -52,7 +53,17 @@ export default function Register() {
     setLoading(true);
     setError(null);
 
-    const { error: signUpError } = await supabase.auth.signUp({ email: email.trim(), password });
+    const { error: signUpError } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          terms_accepted: true,
+          privacy_accepted: true,
+          terms_version: CURRENT_TERMS_VERSION,
+        },
+      },
+    });
 
     if (signUpError) {
       setError(signUpError.message);
@@ -65,9 +76,10 @@ export default function Register() {
   const handleGoogleRegister = async () => {
     setOauthLoading(true);
     setError(null);
+    markPendingTermsAcceptance();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${APP_ORIGIN}/dashboard` },
+      options: { redirectTo: `${APP_ORIGIN}/dashboard?terms_accepted=1` },
     });
     if (error) {
       setError(error.message);

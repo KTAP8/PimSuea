@@ -13,7 +13,7 @@ interface Props {
 
 export function LayerPanel({ canvasImages, selectedId, onSelect, onMove, onDelete, onClose }: Props) {
     return (
-        <div className="fixed md:absolute bottom-16 md:bottom-32 left-0 right-0 md:left-auto md:right-6 top-auto md:top-6 h-[50vh] md:h-auto md:w-64 bg-white shadow-[0_-8px_30px_rgb(0,0,0,0.12)] md:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-t-3xl md:rounded-2xl border flex flex-col z-40 overflow-hidden">
+        <div className="fixed md:absolute bottom-toolbar-offset md:bottom-32 left-0 right-0 md:left-auto md:right-6 top-auto md:top-6 max-h-[50dvh] md:max-h-none md:h-auto md:w-64 bg-white shadow-[0_-8px_30px_rgb(0,0,0,0.12)] md:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-t-3xl md:rounded-2xl border flex flex-col z-40 overflow-hidden">
             <div className="px-5 py-4 border-b flex items-center justify-between bg-gray-50/50">
                 <h3 className="font-semibold text-base flex items-center gap-2 text-gray-800">
                     <Layers className="w-4 h-4" /> Layers
@@ -45,27 +45,27 @@ export function LayerPanel({ canvasImages, selectedId, onSelect, onMove, onDelet
                                 <span className="flex-1 text-xs text-gray-600 truncate min-w-0">
                                     Layer {canvasImages.length - displayIdx}
                                 </span>
-                                <div className="flex flex-col shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex flex-col shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                     <button
                                         onClick={e => { e.stopPropagation(); onMove(ci.id, 'forward'); }}
                                         disabled={realIdx >= canvasImages.length - 1}
-                                        className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30"
+                                        className="p-2 min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-200 rounded disabled:opacity-30"
                                         title="Bring Forward">
-                                        <ChevronUp className="w-3 h-3" />
+                                        <ChevronUp className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={e => { e.stopPropagation(); onMove(ci.id, 'backward'); }}
                                         disabled={realIdx <= 0}
-                                        className="p-0.5 hover:bg-gray-200 rounded disabled:opacity-30"
+                                        className="p-2 min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-200 rounded disabled:opacity-30"
                                         title="Send Backward">
-                                        <ChevronDown className="w-3 h-3" />
+                                        <ChevronDown className="w-4 h-4" />
                                     </button>
                                 </div>
                                 <button
                                     onClick={e => { e.stopPropagation(); onDelete(ci.id); }}
-                                    className="shrink-0 p-1 rounded hover:bg-red-50 hover:text-red-500 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="shrink-0 p-2 min-h-11 min-w-11 flex items-center justify-center rounded hover:bg-red-50 hover:text-red-500 text-gray-400 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                                     title="Delete">
-                                    <Trash2 className="w-3 h-3" />
+                                    <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
                         );

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { getDashboard } from "@/services/api";
 import type { DashboardData } from "@/types/api";
 
-import { BackgroundCells } from "@/components/ui/background-ripple-effect";
+import { motion } from "framer-motion";
 import { UserGreeting } from "@/components/dashboard/UserGreeting";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ContinueDesigning } from "@/components/dashboard/ContinueDesigning";
@@ -19,6 +19,14 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+
+function newsExcerpt(description?: string, content?: string): string {
+  if (description?.trim()) return description;
+  if (!content?.trim()) return "";
+  const plain = content.replace(/[#>*_\-\[\]()]/g, "").replace(/\s+/g, " ").trim();
+  if (plain.length <= 120) return plain;
+  return `${plain.slice(0, 120).trim()}…`;
+}
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -64,28 +72,49 @@ export default function Dashboard() {
   return (
     <div className="pb-16 bg-slate-50 min-h-screen">
       {/* Hero Section */}
-      <BackgroundCells className="h-[75vh] border-b border-gray-100/50 bg-white/40">
-        <div className="text-center px-4 max-w-4xl mx-auto relative z-10 flex flex-col justify-center h-full pt-10">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 text-slate-900 tracking-tight leading-tight">
+      <div className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white border-b border-gray-100/50">
+        {/* Subtle decorative gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] opacity-30 pointer-events-none overflow-hidden">
+          <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-teal-200 blur-[120px] rounded-full mix-blend-multiply opacity-70 animate-pulse delay-100" />
+          <div className="absolute top-[20%] -right-[10%] w-[40%] h-[40%] bg-orange-100 blur-[100px] rounded-full mix-blend-multiply opacity-70 animate-pulse delay-700" />
+        </div>
+        
+        <div className="text-center px-4 max-w-4xl mx-auto relative z-10 flex flex-col justify-center min-h-[40vh] md:min-h-[70vh] pt-8 pb-8 md:pt-16 md:pb-12">
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-heavy mb-4 md:mb-6 text-slate-900 tracking-tight leading-[1.1]"
+          >
             บริการ Print On Demand <br className="hidden md:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#07636D] to-teal-500 drop-shadow-sm">
+            <span className="text-primary">
               เพื่อคุณ โดยคุณ เราจัดการให้
             </span>
-          </h1>
+          </motion.h1>
 
-          <p className="text-lg md:text-xl text-slate-500 mb-10 max-w-2xl mx-auto leading-relaxed font-medium">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="text-base md:text-xl text-slate-600 mb-6 md:mb-10 max-w-2xl mx-auto leading-relaxed font-medium"
+          >
             ศูนย์รวมงานสกรีนคุณภาพสูง ออกแบบเองได้ง่ายๆ <br className="hidden md:block" /> เริ่มต้นเพียง 1 ชิ้น ส่งตรงถึงบ้านคุณ
-          </p>
+          </motion.p>
 
-          <div>
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
             <Link to="/catalog">
-              <Button size="lg" className="bg-[#07636D] hover:bg-[#06545c] text-white rounded-full text-lg px-8 py-6 shadow-xl shadow-teal-900/15 transition-all duration-300 hover:scale-[1.02] hover:shadow-teal-900/30">
-                เริ่มสั่งทำเลย <ArrowRight className="ml-2 w-5 h-5" />
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white rounded-full text-base md:text-lg px-6 md:px-8 py-5 md:py-7 shadow-xl shadow-primary/20 transition-all duration-300 hover:scale-105 hover:shadow-primary/30 group">
+                เริ่มสั่งทำเลย 
+                <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </div>
+          </motion.div>
         </div>
-      </BackgroundCells>
+      </div>
       
       {/* Personalized user summary */}
       <UserGreeting stats={stats} />
@@ -109,7 +138,7 @@ export default function Dashboard() {
                     align: "start",
                     loop: false,
                   }}
-                  className="mx-8 md:mx-16"
+                  className="mx-2 sm:mx-4 md:mx-16"
                 >
                   <CarouselContent className="-ml-4 py-4">
                     {data.news.map((item) => (
@@ -142,7 +171,7 @@ export default function Dashboard() {
                                         {item.title}
                                     </h3>
                                     <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
-                                        {item.description}
+                                        {newsExcerpt(item.description, item.content)}
                                     </p>
                                     {item.published_at && (
                                         <div className="text-xs text-gray-400 mt-auto">

@@ -5,18 +5,7 @@ import { getMyOrders } from "@/services/api";
 import type { Order } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-
-function getFirstPreview(raw: string | null | undefined): string {
-  if (!raw) return '';
-  try {
-    const m = JSON.parse(raw);
-    if (m && typeof m === 'object' && !Array.isArray(m)) {
-      const first = Object.values(m)[0];
-      if (typeof first === 'string') return first;
-    }
-  } catch { /* not JSON */ }
-  return raw;
-}
+import { getPreviewDisplayUrl } from "@/lib/previews";
 
 const statusMap: Record<string, { label: string; color: string }> = {
   pending_payment: { label: "รอชำระเงิน", color: "bg-yellow-100 text-yellow-800" },
@@ -146,7 +135,49 @@ export default function MyOrders() {
         <Package className="mr-3" /> ประวัติการสั่งซื้อ
       </h1>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="md:hidden space-y-3">
+        {orders.length === 0 ? (
+          <div className="bg-white rounded-xl border p-8 text-center text-gray-500">
+            ยังไม่มีประวัติการสั่งซื้อ
+          </div>
+        ) : (
+          orders.map((order) => {
+            const statusInfo = statusMap[order.status] || { label: order.status, color: "bg-gray-100 text-gray-800" };
+            return (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => { setSelectedOrder(order); setIsEditingAddress(false); setNotification(null); }}
+                className="w-full text-left bg-white rounded-xl border p-4 shadow-sm active:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <span className="font-semibold text-gray-900">#{order.id}</span>
+                  <Badge variant="outline" className={`border-0 shrink-0 ${statusInfo.color}`}>
+                    {statusInfo.label}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-500 mb-2">
+                  {new Date(order.created_at).toLocaleString('th-TH', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-lg">฿{order.total_amount.toLocaleString()}</span>
+                  <span className="text-sm text-primary font-medium flex items-center gap-1">
+                    <Eye className="w-4 h-4" /> ดูรายละเอียด
+                  </span>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-gray-50 border-b">
@@ -202,7 +233,7 @@ export default function MyOrders() {
 
        <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
-          <DialogHeader className="p-8 pb-4">
+          <DialogHeader className="p-4 md:p-8 pb-4">
             <DialogTitle className="text-2xl">รายละเอียดคำสั่งซื้อ</DialogTitle>
             <DialogDescription className="text-base">
                 หมายเลขคำสั่งซื้อ #{selectedOrder?.id}
@@ -210,7 +241,7 @@ export default function MyOrders() {
           </DialogHeader>
           
           {selectedOrder && (
-              <div className="flex-1 overflow-y-auto px-8 py-4">
+              <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4">
                   <div className="space-y-8 pb-8">
 
 
@@ -279,18 +310,36 @@ export default function MyOrders() {
                                 selectedOrder.items.map((item) => (
                                     <div key={item.id} className="flex gap-6 border p-4 rounded-xl hover:bg-gray-50 transition-colors">
                                         <img
-                                            src={getFirstPreview(item.image) || "https://via.placeholder.com/100"} 
+                                            src={getPreviewDisplayUrl(item.image) || "https://via.placeholder.com/100"} 
                                             alt={item.product_name} 
                                             className="w-20 h-20 object-cover rounded-lg bg-gray-100 border"
                                         />
                                         <div className="flex-1 flex flex-col justify-between">
                                             <div>
-                                                <p className="font-semibold text-lg line-clamp-1">{item.product_name}</p>
+                                                <p className="font-semibold text-lg line-clamp-1">
+                                                    {item.product_name}
+                                                    {item.is_gift && (
+                                                        <span className="ml-2 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">ของขวัญ</span>
+                                                    )}
+                                                </p>
                                                 <p className="text-sm text-gray-500 mt-1">รหัสสินค้า: {item.id}</p>
+                                                {item.is_gift && item.gift_recipient && (
+                                                    <p className="text-sm text-gray-600 mt-1">
+                                                        ส่งถึง: {item.gift_recipient.fullName} ({item.gift_recipient.phone})
+                                                    </p>
+                                                )}
+                                                {item.is_gift && item.gift_message && (
+                                                    <p className="text-sm text-gray-500 mt-1 italic">การ์ด: "{item.gift_message}"</p>
+                                                )}
                                             </div>
                                             <div className="flex justify-between mt-2 text-base">
                                                 <span className="text-gray-600">จำนวน: {item.quantity} ชิ้น</span>
-                                                <span className="font-bold">฿{item.price.toLocaleString()}</span>
+                                                <span className="font-bold">
+                                                    ฿{item.price.toLocaleString()}
+                                                    {item.is_gift && item.addon_fee_thb ? (
+                                                        <span className="text-sm text-primary font-normal ml-1">+฿{item.addon_fee_thb.toLocaleString()} ของขวัญ</span>
+                                                    ) : null}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -305,7 +354,7 @@ export default function MyOrders() {
                         {/* Shipping Address */}
                         <div>
                              <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-semibold flex items-center text-lg"><MapPin className="w-5 h-5 mr-3"/> ที่อยู่จัดส่ง</h3>
+                                <h3 className="font-semibold flex items-center text-lg"><MapPin className="w-5 h-5 mr-3"/> ที่อยู่ติดต่อ / จัดส่ง (ผู้สั่ง)</h3>
                                 {canEditAddress(selectedOrder.status) && !isEditingAddress && (
                                     <Button variant="outline" size="sm" onClick={handleEditClick}>
                                         แก้ไข

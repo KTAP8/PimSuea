@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Packing slip — Order {{ order.id[:8] }}</title>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; }
+    }
+    body { font-family: system-ui, sans-serif; color: #111; max-width: 800px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 1.25rem; margin: 0 0 4px; }
+    .muted { color: #666; font-size: 0.875rem; }
+    .shipment { page-break-after: always; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .shipment:last-child { page-break-after: auto; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .badge-gift { background: #fef3c7; color: #92400e; }
+    .badge-buyer { background: #e0f2fe; color: #0369a1; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.875rem; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px 4px; text-align: left; vertical-align: top; }
+    th { font-size: 0.75rem; text-transform: uppercase; color: #666; }
+    .gift-msg { background: #fffbeb; border: 1px dashed #f59e0b; padding: 12px; border-radius: 8px; margin-top: 12px; font-style: italic; }
+    .addr { margin-top: 12px; line-height: 1.5; }
+    .no-print { margin-bottom: 16px; }
+    .no-print button { padding: 8px 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()">Print packing slips</button>
+    <a href="{{ url_for('order_detail', order_id=order.id) }}">← Back to order</a>
+  </div>
+
+  <h1>Order {{ order.id[:8] }}…</h1>
+  <p class="muted">Customer: {{ customer_email or order.user_id }}</p>
+
+  {% for group in packing_groups %}
+  <div class="shipment">
+    <div>
+      {% if group.kind == 'gift' %}
+        <span class="badge badge-gift">GIFT — NO PRICES</span>
+      {% else %}
+        <span class="badge badge-buyer">Buyer shipment</span>
+      {% endif %}
+    </div>
+
+    <div class="addr">
+      <strong>Ship to:</strong><br />
+      {% if group.kind == 'gift' and group.recipient %}
+        {{ group.recipient.full_name }}<br />
+        {{ group.recipient.phone }}<br />
+        {{ group.recipient.address_line1 }}{% if group.recipient.address_line2 %}, {{ group.recipient.address_line2 }}{% endif %}<br />
+        {{ group.recipient.district }} {{ group.recipient.province }} {{ group.recipient.postal_code }}
+      {% elif buyer_address %}
+        {{ buyer_address.fullName or buyer_address.full_name }}<br />
+        {{ buyer_address.phone }}<br />
+        {{ buyer_address.addressLine1 or buyer_address.address_line1 }}<br />
+        {{ buyer_address.district }} {{ buyer_address.province }} {{ buyer_address.postalCode or buyer_address.postal_code }}
+      {% else %}
+        <em>No address on file</em>
+      {% endif %}
+    </div>
+
+    {% if group.tracking_number %}
+      <p class="muted" style="margin-top:8px;">Tracking: {{ group.tracking_number }}</p>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Variant</th>
+          <th>Qty</th>
+          {% if not group.hide_prices %}<th>Unit</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in group.items %}
+        {% set design = item.user_design or {} %}
+        <tr>
+          <td>
+            {{ design.design_name or 'Custom design' }}
+            {% if item.is_gift %}<br /><span class="badge badge-gift">Gift</span>{% endif %}
+          </td>
+          <td>{{ item.color }} / {{ item.size }}</td>
+          <td>{{ item.quantity }}</td>
+          {% if not group.hide_prices %}
+            <td>฿{{ item.unit_price }}</td>
+          {% endif %}
+        </tr>
+        {% if item.is_gift and item.gift_message %}
+        <tr>
+          <td colspan="{% if group.hide_prices %}3{% else %}4{% endif %}">
+            <div class="gift-msg">Card message: “{{ item.gift_message }}”</div>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if group.hide_prices %}
+      <p class="muted" style="margin-top:16px;">This package must not include prices, invoices, or payment details.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</body>
+</html>

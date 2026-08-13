@@ -15,6 +15,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
   const { signOut } = useAuth();
 
   const handleLogout = async () => {
+    onItemClick?.();
     await signOut();
   };
 
@@ -62,11 +63,11 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
       </div>
 
       <div className="px-3 mt-auto space-y-2 border-t pt-4">
-        <Link to="/settings">
+        <Link to="/settings" onClick={onItemClick}>
             <Button 
                 variant="ghost" 
                 className={cn(
-                    "w-full text-gray-500 hover:text-gray-900",
+                    "w-full text-gray-500 hover:text-gray-900 min-h-11",
                     collapsed ? "justify-center px-0" : "justify-start px-4"
                 )}
             >
@@ -77,7 +78,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
         <Button 
             variant="ghost" 
             className={cn(
-                "w-full text-red-500 hover:text-red-600 hover:bg-red-50",
+                "w-full text-red-500 hover:text-red-600 hover:bg-red-50 min-h-11",
                 collapsed ? "justify-center px-0" : "justify-start px-4"
             )}
             onClick={() => handleLogout()}
@@ -125,10 +126,10 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile Trigger */}
-      <div className="md:hidden fixed top-4 left-4 z-50">
+      <div className="md:hidden fixed top-safe-offset left-safe-offset z-50">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="shadow-md bg-white">
+            <Button variant="outline" size="icon" className="shadow-md bg-white h-11 w-11 min-h-11 min-w-11">
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>

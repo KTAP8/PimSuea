@@ -283,6 +283,12 @@ def order_detail(order_id: str):
                     customer_email=orders_svc.get_profile_email(order.get("user_id")),
                     print_result=result,
                 )
+            elif action == "update_shipment_tracking":
+                shipment_id = request.form.get("shipment_id", "").strip()
+                tracking = request.form.get("tracking_number")
+                if shipment_id:
+                    orders_svc.update_shipment_tracking(shipment_id, tracking)
+                    flash("Shipment tracking updated.", "ok")
         except Exception as exc:
             flash(str(exc), "error")
         return redirect(url_for("order_detail", order_id=order_id))
@@ -291,6 +297,22 @@ def order_detail(order_id: str):
         "order_detail.html",
         order=order,
         items=orders_svc.get_order_items(order_id),
+        shipments=orders_svc.get_order_shipments(order_id),
+        customer_email=orders_svc.get_profile_email(order.get("user_id")),
+    )
+
+
+@app.get("/orders/<order_id>/packing-slip")
+def packing_slip(order_id: str):
+    order = orders_svc.get_order(order_id)
+    if not order:
+        flash("Order not found.", "error")
+        return redirect(url_for("orders_list"))
+    return render_template(
+        "packing_slip.html",
+        order=order,
+        packing_groups=orders_svc.get_packing_data(order_id),
+        buyer_address=order.get("shipping_address") or {},
         customer_email=orders_svc.get_profile_email(order.get("user_id")),
     )
 

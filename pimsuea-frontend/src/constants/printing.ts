@@ -29,3 +29,12 @@ export function filterActivePrintMethods<T extends { id?: string; name?: string 
 
 export const DTF_DISCONTINUED_MESSAGE =
   'เราไม่รับงานพิมพ์ DTF แล้ว กรุณาสร้างดีไซน์ใหม่ด้วย DTG';
+
+/** Compact label for badges in narrow product cards */
+export function getPrintMethodShortLabel(name: string): string {
+  const upper = name.toUpperCase();
+  if (upper.includes('DTG') || upper.includes('DIRECT TO GARMENT')) return 'DTG';
+  if (upper.includes('DTF') || upper.includes('DIRECT TO FILM')) return 'DTF';
+  if (name.length <= 8) return upper;
+  return upper.split(/[\s(]/)[0] ?? upper.slice(0, 8);
+}

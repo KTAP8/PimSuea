@@ -185,6 +185,62 @@
 }
 
 @layer utilities {
+  /* Mobile safe-area helpers — use *-bar variants when base padding would conflict with py-* */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .px-safe {
+    padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  }
+  .pt-safe-bar {
+    padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+  }
+  .pb-safe-bar {
+    padding-bottom: calc(0.625rem + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 768px) {
+    .pt-safe-bar {
+      padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    }
+    .pb-safe-bar {
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+    .px-safe {
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+  }
+  .top-safe-offset {
+    top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  }
+  .left-safe-offset {
+    left: calc(1rem + env(safe-area-inset-left, 0px));
+  }
+  .right-safe-offset {
+    right: calc(1rem + env(safe-area-inset-right, 0px));
+  }
+  .bottom-toolbar-offset {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  .bottom-studio-offset {
+    bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+  }
+  .h-dvh-screen {
+    height: 100dvh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+  }
+
   /* FC Vision Heavy (900) — large display headings only */
   .font-heavy {
     font-weight: 900;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee } from "@/services/api";
+import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee, fetchAddons } from "@/services/api";
 import CouponInput, { type AppliedCoupon, type CouponItem, computeDiscount } from "@/components/CouponInput";
 import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from "@/constants/printing";
 import { useCart } from "@/contexts/CartContext";
@@ -11,6 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { CheckoutReprintGuarantee } from "@/components/CheckoutReprintGuarantee";
+import { TermsModal, REPRINT_GUARANTEE_SECTION_ID } from "@/components/TermsModal";
+import { GiftServiceLineOption } from "@/components/checkout/GiftServiceLineOption";
+import type { GiftRecipientInfo, AddonPricing } from "@/types/gift";
+import { EMPTY_GIFT_RECIPIENT, GIFT_SERVICE_CODE } from "@/types/gift";
+import {
+  filterAddressInput,
+  validateAddressField,
+  firstAddressError,
+} from "@/lib/addressValidation";
 
 // Interfaces
 interface SidePriceBreakdown { side: string; tier: string; print_per_unit: number; }
@@ -62,6 +72,9 @@ interface CartItem {
   printingType?: string;
   print_dimensions?: Record<string, { w: number; h: number }>;
   priceBreakdown?: ItemPriceBreakdown;
+  is_gift?: boolean;
+  gift_message?: string;
+  gift_recipient?: GiftRecipientInfo;
 }
 
 interface ShippingInfo {
@@ -162,6 +175,18 @@ export default function Order() {
   const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [termsSection, setTermsSection] = useState<string | undefined>();
+
+  const openReprintPolicy = () => {
+    setTermsSection(REPRINT_GUARANTEE_SECTION_ID);
+    setTermsOpen(true);
+  };
+
+  const closeTerms = () => {
+    setTermsOpen(false);
+    setTermsSection(undefined);
+  };
 
   // Auto-dismiss notification (errors only)
   useEffect(() => {
@@ -192,6 +217,7 @@ export default function Order() {
   });
   const [shippingErrors, setShippingErrors] = useState<Partial<Record<keyof ShippingInfo, string>>>({});
   const [touchedFields, setTouchedFields] = useState<Set<keyof ShippingInfo>>(new Set());
+  const [giftValidateKeys, setGiftValidateKeys] = useState<Record<string, number>>({});
 
   // Delivery fee state
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -201,19 +227,39 @@ export default function Order() {
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
 
+  // Gift Service add-on pricing (from Supabase, not hardcoded)
+  const [giftAddon, setGiftAddon] = useState<AddonPricing | null>(null);
+
+  useEffect(() => {
+    fetchAddons()
+      .then((addons) => {
+        const found = addons.find((a) => a.code === GIFT_SERVICE_CODE) ?? null;
+        setGiftAddon(found);
+      })
+      .catch(() => setGiftAddon(null));
+  }, []);
+
   // Calculate Total
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+  const nonGiftQty = cartItems.filter((item) => !item.is_gift).reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const giftLineCount = cartItems.filter((item) => item.is_gift).length;
+  const addonFeesTotal = giftAddon ? giftLineCount * giftAddon.price_thb : 0;
   const hasDtfItems = cartItems.some(item => isLegacyDtfPrintingType(item.printingType));
+  const grandTotal = totalPrice + addonFeesTotal - discountAmount + deliveryFee;
 
-  // Fetch delivery fee whenever cart quantity changes
+  // Fetch delivery fee whenever non-gift cart quantity changes
   useEffect(() => {
-    if (totalItems < 1) return;
-    fetchDeliveryFee(totalItems).then(({ fee, label }) => {
+    if (nonGiftQty < 1) {
+      setDeliveryFee(0);
+      setDeliveryLabel(nonGiftQty === 0 && giftLineCount > 0 ? 'รวมในบริการของขวัญ' : '');
+      return;
+    }
+    fetchDeliveryFee(nonGiftQty).then(({ fee, label }) => {
       setDeliveryFee(fee);
       setDeliveryLabel(label);
     }).catch(() => { /* keep previous fee on error */ });
-  }, [totalItems]);
+  }, [nonGiftQty, giftLineCount]);
 
   // Recompute discount preview whenever cart changes
   useEffect(() => {
@@ -245,9 +291,7 @@ export default function Order() {
             ]);
             
             // Available Sizes — from shirt_pricing (authoritative)
-            const availableSizes: string[] = product.available_sizes?.length
-                ? product.available_sizes
-                : ['S', 'M', 'L', 'XL', 'XXL'];
+            const availableSizes: string[] = product.available_sizes ?? [];
 
             // Keep size_guide for reference only (measurements display)
             let sizeGuide = {};
@@ -275,7 +319,7 @@ export default function Order() {
 
             // Initial Price via new pricing API
             const quantity = 1;
-            const initialSize = availableSizes[0] || 'M';
+            const initialSize = availableSizes[0] ?? '';
             const initialColor = availableColors[0];
             const initialColorId = initialColor?.id || 'white';
             let initialPrice = product.starting_price || product.price || 500;
@@ -363,9 +407,7 @@ export default function Order() {
                      }
 
                      // Available Sizes — from shirt_pricing (authoritative)
-                     const availableSizes: string[] = product.available_sizes?.length
-                         ? product.available_sizes
-                         : ['S', 'M', 'L', 'XL', 'XXL'];
+                     const availableSizes: string[] = product.available_sizes ?? [];
 
                      const availableColors = Array.from(new Map(
                          templates.map((t: any) => [t.color?.id, t.color])
@@ -399,6 +441,9 @@ export default function Order() {
                          print_dimensions,
                          priceBreakdown,
                          print_file_url: cItem.print_file_url,
+                         is_gift: cItem.is_gift ?? false,
+                         gift_message: cItem.gift_message ?? '',
+                         gift_recipient: cItem.gift_recipient ?? { ...EMPTY_GIFT_RECIPIENT },
                      };
                  }));
                  
@@ -426,9 +471,7 @@ export default function Order() {
             ]);
             
             // Available Sizes — from shirt_pricing (authoritative)
-            const availableSizes: string[] = product.available_sizes?.length
-                ? product.available_sizes
-                : ['S', 'M', 'L', 'XL', 'XXL'];
+            const availableSizes: string[] = product.available_sizes ?? [];
 
             // Keep size_guide for reference only (measurements display)
             let sizeGuide = {};
@@ -453,7 +496,7 @@ export default function Order() {
 
             // Initial Price via new pricing API
             const quantity = 1;
-            const initialSize = availableSizes[0] || 'M';
+            const initialSize = availableSizes[0] ?? '';
             const initialColor = availableColors[0];
             const initialColorId = initialColor?.id || 'white';
             let initialPrice = product.starting_price || product.price || 500;
@@ -513,28 +556,22 @@ export default function Order() {
   };
 
   const validateShippingField = (field: keyof ShippingInfo, value: string): string | undefined => {
-      switch (field) {
-          case 'fullName': return value.trim() ? undefined : 'กรุณากรอกชื่อ-นามสกุล';
-          case 'phone':
-              if (!value.trim()) return 'กรุณากรอกเบอร์โทรศัพท์';
-              if (!/^0\d{8,9}$/.test(value.trim())) return 'เบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)';
-              return undefined;
-          case 'province': return value.trim() ? undefined : 'กรุณากรอกจังหวัด';
-          case 'district': return value.trim() ? undefined : 'กรุณากรอกเขต/อำเภอ';
-          case 'postalCode':
-              if (!value.trim()) return 'กรุณากรอกรหัสไปรษณีย์';
-              if (!/^\d{5}$/.test(value.trim())) return 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก';
-              return undefined;
-          case 'addressLine1': return value.trim() ? undefined : 'กรุณากรอกที่อยู่';
-          default: return undefined;
+      if (field === 'addressLine2') return undefined;
+      return validateAddressField(field, value);
+  };
+
+  const updateGiftFields = (
+      id: string,
+      updates: Partial<Pick<CartItem, 'is_gift' | 'gift_message' | 'gift_recipient'>>,
+  ) => {
+      setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+      if (contextCartItems.some((i) => i.id === id)) {
+          updateCartItem(id, updates);
       }
   };
 
-  const filterShippingInput = (field: keyof ShippingInfo, value: string): string => {
-      if (field === 'phone') return value.replace(/\D/g, '');
-      if (field === 'postalCode') return value.replace(/\D/g, '').slice(0, 5);
-      return value;
-  };
+  const filterShippingInput = (field: keyof ShippingInfo, value: string): string =>
+      filterAddressInput(field, value);
 
   const handleShippingChange = (field: keyof ShippingInfo, value: string) => {
       const filtered = filterShippingInput(field, value);
@@ -557,6 +594,28 @@ export default function Order() {
               message: DTF_DISCONTINUED_MESSAGE,
           });
           return;
+      }
+      if (step === 1) {
+          if (giftLineCount > 0 && !giftAddon) {
+              setNotification({
+                  type: 'error',
+                  title: 'บริการของขวัญไม่พร้อม',
+                  message: 'บริการของขวัญไม่พร้อมให้บริการในขณะนี้ กรุณาปิดตัวเลือกของขวัญหรือลองใหม่ภายหลัง',
+              });
+              return;
+          }
+          for (const item of cartItems) {
+              if (!item.is_gift) continue;
+              const err = firstAddressError(item.gift_recipient);
+              if (err) {
+                  setGiftValidateKeys((prev) => ({
+                      ...prev,
+                      [item.id]: (prev[item.id] ?? 0) + 1,
+                  }));
+                  setNotification({ type: 'error', title: 'ข้อมูลของขวัญไม่ครบ', message: `${item.designName}: ${err}` });
+                  return;
+              }
+          }
       }
       if (step === 2) {
           const fields: (keyof ShippingInfo)[] = ['fullName', 'phone', 'province', 'district', 'postalCode', 'addressLine1'];
@@ -662,9 +721,12 @@ export default function Order() {
         const orderPayload = {
             items: cartItems.map(item => ({
                 ...item,
+                is_gift: item.is_gift ?? false,
+                gift_message: item.gift_message ?? '',
+                gift_recipient: item.is_gift ? item.gift_recipient : null,
             })),
             shipping: shippingInfo,
-            total: totalPrice - discountAmount + deliveryFee,
+            total: grandTotal,
             coupon_code: appliedCoupon?.code ?? null,
         };
 
@@ -691,7 +753,7 @@ export default function Order() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Alert Notification */}
       {notification && (
-        <div className="fixed top-4 right-4 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-safe-offset right-4 pr-safe z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-2">
             <Alert variant={notification.type === 'error' ? 'destructive' : 'default'} className={`shadow-lg ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white'}`}>
                 {notification.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
                 <AlertTitle className="font-semibold">{notification.title}</AlertTitle>
@@ -740,18 +802,20 @@ export default function Order() {
              ) : (
                  <div className="space-y-4">
                      {cartItems.map((item) => (
-                         <div key={item.id} className="bg-white border rounded-xl p-4 flex gap-4 items-start">
-                             <img src={item.designImage} alt={item.designName} className="w-24 h-24 object-contain bg-gray-50 rounded-md border" />
-                             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                 <div>
+                         <div key={item.id} className="bg-white border rounded-xl p-4 flex flex-col gap-4">
+                             <div className="flex flex-col md:flex-row gap-4 md:items-start w-full">
+                             <div className="flex gap-4 items-start">
+                             <img src={item.designImage} alt={item.designName} className="w-20 h-20 md:w-24 md:h-24 object-contain bg-gray-50 rounded-md border shrink-0" />
+                             <div className="flex-1 min-w-0">
                                      <h3 className="font-semibold">{item.designName}</h3>
                                      <p className="text-sm text-gray-500">{item.productName}</p>
                                  </div>
-                                 <div className="grid grid-cols-2 gap-2">
+                             </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
                                      <div>
                                          <Label className="text-xs">Size</Label>
                                          <select 
-                                            className="w-full border rounded p-1 text-sm bg-gray-50 bg-opacity-30" 
+                                            className="w-full border rounded-md p-2.5 text-sm bg-gray-50 bg-opacity-30 min-h-11" 
                                             value={item.size}
                                             onChange={(e) => updateItem(item.id, 'size', e.target.value)}
                                          >
@@ -761,8 +825,8 @@ export default function Order() {
                                      <div>
                                          <Label className="text-xs">Color</Label>
                                           <select 
-                                            className="w-full border rounded p-1 text-sm bg-gray-50 bg-opacity-30" 
-                                            value={item.color} // This stores color NAME for now, might want to store ID or full object later
+                                            className="w-full border rounded-md p-2.5 text-sm bg-gray-50 bg-opacity-30 min-h-11" 
+                                            value={item.color}
                                             onChange={(e) => updateItem(item.id, 'color', e.target.value)}
                                          >
                                              {item.availableColors.map((c: any) => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -775,15 +839,15 @@ export default function Order() {
                                             min={1} 
                                             value={item.quantity} 
                                             onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
-                                            className="h-8"
+                                            className="h-11"
                                          />
                                      </div>
-                                 </div>
                              </div>
-                             <div className="flex flex-col items-end gap-2">
-                                 <span className="font-bold text-lg">฿{(item.price * item.quantity).toLocaleString()}</span>
+                             <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-2 w-full md:w-auto">
+                                 <div className="text-left md:text-right">
+                                 <span className="font-bold text-lg block">฿{(item.price * item.quantity).toLocaleString()}</span>
                                  {item.priceBreakdown ? (
-                                     <div className="text-right space-y-0.5">
+                                     <div className="text-left md:text-right space-y-0.5">
                                          <div className="flex justify-between gap-4 text-xs text-gray-400">
                                              <span>เสื้อ</span>
                                              <span>฿{item.priceBreakdown.shirt_per_unit.toLocaleString()}</span>
@@ -799,9 +863,28 @@ export default function Order() {
                                  ) : (
                                      <span className="text-xs text-gray-400">฿{item.price.toLocaleString()} / ชิ้น</span>
                                  )}
-                                 <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => removeItem(item.id)}>
+                                 </div>
+                                 <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 h-11 w-11 shrink-0" onClick={() => removeItem(item.id)}>
                                      <Trash2 className="w-4 h-4" />
                                  </Button>
+                             </div>
+                             </div>
+                              <div className="w-full">
+                                <GiftServiceLineOption
+                                 enabled={Boolean(item.is_gift)}
+                                 onEnabledChange={(enabled) => updateGiftFields(item.id, {
+                                     is_gift: enabled,
+                                     gift_recipient: enabled ? (item.gift_recipient ?? { ...EMPTY_GIFT_RECIPIENT }) : item.gift_recipient,
+                                 })}
+                                 message={item.gift_message ?? ''}
+                                 onMessageChange={(gift_message) => updateGiftFields(item.id, { gift_message })}
+                                 recipient={item.gift_recipient ?? EMPTY_GIFT_RECIPIENT}
+                                 onRecipientChange={(gift_recipient) => updateGiftFields(item.id, { gift_recipient })}
+                                 addonPrice={giftAddon?.price_thb ?? null}
+                                 addonAvailable={Boolean(giftAddon)}
+                                 addonName={giftAddon?.name}
+                                 validateKey={giftValidateKeys[item.id] ?? 0}
+                             />
                              </div>
                          </div>
                      ))}
@@ -872,7 +955,10 @@ export default function Order() {
 
                  <div className="text-right">
                      <p className="text-gray-500">รวมทั้งหมด ({totalItems} ชิ้น)</p>
-                     <p className="text-3xl font-bold text-primary">฿{totalPrice.toLocaleString()}</p>
+                     <p className="text-3xl font-bold text-primary">฿{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
+                     {addonFeesTotal > 0 && (
+                         <p className="text-xs text-gray-400">รวมบริการของขวัญ +฿{addonFeesTotal.toLocaleString()}</p>
+                     )}
                  </div>
              </div>
         </div>
@@ -880,7 +966,8 @@ export default function Order() {
 
       {step === 2 && (
           <div className="space-y-6 max-w-xl mx-auto">
-              <h2 className="text-2xl font-bold flex items-center"><Truck className="mr-2" /> ที่อยู่จัดส่ง</h2>
+              <h2 className="text-2xl font-bold flex items-center"><Truck className="mr-2" /> ที่อยู่ติดต่อ / จัดส่ง (ผู้สั่ง)</h2>
+              <p className="text-sm text-muted-foreground">ใช้สำหรับติดต่อและจัดส่งรายการที่ไม่ใช่ของขวัญ รายการของขวัญใช้ที่อยู่ผู้รับที่ระบุในแต่ละชิ้น</p>
               <div className="grid grid-cols-1 gap-4">
                   <div>
                       <Label>ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
@@ -958,9 +1045,21 @@ export default function Order() {
                    {cartItems.map(item => (
                        <div key={item.id} className="space-y-0.5">
                            <div className="flex justify-between text-sm font-medium">
-                               <span>{item.designName} ({item.size}, {item.color}) x {item.quantity}</span>
+                               <span>
+                                   {item.designName} ({item.size}, {item.color}) x {item.quantity}
+                                   {item.is_gift && <span className="ml-1 text-primary text-xs font-bold">🎁 ของขวัญ</span>}
+                               </span>
                                <span>฿{(item.price * item.quantity).toLocaleString()}</span>
                            </div>
+                           {item.is_gift && giftAddon && (
+                               <div className="flex justify-between text-xs text-primary pl-2">
+                                   <span>{giftAddon.name}</span>
+                                   <span>+฿{giftAddon.price_thb.toLocaleString()}</span>
+                               </div>
+                           )}
+                           {item.is_gift && item.gift_recipient?.fullName && (
+                               <p className="text-xs text-gray-500 pl-2">ส่งถึง: {item.gift_recipient.fullName}</p>
+                           )}
                            {item.priceBreakdown && (
                                <div className="pl-2 space-y-0.5">
                                    <div className="flex justify-between text-xs text-gray-400">
@@ -989,6 +1088,12 @@ export default function Order() {
                        <span>ราคาสินค้า</span>
                        <span>฿{totalPrice.toLocaleString()}</span>
                    </div>
+                   {addonFeesTotal > 0 && (
+                       <div className="flex justify-between text-sm text-gray-600">
+                           <span>บริการของขวัญ ({giftLineCount} รายการ)</span>
+                           <span>+฿{addonFeesTotal.toLocaleString()}</span>
+                       </div>
+                   )}
                    {discountAmount > 0 && (
                        <div className="flex justify-between text-sm text-green-600">
                            <span>ส่วนลด ({appliedCoupon?.code})</span>
@@ -1001,14 +1106,34 @@ export default function Order() {
                    </div>
                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
                        <span>ยอดรวมสุทธิ</span>
-                       <span>฿{(totalPrice - discountAmount + deliveryFee).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                       <span>฿{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                    </div>
                </div>
                
                <div className="bg-gray-50 p-6 rounded-xl border">
-                    <h3 className="font-semibold border-b pb-2 mb-2">ที่อยู่จัดส่ง</h3>
+                    <h3 className="font-semibold border-b pb-2 mb-2">ที่อยู่ติดต่อ / จัดส่ง (สำหรับรายการที่ไม่ใช่ของขวัญ)</h3>
                     <p>{shippingInfo.fullName} ({shippingInfo.phone})</p>
                     <p>{shippingInfo.addressLine1} {shippingInfo.province} {shippingInfo.postalCode}</p>
+               </div>
+
+               <div className="bg-gray-50 p-6 rounded-xl border space-y-4">
+                    <h3 className="font-semibold border-b pb-2">ภาพตัวอย่างที่จะพิมพ์</h3>
+                    <p className="text-sm text-muted-foreground font-light">
+                      ตรวจสอบลายและตำแหน่งพิมพ์ให้ถูกต้องก่อนยืนยันคำสั่งซื้อ
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      {cartItems.map(item => (
+                        <div key={item.id} className="text-center space-y-1.5">
+                          <img
+                            src={item.designImage}
+                            alt={item.designName}
+                            className="w-24 h-24 object-contain bg-white rounded-md border"
+                          />
+                          <p className="text-xs text-muted-foreground max-w-24 truncate">{item.designName}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <CheckoutReprintGuarantee onPolicyClick={openReprintPolicy} />
                </div>
           </div>
       )}
@@ -1064,7 +1189,7 @@ export default function Order() {
             <div className="p-4 space-y-3">
               <p className="font-semibold">2. ชำระเงินผ่าน PromptPay</p>
               <p className="text-sm text-gray-500">
-                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{(totalPrice - discountAmount + deliveryFee).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
+                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
               </p>
               {import.meta.env.VITE_PROMPTPAY_QR_URL && (
                 <img
@@ -1094,23 +1219,29 @@ export default function Order() {
       )}
 
       {step < 4 && (
-        <div className="mt-8 flex justify-between">
+        <div className="sticky bottom-0 z-20 -mx-4 px-4 py-4 mt-8 flex justify-between gap-3 bg-slate-50/95 backdrop-blur-sm border-t border-gray-200 pb-safe">
             {step > 1 ? (
-                <Button variant="outline" onClick={handleBack}>ย้อนกลับ</Button>
-            ) : null}
+                <Button variant="outline" onClick={handleBack} className="min-h-11">ย้อนกลับ</Button>
+            ) : <div />}
 
             {step < 3 ? (
-                <Button onClick={handleNext} disabled={cartItems.length === 0 || hasDtfItems}>
+                <Button onClick={handleNext} disabled={cartItems.length === 0 || hasDtfItems} className="min-h-11">
                     ดำเนินการต่อ <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
             ) : (
-                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700" disabled={loading || hasDtfItems}>
+                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700 min-h-11" disabled={loading || hasDtfItems}>
                     {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                     ยืนยันการสั่งซื้อ
                 </Button>
             )}
         </div>
       )}
+
+      <TermsModal
+        open={termsOpen}
+        onClose={closeTerms}
+        initialExpandedSection={termsSection}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 const { supabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
 const { filterActivePrintMethods, productHasActivePrintMethod } = require('../constants/printing');
+const { getAvailableSizes } = require('../utils/sizes');
 
 exports.getCategories = async (req, res) => {
   try {
@@ -135,21 +136,9 @@ exports.getProductById = async (req, res) => {
     const startingPrice = product.min_price ?? null;
 
     // Derive available sizes from shirt_pricing (authoritative source)
-    const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
-    const { data: shirtPricingRows } = await supabase
-        .from('shirt_pricing')
-        .select('size')
-        .eq('product_id', product.id);
-    const available_sizes = shirtPricingRows
-        ? [...new Set(shirtPricingRows.map(r => r.size))]
-            .sort((a, b) => {
-                const ai = SIZE_ORDER.indexOf(a);
-                const bi = SIZE_ORDER.indexOf(b);
-                if (ai === -1 && bi === -1) return a.localeCompare(b);
-                if (ai === -1) return 1;
-                if (bi === -1) return -1;
-                return ai - bi;
-            })
+    const pricingSizes = await getAvailableSizes(product.id);
+    const available_sizes = pricingSizes.length > 0
+        ? pricingSizes
         : Object.keys(product.size_guide || {});
 
     const galleryImages = product.product_images

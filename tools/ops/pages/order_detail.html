@@ -12,7 +12,8 @@
     {% if order.discount_amount %} — discount ฿{{ order.discount_amount }}{% endif %}
   </p>
   {% if order.coupon_code %}<p>Coupon: {{ order.coupon_code }}</p>{% endif %}
-  {% if order.tracking_number %}<p>Tracking: {{ order.tracking_number }}</p>{% endif %}
+  {% if order.tracking_number %}<p>Order tracking (legacy): {{ order.tracking_number }}</p>{% endif %}
+  <p><a class="btn" href="{{ url_for('packing_slip', order_id=order.id) }}" target="_blank">Print packing slips</a></p>
 </div>
 
 <div class="card">
@@ -29,7 +30,7 @@
         </select>
       </div>
       <div>
-        <label>Tracking number</label>
+        <label>Order tracking (legacy)</label>
         <input type="text" name="tracking_number" value="{{ order.tracking_number or '' }}" />
       </div>
       <div style="flex:0;"><label>&nbsp;</label><button type="submit" class="btn">Save</button></div>
@@ -38,17 +39,58 @@
 </div>
 
 <div class="card">
-  <h2>Shipping address</h2>
+  <h2>Buyer contact / shipping address</h2>
   {% set addr = order.shipping_address or {} %}
   <pre class="mono muted">{{ addr | tojson(indent=2) }}</pre>
 </div>
+
+{% if shipments %}
+<div class="card">
+  <h2>Shipments</h2>
+  {% for ship in shipments %}
+  <div class="template-block">
+    <p>
+      <strong>{% if ship.kind == 'gift' %}🎁 Gift shipment{% else %}Buyer shipment{% endif %}</strong>
+      {% if ship.hide_prices %}<span class="badge">Hide prices</span>{% endif %}
+    </p>
+    {% if ship.gift_recipient %}
+      <p class="muted">Recipient: {{ ship.gift_recipient.full_name }} — {{ ship.gift_recipient.phone }}</p>
+      <pre class="mono">{{ ship.gift_recipient | tojson(indent=2) }}</pre>
+    {% endif %}
+    <form method="post" class="row" style="margin-top:0.5rem;">
+      <input type="hidden" name="action" value="update_shipment_tracking" />
+      <input type="hidden" name="shipment_id" value="{{ ship.id }}" />
+      <div>
+        <label>Tracking number</label>
+        <input type="text" name="tracking_number" value="{{ ship.tracking_number or '' }}" />
+      </div>
+      <div style="flex:0;"><label>&nbsp;</label><button type="submit" class="btn">Save tracking</button></div>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <div class="card">
   <h2>Line items</h2>
   {% for item in items %}
   <div class="template-block">
     {% set design = item.user_design or {} %}
-    <p><strong>{{ design.design_name or 'Custom design' }}</strong> — {{ item.color }} / {{ item.size }} × {{ item.quantity }} @ ฿{{ item.unit_price }}</p>
+    <p>
+      <strong>{{ design.design_name or 'Custom design' }}</strong>
+      — {{ item.color }} / {{ item.size }} × {{ item.quantity }}
+      @ ฿{{ item.unit_price }}
+      {% if item.is_gift %}
+        <span class="badge">GIFT +฿{{ item.addon_fee_thb or 0 }}</span>
+      {% endif %}
+    </p>
+    {% if item.is_gift %}
+      <p class="muted">Gift message: {{ item.gift_message or '—' }}</p>
+      {% if item.gift_recipient %}
+        <p class="muted">Recipient: {{ item.gift_recipient.full_name }} ({{ item.gift_recipient.phone }})</p>
+        <pre class="mono">{{ item.gift_recipient | tojson(indent=2) }}</pre>
+      {% endif %}
+    {% endif %}
     {% set prints = item.print_file_url %}
     <p class="muted">Print files (ordered bucket):</p>
     <pre class="mono">{{ prints }}</pre>

@@ -114,6 +114,10 @@ export const createOrder = async (orderData: any): Promise<any> => {
     return response.data;
 };
 
+export const recordTermsAcceptance = async (): Promise<void> => {
+    await api.post('/terms/accept');
+};
+
 export const updateOrder = async (id: number | string, data: any): Promise<any> => {
     const response = await api.put(`/orders/${id}`, data);
     return response.data;
@@ -180,6 +184,11 @@ export function r2ProxyUrl(url: string): string {
 // Public endpoint — no auth required
 export const fetchDeliveryFee = async (qty: number): Promise<{ fee: number; label: string }> => {
     const response = await axios.get<{ fee: number; label: string }>(`${API_BASE}/delivery-fee?qty=${qty}`);
+    return response.data;
+};
+
+export const fetchAddons = async (): Promise<import('@/types/gift').AddonPricing[]> => {
+    const response = await axios.get<import('@/types/gift').AddonPricing[]>(`${API_BASE}/addons`);
     return response.data;
 };
 

@@ -29,6 +29,51 @@ function getPublicUrl(bucketName, filePath) {
 }
 
 /**
+ * Rewrites stored URLs that used a wrong public base (e.g. Supabase S3 endpoint)
+ * back to the configured R2 public URL when the object key is recognizable.
+ * @param {string} url
+ * @returns {string}
+ */
+function normalizePublicUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (getLocationFromUrl(url)) return url;
+
+  const previewMatch = url.match(/\/(uid_[^/?#]+\/[^/?#]+)$/);
+  if (previewMatch && R2_PUBLIC_URLS['design-previews']) {
+    return `${R2_PUBLIC_URLS['design-previews']}/${previewMatch[1]}`;
+  }
+
+  const uploadsMatch = url.match(/\/(uploads\/[^/?#]+\/[^/?#]+)$/);
+  if (uploadsMatch) {
+    for (const bucket of ['print-files', 'design-assets']) {
+      const base = R2_PUBLIC_URLS[bucket];
+      if (base) return `${base}/${uploadsMatch[1]}`;
+    }
+  }
+
+  return url;
+}
+
+/**
+ * Normalizes preview/print URL fields stored as JSON maps or plain strings.
+ * @param {string|null|undefined} raw
+ * @returns {string|null|undefined}
+ */
+function normalizeStoredUrlField(raw) {
+  if (!raw) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const fixed = Object.fromEntries(
+        Object.entries(parsed).map(([k, v]) => [k, normalizePublicUrl(String(v))])
+      );
+      return JSON.stringify(fixed);
+    }
+  } catch { /* plain URL */ }
+  return normalizePublicUrl(raw);
+}
+
+/**
  * Resolves a public URL back to { bucket, key } by matching against known base URLs.
  * Returns null if the URL doesn't match any configured bucket.
  * @param {string} url
@@ -79,4 +124,4 @@ async function copyObject(srcBucket, srcKey, dstBucket, dstKey) {
   }));
 }
 
-module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject, listObjects, copyObject };
+module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject, listObjects, copyObject, normalizePublicUrl, normalizeStoredUrlField };

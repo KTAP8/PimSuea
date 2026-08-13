@@ -1,9 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 
 // All non-root routes redirect to / until this date
 export const LAUNCH_DATE = new Date('2026-03-27T12:00:00+07:00');
 import { Analytics } from '@vercel/analytics/react';
 import { Sidebar } from './components/Sidebar';
+import { SiteFooter } from './components/SiteFooter';
+import { TermsModal } from './components/TermsModal';
 import Dashboard from './pages/Dashboard';
 import Catalog from './pages/Catalog';
 import ProductDetails from './pages/ProductDetails';
@@ -27,6 +30,13 @@ import { RedirectToApp } from './components/RedirectToApp';
 import { AppRootRedirect } from './components/AppRootRedirect';
 import { isAppHost } from './lib/site';
 
+function shouldShowAppFooter(pathname: string): boolean {
+  if (pathname.startsWith('/studio/')) return false;
+  if (pathname === '/checkout') return false;
+  if (pathname === '/onboarding') return false;
+  return true;
+}
+
 function MarketingLayout() {
   const preLaunch = !import.meta.env.DEV && new Date() < LAUNCH_DATE;
 
@@ -48,9 +58,11 @@ function MarketingLayout() {
 
 function AppLayout() {
   const location = useLocation();
+  const [termsOpen, setTermsOpen] = useState(false);
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/home', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/studio/');
+  const showFooter = shouldShowAppFooter(location.pathname);
   const preLaunch = !import.meta.env.DEV && new Date() < LAUNCH_DATE;
 
   if (preLaunch) {
@@ -62,35 +74,48 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-dvh flex bg-slate-50 pl-safe pr-safe md:pl-0 md:pr-0">
       {shouldShowSidebar && <Sidebar />}
-      <main className={`flex-1 min-w-0 transition-all duration-300 ${shouldShowSidebar ? 'md:ml-0' : ''}`}>
-        {shouldShowSidebar && <div className="h-16 md:hidden"></div>}
+      <div className="flex-1 min-w-0 flex flex-col min-h-dvh">
+        <main className={`flex-1 min-w-0 transition-all duration-300 ${shouldShowSidebar ? 'md:ml-0' : ''}`}>
+          {shouldShowSidebar && (
+            <div
+              className="h-16 pt-safe-bar md:hidden shrink-0"
+              aria-hidden="true"
+            />
+          )}
 
-        <Routes>
-          <Route path="/" element={<AppRootRedirect />} />
-          <Route path="/home" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          <Routes>
+            <Route path="/" element={<AppRootRedirect />} />
+            <Route path="/home" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/news/:id" element={<NewsDetails />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/product/:id" element={<ProductDetails />} />
-            <Route path="/studio/:id" element={<DesignStudio />} />
-            <Route path="/orders" element={<MyOrders />} />
-            <Route path="/my-products" element={<MyProducts />} />
-            <Route path="/wallet" element={<Wallet />} />
-            <Route path="/checkout" element={<Order />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
+            <Route element={<ProtectedRoute />}>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/news/:id" element={<NewsDetails />} />
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/studio/:id" element={<DesignStudio />} />
+              <Route path="/orders" element={<MyOrders />} />
+              <Route path="/my-products" element={<MyProducts />} />
+              <Route path="/wallet" element={<Wallet />} />
+              <Route path="/checkout" element={<Order />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </main>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </main>
+
+        {showFooter && (
+          <SiteFooter variant="app" onTermsClick={() => setTermsOpen(true)} />
+        )}
+      </div>
+
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
     </div>
   );
 }

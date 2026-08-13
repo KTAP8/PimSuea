@@ -147,6 +147,11 @@ export interface OrderItem {
     quantity: number;
     price: number;
     image?: string;
+    is_gift?: boolean;
+    gift_message?: string | null;
+    addon_code?: string | null;
+    addon_fee_thb?: number;
+    gift_recipient?: import('./gift').GiftRecipientInfo | null;
 }
 
 export interface Transaction {

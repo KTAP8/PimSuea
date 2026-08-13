@@ -1,9 +1,18 @@
 
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
-const { getLocationFromUrl, deleteObject } = require('../config/r2Client');
+const { getLocationFromUrl, deleteObject, normalizeStoredUrlField } = require('../config/r2Client');
 
 const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
+
+function withNormalizedMedia(design) {
+  if (!design) return design;
+  return {
+    ...design,
+    preview_image_url: normalizeStoredUrlField(design.preview_image_url),
+    print_file_url: normalizeStoredUrlField(design.print_file_url),
+  };
+}
 
 exports.getUserDesigns = async (req, res) => {
   const userId = req.user.id; // From requireAuth
@@ -23,7 +32,7 @@ exports.getUserDesigns = async (req, res) => {
     if (error) throw error;
 
     console.log(`Found ${data.length} designs for user ${userId}`);
-    res.json(data);
+    res.json(data.map(withNormalizedMedia));
   } catch (error) {
     console.error('Error fetching designs:', error);
     res.status(500).json({ error: 'Failed to fetch designs' });
@@ -56,7 +65,7 @@ exports.getDesignById = async (req, res) => {
         throw error;
     }
 
-    res.json(data);
+    res.json(withNormalizedMedia(data));
   } catch (error) {
     console.error('Error fetching design:', error);
     res.status(500).json({ error: 'Failed to fetch design' });
@@ -84,6 +93,9 @@ exports.saveDesign = async (req, res) => {
     ? design_name.slice(0, 200)
     : 'Untitled Design';
 
+  const normalizedPreview = normalizeStoredUrlField(preview_image_url);
+  const normalizedPrint = print_file_url ? normalizeStoredUrlField(print_file_url) : null;
+
   try {
     console.log(`Saving design for user ${userId}: ${safeName}`);
 
@@ -96,8 +108,8 @@ exports.saveDesign = async (req, res) => {
           base_product_id: base_product_id,
           design_name: safeName,
           canvas_data: canvas_data, 
-          preview_image_url: preview_image_url,
-          print_file_url: print_file_url || null,
+          preview_image_url: normalizedPreview,
+          print_file_url: normalizedPrint,
           design_hash: req.body.design_hash || null,
           is_ordered: false,
           available_colors: req.body.available_colors || [],
@@ -134,6 +146,9 @@ exports.updateDesign = async (req, res) => {
   const safeUpdateName = (design_name && typeof design_name === 'string')
     ? design_name.slice(0, 200)
     : 'Untitled Design';
+
+  const normalizedPreview = normalizeStoredUrlField(preview_image_url);
+  const normalizedPrint = print_file_url ? normalizeStoredUrlField(print_file_url) : undefined;
 
   try {
     console.log("Updating design " + id + " for user " + userId);
@@ -182,8 +197,8 @@ exports.updateDesign = async (req, res) => {
       .update({ 
           design_name: safeUpdateName,
           canvas_data: canvas_data,
-          preview_image_url: preview_image_url,
-          print_file_url: print_file_url || oldDesign.print_file_url,
+          preview_image_url: normalizedPreview,
+          print_file_url: normalizedPrint || oldDesign.print_file_url,
           design_hash: req.body.design_hash || oldDesign.design_hash,
           available_colors: req.body.available_colors || [],
           printing_type: updatePrintingType,

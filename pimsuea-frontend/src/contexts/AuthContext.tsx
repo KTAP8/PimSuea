@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { type AuthChangeEvent, type User, type Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { recordTermsAcceptance } from "@/services/api";
+import { shouldRecordSignupConsent, clearPendingTermsAcceptance } from "@/lib/legal";
 
 export interface UserProfile {
   id: string;
@@ -10,6 +12,9 @@ export interface UserProfile {
   design_purpose: string | null;
   referral_source: string | null;
   onboarding_completed: boolean;
+  terms_accepted_at: string | null;
+  terms_version: number | null;
+  privacy_accepted_at: string | null;
 }
 
 interface AuthContextType {
@@ -50,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const { data } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, age, design_purpose, referral_source, onboarding_completed')
+      .select('id, first_name, last_name, age, design_purpose, referral_source, onboarding_completed, terms_accepted_at, terms_version, privacy_accepted_at')
       .eq('id', userId)
       .single();
     setProfile(data ?? null);
@@ -82,6 +87,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token refresh on tab focus must not refetch profile — that unmounts the whole app.
         if (event !== 'TOKEN_REFRESHED') {
           fetchProfile(session.user.id);
+        }
+        if (event !== 'TOKEN_REFRESHED' && shouldRecordSignupConsent(event)) {
+          recordTermsAcceptance()
+            .then(() => {
+              clearPendingTermsAcceptance();
+              const url = new URL(window.location.href);
+              if (url.searchParams.has('terms_accepted')) {
+                url.searchParams.delete('terms_accepted');
+                window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+              }
+              fetchProfile(session.user.id, { showLoading: false });
+            })
+            .catch((err) => {
+              console.error('Failed to record pending terms acceptance:', err);
+            });
         }
       } else {
         profileUserIdRef.current = null;

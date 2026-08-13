@@ -21,6 +21,9 @@ export interface CartItem {
     preview_url?: string; // For UI display
     price?: number; // Optional, recalculated at checkout
     design_name?: string;
+    is_gift?: boolean;
+    gift_message?: string | null;
+    gift_recipient?: import('@/types/gift').GiftRecipientInfo | null;
 }
 
 interface CartContextType {

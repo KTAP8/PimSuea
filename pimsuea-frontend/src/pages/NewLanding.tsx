@@ -2,15 +2,17 @@ import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { PageSEO } from "@/components/PageSEO";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useInView } from "framer-motion";
-import { getProducts } from "@/services/api";
+import { getProducts, fetchAddons } from "@/services/api";
 import { filterActivePrintMethods } from "@/constants/printing";
 import type { Product } from "@/types/api";
 import {
   MousePointer2, Type, Image as ImageIcon, Layers,
   Upload, ArrowRight, Package, Zap, Truck, Loader2, Globe,
-  ShieldCheck, Clock, Scissors, Activity, ChevronDown
+  ShieldCheck, Clock, Activity, ChevronDown, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TermsModal, REPRINT_GUARANTEE_SECTION_ID } from "@/components/TermsModal";
+import { SiteFooter } from "@/components/SiteFooter";
 import { type Language, translations } from "@/translations/landing";
 import { appUrl } from "@/lib/site";
 
@@ -356,7 +358,7 @@ function HowItWorksSection() {
   const visuals = [<StepVisual1 />, <StepVisual2 />, <StepVisual3 />];
 
   return (
-    <section className="py-24 border-t border-border">
+    <section id="how" className="py-24 border-t border-border">
       <div className="max-w-5xl mx-auto px-6">
         <h2 className="font-black text-4xl md:text-5xl mb-16 text-center">{t.howItWorksTitle}</h2>
 
@@ -433,7 +435,7 @@ function FAQSection() {
   ];
 
   return (
-    <section className="py-24 border-t border-border">
+    <section id="faq" className="py-24 border-t border-border">
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-14">
           <h2 className="font-black text-4xl md:text-5xl mb-4">{t.faqTitle}</h2>
@@ -632,6 +634,116 @@ function WhoWeAreSection() {
   );
 }
 
+// ─── Product tiers (Classic + Gift, side-by-side) ──────────────────────────
+
+// ─── Product Comparison Table (Classic vs Gift Tier) ───────────────────────
+
+// ─── Product Comparison & Gift Add-On Section ─────────────────────────────
+
+// ─── Product Tier & Gift Add-On Section ───────────────────────────────────
+
+// ─── Gift Packaging & Service Add-On Section ─────────────────────────────
+
+function GiftSpotlightSection() {
+  const { t } = useLandingLang();
+  const ctaHref = appUrl('/checkout');
+  const [addonPrice, setAddonPrice] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchAddons()
+      .then((addons) => {
+        const gift = addons.find((a) => a.code === 'gift_service');
+        if (gift) setAddonPrice(`+฿${Math.round(gift.price_thb).toLocaleString()}`);
+      })
+      .catch(() => setAddonPrice(null));
+  }, []);
+
+  const displayPrice = addonPrice ?? t.giftAddonPrice;
+
+  return (
+    <section id="gift" className="py-20 border-t border-border bg-gradient-to-b from-background to-secondary/20">
+      <div className="max-w-5xl mx-auto px-6">
+        
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+          <h2 className="font-heavy text-4xl md:text-5xl text-foreground tracking-tight">
+            {t.compareTitle}
+          </h2>
+          <p className="font-light text-muted-foreground text-lg leading-relaxed">
+            {t.compareSubtitle}
+          </p>
+        </div>
+
+        {/* Standalone Gift Service Add-On Spotlight Card */}
+        <div className="rounded-2xl border-2 border-primary/30 bg-card p-8 md:p-12 shadow-xl relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.04] via-primary/[0.01] to-transparent pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+            
+            {/* Left Content */}
+            <div className="space-y-4 max-w-xl">
+              <span className="inline-block px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/10">
+                {t.giftAddonEyebrow}
+              </span>
+              <h3 className="font-heavy text-3xl md:text-4xl text-foreground leading-tight">
+                {t.giftAddonHeadline}
+              </h3>
+              <p className="font-light text-muted-foreground text-lg leading-relaxed">
+                {t.giftAddonSubhead}
+              </p>
+
+              {/* Check-style Feature List */}
+              <ul className="space-y-3 pt-3">
+                <li className="flex items-center gap-3 text-base font-medium text-foreground">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4 text-primary" />
+                  </div>
+                  <span>{t.giftAddonFeature1}</span>
+                </li>
+                <li className="flex items-center gap-3 text-base font-medium text-foreground">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4 text-primary" />
+                  </div>
+                  <span>{t.giftAddonFeature2}</span>
+                </li>
+                <li className="flex items-center gap-3 text-base font-medium text-foreground">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Check className="w-4 h-4 text-primary" />
+                  </div>
+                  <span>{t.giftAddonFeature3}</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Right Price & CTA */}
+            <div className="flex flex-col items-start md:items-end justify-center gap-4 shrink-0 pt-6 md:pt-0 border-t md:border-t-0 border-border">
+              <div className="text-left md:text-right">
+                <span className="text-xs text-muted-foreground uppercase tracking-widest block font-bold mb-1">
+                  Add-On Price
+                </span>
+                <span className="font-heavy text-4xl md:text-5xl text-primary">
+                  {displayPrice}
+                </span>
+              </div>
+              <a href={ctaHref} className="w-full md:w-auto">
+                <Button
+                  className="w-full md:w-auto bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm rounded-full px-8 py-6 shadow-lg shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02]"
+                >
+                  {t.giftAddonCta}
+                </Button>
+              </a>
+              <span className="text-xs text-muted-foreground font-light text-center md:text-right max-w-xs">
+                {t.giftAddonNote}
+              </span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NewLanding() {
@@ -640,6 +752,23 @@ export default function NewLanding() {
   const [scrolled, setScrolled] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [termsSection, setTermsSection] = useState<string | undefined>();
+
+  const openReprintPolicy = () => {
+    setTermsSection(REPRINT_GUARANTEE_SECTION_ID);
+    setTermsOpen(true);
+  };
+
+  const openTerms = () => {
+    setTermsSection(undefined);
+    setTermsOpen(true);
+  };
+
+  const closeTerms = () => {
+    setTermsOpen(false);
+    setTermsSection(undefined);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -797,15 +926,17 @@ export default function NewLanding() {
                 title: t.feature3Title,
                 quote: t.feature3Quote,
                 iconText: "03",
-                icon: <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
+                icon: <Layers className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
               },
               {
                 title: t.feature4Title,
                 quote: t.feature4Quote,
                 iconText: "04",
-                icon: <Scissors className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
+                icon: <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
+                onClick: openReprintPolicy,
+                actionText: t.reprintBadgePolicyLink || "Details",
               },
-            ].map(({ title, quote, iconText, icon }) => (
+            ].map(({ title, quote, iconText, icon, onClick, actionText }) => (
               <motion.div
                 key={title}
                 initial={{ opacity: 0, y: 30 }}
@@ -813,7 +944,8 @@ export default function NewLanding() {
                 viewport={{ once: true, amount: 0.2 }}
                 whileHover={{ y: -8, scale: 1.01 }}
                 transition={{ duration: 0.4, type: "spring", stiffness: 120 }}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-10 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5"
+                onClick={onClick}
+                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-10 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 ${onClick ? 'cursor-pointer' : ''}`}
               >
                 {/* Background Glow on Hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -828,13 +960,21 @@ export default function NewLanding() {
                     {icon}
                   </div>
                   <h3 className="font-black text-2xl md:text-3xl mb-4 group-hover:text-primary transition-colors duration-300">{title}</h3>
-                  <p className="font-light text-muted-foreground text-lg leading-relaxed max-w-sm">"{quote}"</p>
+                  <p className="font-light text-muted-foreground text-lg leading-relaxed max-w-sm mb-3">"{quote}"</p>
+                  {actionText && (
+                    <span className="text-sm font-bold text-primary underline underline-offset-4 group-hover:text-primary/80 transition-colors inline-flex items-center gap-1">
+                      {actionText} →
+                    </span>
+                  )}
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Gift Service add-on */}
+      <GiftSpotlightSection />
 
       {/* ── Product Catalog ───────────────────────────────────────────── */}
       <section id="catalog" className="py-24 border-t border-border">
@@ -860,14 +1000,14 @@ export default function NewLanding() {
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  className="border border-border rounded-lg overflow-hidden bg-card hover:border-primary/30 hover:shadow-md transition-all duration-300 flex-shrink-0 w-64 snap-start"
+                  className="rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden hover:border-primary/40 hover:shadow-xl transition-all duration-300 flex-shrink-0 w-72 snap-start flex flex-col group"
                 >
-                  <div className="aspect-square bg-secondary/20 overflow-hidden">
+                  <div className="aspect-square bg-slate-50/80 overflow-hidden relative">
                     {product.image_url ? (
                       <img
                         src={product.image_url}
                         alt={product.name}
-                        className="w-full h-full object-contain p-4"
+                        className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
@@ -877,23 +1017,27 @@ export default function NewLanding() {
                       </div>
                     )}
                   </div>
-                  <div className="p-5 space-y-3">
-                    <h3 className="font-bold text-base leading-tight">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground font-light">
-                      {t.catalogStartingAt}{" "}
-                      <span className="font-bold text-foreground">
-                        ฿{(product.starting_price ?? product.price).toLocaleString()}
-                      </span>
-                    </p>
-                    <a href={appUrl(`/product/${product.id}`)} className="block">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full border-primary text-primary hover:bg-primary/10 font-bold uppercase tracking-wider text-xs"
-                      >
-                        {t.catalogDesignShirt}
-                      </Button>
-                    </a>
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="font-bold text-base text-slate-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-normal">
+                        {t.catalogStartingAt}{" "}
+                        <span className="font-extrabold text-sm text-slate-900">
+                          ฿{(product.starting_price ?? product.price).toLocaleString()}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="mt-auto pt-2">
+                      <a href={appUrl(`/product/${product.id}`)} className="block">
+                        <Button
+                          className="w-full bg-primary hover:bg-primary/90 text-white rounded-full font-bold uppercase tracking-wider text-xs py-5 shadow-md shadow-primary/15 hover:shadow-primary/30 transition-all duration-300"
+                        >
+                          {t.catalogDesignShirt}
+                        </Button>
+                      </a>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -923,11 +1067,16 @@ export default function NewLanding() {
             </Button>
           </a>
         </div>
-        <p className="mt-16 text-background/30 text-sm font-light">
-          © {new Date().getFullYear()} {t.footerCopyright}
-        </p>
       </section>
 
+      <SiteFooter variant="marketing" lang={lang} onTermsClick={openTerms} />
+
+      <TermsModal
+        open={termsOpen}
+        onClose={closeTerms}
+        initialExpandedSection={termsSection}
+        lang={lang}
+      />
     </div>
     </LandingLangContext.Provider>
   );

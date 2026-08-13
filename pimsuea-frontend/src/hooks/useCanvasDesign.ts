@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import Konva from 'konva';
 import { MD5 } from 'crypto-js';
-import api, { getProductTemplates, uploadFile, r2ProxyUrl, getPrice } from '../services/api';
+import api, { getProductTemplates, getProductById, uploadFile, r2ProxyUrl, getPrice } from '../services/api';
 import { compositeSingleSide, OUTPUT_SCALE } from '../utils/mockupCompositor';
 import { injectPngDpi } from '../utils/canvasExporter';
 import { useAuth } from '../contexts/AuthContext';
@@ -71,7 +71,8 @@ export function useCanvasDesign() {
     const [priceLoading, setPriceLoading] = useState(false);
 
     // Order state
-    const [selectedSize, setSelectedSize] = useState('M');
+    const [availableSizes, setAvailableSizes] = useState<string[]>([]);
+    const [selectedSize, setSelectedSize] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
 
@@ -84,12 +85,17 @@ export function useCanvasDesign() {
     const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
     const sideZones = useRef<Record<string, { left: number; top: number; width: number; height: number }>>({});
     const pendingSideData = useRef<Record<string, SerializableImage[]>>({});
+    const naturalImageSize = useRef({ width: 0, height: 0 });
+    const lastScaleFactor = useRef<number | null>(null);
+    const currentTemplateRef = useRef<ProductTemplate | null>(null);
+    currentTemplateRef.current = currentTemplate;
 
     // Sidebar / library state
     const [showImageLibrary, setShowImageLibrary] = useState(false);
     const [showLayerPanel, setShowLayerPanel] = useState(false);
     const [userUploads, setUserUploads] = useState<{ name: string; url: string }[]>([]);
     const [loadingUploads, setLoadingUploads] = useState(false);
+    const [uploadsError, setUploadsError] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [deleteImageName, setDeleteImageName] = useState<string | null>(null);
     const [dpiWarningFile, setDpiWarningFile] = useState<{ file: File; dpi: number } | null>(null);
@@ -109,7 +115,15 @@ export function useCanvasDesign() {
     // ── Template loading ──────────────────────────────────────────────────────
     useEffect(() => {
         if (!id) return;
-        getProductTemplates(id).then(async data => {
+        Promise.all([
+            getProductTemplates(id),
+            getProductById(id).catch(() => null),
+        ]).then(async ([data, product]) => {
+            const sizes = product?.available_sizes?.length ? product.available_sizes : [];
+            setAvailableSizes(sizes);
+            const defaultSize = sizes[0] ?? '';
+            if (defaultSize) setSelectedSize(defaultSize);
+
             setTemplates(data);
             // Prefer is_default → then front side → then first
             const defaultTemplate = data.find(t => t.is_default)
@@ -139,7 +153,7 @@ export function useCanvasDesign() {
                                 Object.entries(design.print_dimensions as Record<string, { w: number; h: number }>)
                                     .filter(([, d]) => d.w > 0 && d.h > 0)
                             );
-                            computePriceBreakdown(dims, productId, colorId, design.printing_type);
+                            computePriceBreakdown(dims, productId, colorId, design.printing_type, defaultSize);
                         }
                     }
 
@@ -186,6 +200,54 @@ export function useCanvasDesign() {
         });
     }, [id, designIdParam]);
 
+    const recalculateStageSize = useCallback((rescaleImages = false) => {
+        const template = currentTemplateRef.current;
+        const { width: imgW, height: imgH } = naturalImageSize.current;
+        if (!template || !imgW || !imgH || !containerRef.current) return;
+
+        const containerW = containerRef.current.clientWidth;
+        const containerH = containerRef.current.clientHeight;
+        if (containerW < 16 || containerH < 16) return;
+
+        const sf = Math.min(containerW / imgW, containerH / imgH, 1) * 0.95;
+        if (!Number.isFinite(sf) || sf <= 0) return;
+
+        if (rescaleImages && lastScaleFactor.current && lastScaleFactor.current !== sf) {
+            const ratio = sf / lastScaleFactor.current;
+            const rescale = (images: CanvasImage[]) =>
+                images.map(ci => ({
+                    ...ci,
+                    x: ci.x * ratio,
+                    y: ci.y * ratio,
+                    width: ci.width * ratio,
+                    height: ci.height * ratio,
+                }));
+            setCanvasImages(prev => {
+                const updated = rescale(prev);
+                sideCanvasImages.current[template.side] = updated;
+                return updated;
+            });
+            for (const side of Object.keys(sideZones.current)) {
+                const zone = sideZones.current[side];
+                if (zone) {
+                    sideZones.current[side] = {
+                        left: zone.left * ratio,
+                        top: zone.top * ratio,
+                        width: zone.width * ratio,
+                        height: zone.height * ratio,
+                    };
+                }
+            }
+        }
+
+        lastScaleFactor.current = sf;
+        setStageSize({ width: imgW * sf, height: imgH * sf });
+        const pz = template.print_area_config;
+        const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
+        setPrintZone(pzScaled);
+        sideZones.current[template.side] = pzScaled;
+    }, []);
+
     // ── Background image + side restore ──────────────────────────────────────
     useEffect(() => {
         if (!currentTemplate) return;
@@ -193,15 +255,14 @@ export function useCanvasDesign() {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-            const containerW = containerRef.current?.clientWidth || window.innerWidth - 80;
-            const containerH = (containerRef.current?.clientHeight || window.innerHeight) - 48;
-            const sf = Math.min(containerW / img.width, containerH / img.height, 1) * 0.95;
-            setStageSize({ width: img.width * sf, height: img.height * sf });
+            naturalImageSize.current = { width: img.width, height: img.height };
+            lastScaleFactor.current = null;
             setBgImage(img);
-            const pz = template.print_area_config;
-            const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
-            setPrintZone(pzScaled);
-            sideZones.current[template.side] = pzScaled;
+            recalculateStageSize(false);
+            // Layout may not have settled yet on mobile — retry after paint
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => recalculateStageSize(false));
+            });
             setSelectedId(null);
 
             const pending = pendingSideData.current[template.side];
@@ -223,7 +284,16 @@ export function useCanvasDesign() {
         };
         img.onerror = () => console.error('[CanvasDesign] image load failed:', template.image_url);
         img.src = r2ProxyUrl(template.image_url);
-    }, [currentTemplate]);
+    }, [currentTemplate, recalculateStageSize]);
+
+    // ── Resize stage when container changes (rotation, browser chrome) ───────
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(() => recalculateStageSize(true));
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [recalculateStageSize]);
 
     // ── Transformer attachment ────────────────────────────────────────────────
     useEffect(() => {
@@ -243,19 +313,21 @@ export function useCanvasDesign() {
     const fetchUserUploads = async () => {
         if (!user) return;
         setLoadingUploads(true);
+        setUploadsError(null);
         try {
             const { data } = await api.get<{ name: string; url: string }[]>('/uploads/assets');
             setUserUploads(data);
         } catch (err) {
             console.error('[CanvasDesign] fetchUserUploads failed:', err);
+            setUploadsError('โหลดคลังรูปไม่สำเร็จ — ลองเข้าสู่ระบบใหม่');
         } finally {
             setLoadingUploads(false);
         }
     };
 
     useEffect(() => {
-        if (showImageLibrary) fetchUserUploads();
-    }, [showImageLibrary]);
+        if (showImageLibrary && user) fetchUserUploads();
+    }, [showImageLibrary, user?.id]);
 
     // ── Derived values ────────────────────────────────────────────────────────
     const pxPerInch = printZone && currentTemplate
@@ -506,7 +578,10 @@ export function useCanvasDesign() {
         productId: string,
         colorId: string,
         pType: string,
+        size?: string,
     ) => {
+        const sizeToUse = size ?? selectedSize;
+        if (!sizeToUse) return;
         const entries = Object.entries(printDimensions).filter(([, d]) => d.w > 0 && d.h > 0);
         if (!entries.length) return;
         setPriceLoading(true);
@@ -522,7 +597,7 @@ export function useCanvasDesign() {
                         quantity: 1,
                         productId,
                         color_id: colorId,
-                        size: 'M',
+                        size: sizeToUse,
                     });
                     shirt_per_unit = bd.shirt_per_unit;
                     sideResults.push({ side, tier: bd.tier, print_per_unit: bd.print_per_unit });
@@ -811,14 +886,14 @@ export function useCanvasDesign() {
         designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, nameError, isDirty, markDirty, priceBreakdown, priceLoading, printingType,
         // Sidebar
         showImageLibrary, setShowImageLibrary, showLayerPanel, setShowLayerPanel,
-        userUploads, loadingUploads, isUploading,
+        userUploads, loadingUploads, uploadsError, isUploading,
         deleteImageName, setDeleteImageName, dpiWarningFile, setDpiWarningFile,
         // Actions
         saveCurrentSide, handleColorSelect, handleColorAdd, handleColorRemove,
         addImageFromUrl, handleSidebarUpload, proceedWithUpload, confirmDeleteImage,
         moveLayer, handleExport, handleSave, handleMockup,
         showMockup, setShowMockup, mockupUrl, generatingMockup,
-        selectedSize, setSelectedSize, quantity, setQuantity,
+        selectedSize, setSelectedSize, availableSizes, quantity, setQuantity,
         isAddingToCart, handleAddToCart,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
     };

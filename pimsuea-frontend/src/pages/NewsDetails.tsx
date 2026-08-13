@@ -43,7 +43,7 @@ export default function NewsDetails() {
       <div className="min-h-screen flex flex-col items-center justify-center text-red-500 space-y-4">
         <AlertCircle className="w-12 h-12" />
         <p className="text-xl font-semibold">{error || "ไม่พบเนื้อหา"}</p>
-        <Link to="/">
+        <Link to="/dashboard">
             <Button variant="outline">กลับไปหน้าหลัก</Button>
         </Link>
       </div>
@@ -52,7 +52,7 @@ export default function NewsDetails() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Link to="/" className="inline-flex items-center text-gray-500 hover:text-primary mb-6">
+      <Link to="/dashboard" className="inline-flex items-center text-gray-500 hover:text-primary mb-6">
         <ArrowLeft className="w-4 h-4 mr-1" /> กลับไปหน้าหลัก
       </Link>
 
@@ -81,9 +81,9 @@ export default function NewsDetails() {
             )}
         </div>
 
-        <div className="p-8 space-y-6">
+        <div className="p-4 md:p-8 space-y-6">
             <header className="space-y-4">
-                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 leading-tight">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-gray-900 leading-tight">
                     {news.title}
                 </h1>
                 

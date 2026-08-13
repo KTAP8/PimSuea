@@ -5,7 +5,6 @@ const { calculatePrice, lookupPrintPrice } = require('../utils/pricing');
 const { supabaseAdmin } = require('../config/supabaseClient');
 
 const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
-const VALID_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL'];
 const VALID_TIERS = ['3x4in', 'A5', 'A4', 'A3'];
 
 router.post('/', requireAuth, async (req, res) => {
@@ -34,8 +33,8 @@ router.post('/', requireAuth, async (req, res) => {
   if (!color_id || typeof color_id !== 'string') {
     return res.status(400).json({ error: 'color_id is required' });
   }
-  if (!size || !VALID_SIZES.includes(size)) {
-    return res.status(400).json({ error: 'size must be S, M, L, XL, or XXL' });
+  if (!size || typeof size !== 'string') {
+    return res.status(400).json({ error: 'size is required' });
   }
 
   // Resolve color_id → color_name ('White' or 'Black')
@@ -82,8 +81,8 @@ router.get('/estimate', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'productId is required' });
   if (!colorName)
     return res.status(400).json({ error: 'colorName is required' });
-  if (!VALID_SIZES.includes(size))
-    return res.status(400).json({ error: 'Invalid size' });
+  if (!size || typeof size !== 'string')
+    return res.status(400).json({ error: 'size is required' });
   if (!ACTIVE_PRINTING_TYPES.includes(printingType))
     return res.status(400).json({ error: 'printingType must be DTG' });
   if (!frontTier && !backTier)

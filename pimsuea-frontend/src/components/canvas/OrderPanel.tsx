@@ -2,11 +2,10 @@ import { Loader2, Minus, Plus, ShoppingCart, X, Zap } from 'lucide-react';
 import type { CanvasPriceBreakdown } from '../../types/canvas';
 import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from '../../constants/printing';
 
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
-
 interface Props {
     selectedSize: string;
     onSizeChange: (s: string) => void;
+    availableSizes: string[];
     quantity: number;
     onQuantityChange: (q: number) => void;
     priceBreakdown: CanvasPriceBreakdown | null;
@@ -19,7 +18,7 @@ interface Props {
 }
 
 export function OrderPanel({
-    selectedSize, onSizeChange,
+    selectedSize, onSizeChange, availableSizes,
     quantity, onQuantityChange,
     priceBreakdown,
     isAddingToCart, isSaving,
@@ -49,7 +48,7 @@ export function OrderPanel({
                     <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">ไซส์</p>
                         <div className="flex gap-2 flex-wrap">
-                            {SIZES.map(s => (
+                            {availableSizes.map(s => (
                                 <button
                                     key={s}
                                     onClick={() => onSizeChange(s)}

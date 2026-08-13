@@ -103,15 +103,15 @@ export default function Catalog() {
         </div>
       ) : (
         /* Product Grid */
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
             {products.length === 0 ? (
                 <div className="col-span-full text-center py-10 text-gray-500">
                     ไม่พบสินค้าในหมวดหมู่นี้
                 </div>
             ) : (
                 products.map((product) => (
-                <Link key={product.id} to={`/product/${product.id}`} className="group block h-full outline-primary rounded-[2rem]">
-                    <div className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 h-full flex flex-col group-hover:-translate-y-1">
+                <Link key={product.id} to={`/product/${product.id}`} className="group block h-full outline-primary rounded-2xl sm:rounded-[2rem] min-w-0">
+                    <div className="bg-white border border-gray-100 rounded-2xl sm:rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 h-full flex flex-col group-hover:-translate-y-1 min-w-0">
                       
                       {/* Image Container */}
                       <div className="aspect-[4/5] sm:aspect-square bg-gray-50/50 flex items-center justify-center text-8xl relative overflow-hidden">
@@ -128,30 +128,29 @@ export default function Catalog() {
                       </div>
 
                       {/* Content Container */}
-                      <div className="p-4 sm:p-6 flex-1 flex flex-col relative bg-gradient-to-b from-white to-gray-50/30">
-                          <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2">
-                              <h3 className="font-bold text-base sm:text-xl text-gray-900 leading-snug line-clamp-2 group-hover:text-primary transition-colors pr-2">
+                      <div className="p-3 sm:p-6 flex-1 flex flex-col relative bg-gradient-to-b from-white to-gray-50/30 min-w-0">
+                          <div className="mb-2 sm:mb-3 min-w-0">
+                              <h3 className="font-bold text-sm sm:text-xl text-gray-900 leading-snug line-clamp-2 group-hover:text-primary transition-colors">
                                   {product.name}
                               </h3>
                               {product.is_beginner_friendly && (
-                                <Badge variant="secondary" className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 shrink-0 rounded-lg whitespace-nowrap hidden sm:inline-flex">
+                                <Badge variant="secondary" className="mt-1.5 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 shrink-0 rounded-lg whitespace-nowrap hidden sm:inline-flex">
                                     สั่งสำหรับมือใหม่
                                 </Badge>
                               )}
                           </div>
                           <PrintMethodBadges print_methods={product.print_methods} />
-                          <div className="mt-auto flex items-end justify-between pt-4">
-                            <div>
+                          <div className="mt-auto flex items-end justify-between gap-2 pt-3 sm:pt-4 min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="text-[10px] sm:text-xs text-gray-400 font-medium mb-0.5 sm:mb-1 uppercase tracking-wider">ราคาเริ่มต้น</p>
-                              <p className="text-primary font-black text-xl sm:text-2xl">
+                              <p className="text-primary font-black text-lg sm:text-2xl truncate">
                                   {product.starting_price 
                                       ? `฿${product.starting_price.toLocaleString()}` 
                                       : `฿${product.price.toLocaleString()}`}
                               </p>
                             </div>
                             
-                            {/* Seamless Interaction Arrow (Replacing invalid nested button array) */}
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300 shadow-sm border border-primary/10 shrink-0">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300 shadow-sm border border-primary/10 shrink-0">
                               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" />
                             </div>
                           </div>

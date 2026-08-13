@@ -8,7 +8,7 @@ interface Props {
 
 export function PriceCard({ priceBreakdown, priceLoading }: Props) {
     return (
-        <div className="w-48 bg-white p-3 rounded-xl shadow-xl border border-gray-100">
+        <div className="w-full max-w-xs bg-white p-3 rounded-xl shadow-xl border border-gray-100">
             <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">ราคาโดยประมาณ</span>
                 {priceLoading

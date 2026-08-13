@@ -1,18 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Pencil } from 'lucide-react';
 import type { DashboardDesign } from '@/hooks/useDashboardStats';
-
-function getFirstPreview(raw: string | null | undefined): string {
-    if (!raw) return '';
-    try {
-        const m = JSON.parse(raw);
-        if (m && typeof m === 'object' && !Array.isArray(m)) {
-            const first = Object.values(m)[0];
-            if (typeof first === 'string') return first;
-        }
-    } catch { /* not JSON */ }
-    return raw;
-}
+import { getPreviewDisplayUrl } from '@/lib/previews';
 
 interface Props {
     designs: DashboardDesign[];
@@ -48,9 +37,9 @@ export function ContinueDesigning({ designs, loading }: Props) {
                             className="group bg-white border border-slate-100/80 rounded-3xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col ring-1 ring-slate-900/5"
                         >
                             <div className="aspect-video sm:aspect-square bg-slate-50/50 relative flex items-center justify-center p-8 overflow-hidden">
-                                {getFirstPreview(design.preview_image_url) ? (
+                                {getPreviewDisplayUrl(design.preview_image_url) ? (
                                     <img
-                                        src={getFirstPreview(design.preview_image_url)}
+                                        src={getPreviewDisplayUrl(design.preview_image_url)}
                                         alt={design.design_name}
                                         className="h-full w-full object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-500 ease-out"
                                     />
