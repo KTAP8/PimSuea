@@ -190,8 +190,8 @@ export default function DesignStudio() {
                 </aside>
 
                 {/* Canvas + mobile context bar */}
-                <div className="grid grid-rows-[minmax(0,1fr)_auto] min-h-0 overflow-hidden md:flex md:flex-col md:flex-1 md:basis-0">
-                    <div ref={d.containerRef} className="min-h-0 relative overflow-hidden bg-gray-50/30">
+                <div className="grid grid-rows-[minmax(0,1fr)_auto] min-h-0 overflow-hidden md:flex md:flex-col md:flex-1 md:basis-0 md:min-h-0">
+                    <div ref={d.containerRef} className="flex-1 min-h-0 relative overflow-hidden bg-gray-50/30">
 
                         {/* Top overlay: size editor (desktop) + remove button */}
                         <div className="absolute top-3 md:top-6 left-1/2 -translate-x-1/2 flex flex-row items-center gap-2 md:gap-3 z-10 pointer-events-none origin-top px-2">
@@ -214,6 +214,12 @@ export default function DesignStudio() {
 
                         {/* Desktop floating side/color panel */}
                         {isDesktop && <BottomContextPanel layout="floating" {...contextPanelProps} />}
+
+                        {d.currentTemplate && !d.bgImage && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-50/80">
+                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            </div>
+                        )}
 
                         <CanvasStage
                             stageRef={d.stageRef}

@@ -74,18 +74,78 @@ function normalizeStoredUrlField(raw) {
 }
 
 /**
- * Resolves a public URL back to { bucket, key } by matching against known base URLs.
- * Returns null if the URL doesn't match any configured bucket.
+ * Resolves a public URL back to { bucket, key }.
+ * Matches configured public bases first, then legacy R2 URL shapes (old r2.dev
+ * domains, cloudflarestorage.com paths) so saved design assets keep loading after
+ * a bucket public URL change.
  * @param {string} url
  * @returns {{ bucket: string, key: string } | null}
  */
 function getLocationFromUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+
   for (const [bucket, base] of Object.entries(R2_PUBLIC_URLS)) {
     if (base && url.startsWith(base + '/')) {
       return { bucket, key: url.slice(base.length + 1) };
     }
   }
+
+  try {
+    const { hostname, pathname } = new URL(url);
+    const path = pathname.replace(/^\/+/, '');
+
+    // https://{account}.r2.cloudflarestorage.com/{bucket}/{key}
+    if (hostname.includes('.r2.cloudflarestorage.com')) {
+      for (const bucket of Object.keys(R2_PUBLIC_URLS)) {
+        const prefix = `${bucket}/`;
+        if (path.startsWith(prefix)) {
+          return { bucket, key: path.slice(prefix.length) };
+        }
+      }
+    }
+
+    // Legacy https://pub-*.r2.dev/{key} public domains
+    if (hostname.endsWith('.r2.dev') && path) {
+      if (/^uid_[^/]+\/.+/.test(path)) {
+        return { bucket: 'design-previews', key: path };
+      }
+      if (/^uploads\/[^/]+\/.+/.test(path)) {
+        // User-uploaded canvas assets live in design-assets; print-files share the
+        // same key shape but are usually stored with a bucket-prefixed URL.
+        return { bucket: 'design-assets', key: path };
+      }
+    }
+  } catch { /* invalid URL */ }
+
   return null;
+}
+
+/**
+ * Normalizes image src URLs inside saved Konva canvas_data.
+ * @param {object|null|undefined} canvasData
+ * @returns {object|null|undefined}
+ */
+function normalizeCanvasData(canvasData) {
+  if (!canvasData || typeof canvasData !== 'object') return canvasData;
+
+  const normalizeImages = (images) =>
+    Array.isArray(images)
+      ? images.map((img) => (img?.src ? { ...img, src: normalizePublicUrl(img.src) } : img))
+      : images;
+
+  const out = { ...canvasData };
+
+  if (out.sides && typeof out.sides === 'object') {
+    out.sides = Object.fromEntries(
+      Object.entries(out.sides).map(([side, images]) => [side, normalizeImages(images)])
+    );
+  }
+
+  if (Array.isArray(out.images)) {
+    out.images = normalizeImages(out.images);
+  }
+
+  return out;
 }
 
 /**
@@ -124,4 +184,14 @@ async function copyObject(srcBucket, srcKey, dstBucket, dstKey) {
   }));
 }
 
-module.exports = { r2, getPublicUrl, getLocationFromUrl, deleteObject, listObjects, copyObject, normalizePublicUrl, normalizeStoredUrlField };
+module.exports = {
+  r2,
+  getPublicUrl,
+  getLocationFromUrl,
+  deleteObject,
+  listObjects,
+  copyObject,
+  normalizePublicUrl,
+  normalizeStoredUrlField,
+  normalizeCanvasData,
+};

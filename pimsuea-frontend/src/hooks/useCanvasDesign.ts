@@ -10,6 +10,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { isLegacyDtfPrintingType } from '../constants/printing';
 import type { ProductTemplate, Color } from '../types/api';
 import type { CanvasImage, SerializableImage, CanvasPriceBreakdown } from '../types/canvas';
+import {
+    serializeCanvasImage,
+    deserializeCanvasCoords,
+    zoneFromTemplate,
+    inferSaveScaleFactor,
+    type CanvasDataMeta,
+} from '../utils/canvasCoords';
 
 export const SIDE_ORDER = ['front', 'back'];
 
@@ -85,6 +92,7 @@ export function useCanvasDesign() {
     const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
     const sideZones = useRef<Record<string, { left: number; top: number; width: number; height: number }>>({});
     const pendingSideData = useRef<Record<string, SerializableImage[]>>({});
+    const loadedCanvasMeta = useRef<CanvasDataMeta>({});
     const naturalImageSize = useRef({ width: 0, height: 0 });
     const lastScaleFactor = useRef<number | null>(null);
     const currentTemplateRef = useRef<ProductTemplate | null>(null);
@@ -158,6 +166,10 @@ export function useCanvasDesign() {
                     }
 
                     const canvasData = design.canvas_data;
+                    loadedCanvasMeta.current = {
+                        version: canvasData?.version,
+                        stageScaleFactor: canvasData?.stageScaleFactor,
+                    };
                     const firstColorId = design.available_colors?.[0] ?? null;
                     if (canvasData?.renderer === 'konva') {
                         if (canvasData.sides) {
@@ -249,6 +261,58 @@ export function useCanvasDesign() {
     }, []);
 
     // ── Background image + side restore ──────────────────────────────────────
+    const restoreSideImages = useCallback((template: ProductTemplate) => {
+        const pending = pendingSideData.current[template.side];
+        const zone = sideZones.current[template.side];
+        const sf = lastScaleFactor.current;
+        const { width: imgW, height: imgH } = naturalImageSize.current;
+
+        if (!pending?.length) {
+            setCanvasImages(sideCanvasImages.current[template.side] ?? []);
+            return;
+        }
+        if (!zone || !sf || !imgW || !imgH) return;
+
+        delete pendingSideData.current[template.side];
+        const meta = loadedCanvasMeta.current;
+        const legacySfSave = meta.stageScaleFactor ?? inferSaveScaleFactor(pending, imgW, imgH);
+
+        Promise.all(
+            pending.map((d) => {
+                const coords = deserializeCanvasCoords(d, zone, {
+                    ...meta,
+                    stageScaleFactor: legacySfSave,
+                    imgW,
+                    imgH,
+                    sfLoad: sf,
+                });
+                return new Promise<CanvasImage | null>((resolve) => {
+                    const i = new window.Image();
+                    i.crossOrigin = 'anonymous';
+                    i.onload = () => resolve({
+                        id: d.id,
+                        image: i,
+                        src: d.src,
+                        ...coords,
+                        rotation: d.rotation ?? 0,
+                    });
+                    i.onerror = () => {
+                        console.error('[CanvasDesign] Failed to restore layer image:', d.src);
+                        resolve(null);
+                    };
+                    i.src = r2ProxyUrl(d.src);
+                });
+            }),
+        ).then(results => {
+            const loaded = results.filter((ci): ci is CanvasImage => ci !== null);
+            if (loaded.length < pending.length) {
+                console.warn(`[CanvasDesign] Restored ${loaded.length}/${pending.length} layer(s) on ${template.side}`);
+            }
+            sideCanvasImages.current[template.side] = loaded;
+            setCanvasImages(loaded);
+        });
+    }, []);
+
     useEffect(() => {
         if (!currentTemplate) return;
         const template = currentTemplate;
@@ -258,33 +322,21 @@ export function useCanvasDesign() {
             naturalImageSize.current = { width: img.width, height: img.height };
             lastScaleFactor.current = null;
             setBgImage(img);
-            recalculateStageSize(false);
-            // Layout may not have settled yet on mobile — retry after paint
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => recalculateStageSize(false));
-            });
             setSelectedId(null);
 
-            const pending = pendingSideData.current[template.side];
-            if (pending) {
-                delete pendingSideData.current[template.side];
-                Promise.all(pending.map(d => new Promise<CanvasImage>((resolve, reject) => {
-                    const i = new window.Image();
-                    i.crossOrigin = 'anonymous';
-                    i.onload = () => resolve({ id: d.id, image: i, src: d.src, x: d.x, y: d.y, width: d.width, height: d.height, rotation: d.rotation ?? 0 });
-                    i.onerror = reject;
-                    i.src = r2ProxyUrl(d.src);
-                }))).then(loaded => {
-                    sideCanvasImages.current[template.side] = loaded;
-                    setCanvasImages(loaded);
-                }).catch(err => console.error('[CanvasDesign] Failed to restore side images:', err));
-            } else {
-                setCanvasImages(sideCanvasImages.current[template.side] ?? []);
-            }
+            const finishLayout = () => {
+                recalculateStageSize(false);
+                restoreSideImages(template);
+            };
+
+            // Wait for container layout to settle (especially mobile) before restoring layers
+            requestAnimationFrame(() => {
+                requestAnimationFrame(finishLayout);
+            });
         };
         img.onerror = () => console.error('[CanvasDesign] image load failed:', template.image_url);
         img.src = r2ProxyUrl(template.image_url);
-    }, [currentTemplate, recalculateStageSize]);
+    }, [currentTemplate, recalculateStageSize, restoreSideImages]);
 
     // ── Resize stage when container changes (rotation, browser chrome) ───────
     useEffect(() => {
@@ -740,12 +792,33 @@ export function useCanvasDesign() {
         setSaveStatus('idle');
         try {
             sideCanvasImages.current[currentTemplate.side] = canvasImages;
+            const sf = lastScaleFactor.current ?? 1;
             const sides = Object.fromEntries(
                 Object.entries(sideCanvasImages.current)
                     .filter(([, imgs]) => imgs.length > 0)
-                    .map(([sideName, imgs]) => [sideName, imgs.map(ci => ({ id: ci.id, src: ci.src, x: ci.x, y: ci.y, width: ci.width, height: ci.height, rotation: ci.rotation ?? 0 }))])
+                    .map(([sideName, imgs]) => {
+                        const zone = sideZones.current[sideName]
+                            ?? (() => {
+                                const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                                    ?? templates.find(t => t.side === sideName);
+                                return tmpl ? zoneFromTemplate(tmpl.print_area_config, sf) : null;
+                            })();
+                        if (!zone) {
+                            return [sideName, imgs.map(ci => ({
+                                id: ci.id, src: ci.src, x: ci.x, y: ci.y,
+                                width: ci.width, height: ci.height, rotation: ci.rotation ?? 0,
+                            }))];
+                        }
+                        return [sideName, imgs.map(ci => serializeCanvasImage(ci, zone))];
+                    }),
             );
-            const canvasData = { renderer: 'konva', version: '2', activeSide: currentTemplate.side, sides };
+            const canvasData = {
+                renderer: 'konva',
+                version: '3',
+                stageScaleFactor: sf,
+                activeSide: currentTemplate.side,
+                sides,
+            };
             const hash = MD5(JSON.stringify(canvasData)).toString();
 
             let existingDesign: any = null;

@@ -27,9 +27,15 @@ export interface CanvasPriceBreakdown {
 export type SerializableImage = {
     id: string;
     src: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
     rotation?: number;
+    /** v2 legacy — absolute stage pixels at save-time scale */
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    /** v3 — scale-invariant, relative to print zone */
+    relX?: number;
+    relY?: number;
+    relW?: number;
+    relH?: number;
 };

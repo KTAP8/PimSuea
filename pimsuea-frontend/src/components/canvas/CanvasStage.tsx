@@ -96,9 +96,24 @@ export function CanvasStage({
     // Zoom / pan state
     const [stageScale, setStageScale] = useState(1);
     const stageScaleRef = useRef(1);
+    const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
     const [isPanMode, setIsPanMode] = useState(false);
     const isPanningRef = useRef(false);
     const panStartRef = useRef({ mouseX: 0, mouseY: 0, stageX: 0, stageY: 0 });
+
+    const isDefaultView =
+        Math.abs(stageScale - 1) < 0.001 &&
+        Math.abs(stagePosition.x) < 0.5 &&
+        Math.abs(stagePosition.y) < 0.5;
+
+    const syncViewFromStage = () => {
+        const stage = stageRef.current;
+        if (!stage) return;
+        const scale = stage.scaleX();
+        stageScaleRef.current = scale;
+        setStageScale(scale);
+        setStagePosition({ x: stage.x(), y: stage.y() });
+    };
 
     // Guides layer setup
     useEffect(() => {
@@ -145,6 +160,7 @@ export function CanvasStage({
         }
         stageScaleRef.current = clamped;
         setStageScale(clamped);
+        setStagePosition({ x: stage.x(), y: stage.y() });
         stage.batchDraw();
     };
 
@@ -155,8 +171,15 @@ export function CanvasStage({
         stage.position({ x: 0, y: 0 });
         stageScaleRef.current = 1;
         setStageScale(1);
+        setStagePosition({ x: 0, y: 0 });
         stage.batchDraw();
     };
+
+    // Reset pan/zoom when switching shirt side or color template
+    useEffect(() => {
+        resetZoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bgImage]);
 
     // ── Keyboard: spacebar (pan mode) + Cmd/Ctrl +/- (zoom) ──────────────────
     useEffect(() => {
@@ -228,8 +251,7 @@ export function CanvasStage({
 
             stage.scale({ x: newScale, y: newScale });
             stage.position({ x: ox - px * newScale + dx, y: oy - py * newScale + dy });
-            stageScaleRef.current = newScale;
-            setStageScale(newScale);
+            syncViewFromStage();
             stage.batchDraw();
 
             lastDist = dist;
@@ -262,8 +284,8 @@ export function CanvasStage({
                 applyZoom(stageScaleRef.current * factor, pointer?.x, pointer?.y);
             } else {
                 // 2-finger pan
-                const newPos = { x: stage.x() - e.deltaX, y: stage.y() - e.deltaY };
-                stage.position(newPos);
+                stage.position({ x: stage.x() - e.deltaX, y: stage.y() - e.deltaY });
+                syncViewFromStage();
                 stage.batchDraw();
             }
         };
@@ -295,6 +317,7 @@ export function CanvasStage({
         const dx = e.evt.clientX - panStartRef.current.mouseX;
         const dy = e.evt.clientY - panStartRef.current.mouseY;
         stage.position({ x: panStartRef.current.stageX + dx, y: panStartRef.current.stageY + dy });
+        syncViewFromStage();
         stage.batchDraw();
     };
 
@@ -323,7 +346,8 @@ export function CanvasStage({
     const cursor = isPanningRef.current ? 'cursor-grabbing' : isPanMode ? 'cursor-grab' : 'cursor-default';
 
     return (
-        <div ref={containerRef} className={`absolute inset-0 select-none ${cursor} flex items-center justify-center overflow-hidden`}>
+        <div ref={containerRef} className={`absolute inset-0 select-none ${cursor} overflow-hidden`}>
+            <div className="absolute inset-0 flex items-center justify-center">
             <Stage
                 ref={stageRef}
                 width={stageSize.width}
@@ -433,9 +457,15 @@ export function CanvasStage({
                     )}
                 </Layer>
             </Stage>
+            </div>
 
-            {/* Zoom % + reset */}
-            <CanvasZoomHint scale={stageScale} isPanMode={isPanMode} onReset={resetZoom} />
+            {/* Zoom % + reset — outside flex center so top/right anchoring works on mobile */}
+            <CanvasZoomHint
+                scale={stageScale}
+                isPanMode={isPanMode}
+                isDefaultView={isDefaultView}
+                onReset={resetZoom}
+            />
             {/* Keyboard shortcut hint */}
             <CanvasShortcutHint />
         </div>

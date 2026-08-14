@@ -1,7 +1,7 @@
 
 const { supabase, supabaseAdmin, getAuthenticatedSupabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
-const { getLocationFromUrl, deleteObject, normalizeStoredUrlField } = require('../config/r2Client');
+const { getLocationFromUrl, deleteObject, normalizeStoredUrlField, normalizeCanvasData } = require('../config/r2Client');
 
 const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
 
@@ -11,6 +11,7 @@ function withNormalizedMedia(design) {
     ...design,
     preview_image_url: normalizeStoredUrlField(design.preview_image_url),
     print_file_url: normalizeStoredUrlField(design.print_file_url),
+    canvas_data: normalizeCanvasData(design.canvas_data),
   };
 }
 
