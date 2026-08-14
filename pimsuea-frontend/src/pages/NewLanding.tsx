@@ -6,21 +6,41 @@ import { getProducts, fetchAddons } from "@/services/api";
 import { filterActivePrintMethods } from "@/constants/printing";
 import type { Product } from "@/types/api";
 import {
-  MousePointer2, Type, Image as ImageIcon, Layers,
-  Upload, ArrowRight, Package, Zap, Truck, Loader2, Globe,
-  ShieldCheck, Clock, Activity, ChevronDown, Check
+  MousePointer2,
+  Type,
+  Image as ImageIcon,
+  Layers,
+  Upload,
+  ArrowRight,
+  Package,
+  Zap,
+  Truck,
+  Loader2,
+  Globe,
+  ShieldCheck,
+  Clock,
+  Activity,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogoCloud } from "@/components/ui/logo-cloud-4";
-import { TermsModal, REPRINT_GUARANTEE_SECTION_ID } from "@/components/TermsModal";
+import {
+  TermsModal,
+  REPRINT_GUARANTEE_SECTION_ID,
+} from "@/components/TermsModal";
 import { SiteFooter } from "@/components/SiteFooter";
 import { type Language, translations } from "@/translations/landing";
 import { appUrl } from "@/lib/site";
 
-const LandingLangContext = createContext<{ lang: Language; t: typeof translations['en']; setLang: (l: Language) => void }>({
-  lang: 'en',
+const LandingLangContext = createContext<{
+  lang: Language;
+  t: (typeof translations)["en"];
+  setLang: (l: Language) => void;
+}>({
+  lang: "en",
   t: translations.en,
-  setLang: () => {}
+  setLang: () => {},
 });
 
 function useLandingLang() {
@@ -28,22 +48,23 @@ function useLandingLang() {
 }
 
 const TRUST_LOGOS = [
-  { src: "https://svgl.app/library/nvidia-wordmark-light.svg", alt: "Nvidia Logo" },
-  { src: "https://svgl.app/library/supabase_wordmark_light.svg", alt: "Supabase Logo" },
-  { src: "https://svgl.app/library/openai_wordmark_light.svg", alt: "OpenAI Logo" },
-  { src: "https://svgl.app/library/turso-wordmark-light.svg", alt: "Turso Logo" },
-  { src: "https://svgl.app/library/vercel_wordmark.svg", alt: "Vercel Logo" },
-  { src: "https://svgl.app/library/github_wordmark_light.svg", alt: "GitHub Logo" },
-  { src: "https://svgl.app/library/claude-ai-wordmark-icon_light.svg", alt: "Claude AI Logo" },
-  { src: "https://svgl.app/library/clerk-wordmark-light.svg", alt: "Clerk Logo" },
+  { src: "/logos/Horizontal_Black.webp", alt: "Partner logo", scale: 2.4 },
+  { src: "/logos/abg_logo_grey.webp", alt: "ABG" },
+  {
+    src: "/logos/IssaCompass-PrimaryLogo-Black.webp",
+    alt: "Issa Compass",
+    scale: 0.9,
+  },
+  { src: "/logos/DetailBasketball.webp", alt: "Detail Basketball" },
+  { src: "/logos/IBClogo.webp", alt: "IBC" },
 ];
 
 function LogoCloudSection() {
   const { t } = useLandingLang();
 
   return (
-    <section className="py-10">
-      <p className="mb-5 text-center font-medium text-lg text-muted-foreground md:text-xl px-6">
+    <section className="py-6 md:py-10 overflow-x-hidden">
+      <p className="mb-4 md:mb-5 text-center font-light text-base text-muted-foreground md:text-xl px-6">
         {t.trustBar}
       </p>
       <LogoCloud logos={TRUST_LOGOS} />
@@ -60,30 +81,30 @@ function CanvasHeroGraphic() {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.3 }}
-      className="relative w-full max-w-lg mx-auto"
+      className="relative w-full max-w-[280px] sm:max-w-md md:max-w-lg mx-auto"
     >
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/10 blur-[80px] rounded-full -z-10" />
 
       {/* Window chrome */}
       <div className="rounded-2xl border border-border shadow-2xl overflow-hidden bg-card">
-        <div className="h-10 border-b border-border bg-secondary/50 flex items-center px-4 gap-2">
+        <div className="h-8 md:h-10 border-b border-border bg-secondary/50 flex items-center px-3 md:px-4 gap-2">
           <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-destructive/70" />
-            <div className="w-3 h-3 rounded-full bg-yellow-400/70" />
-            <div className="w-3 h-3 rounded-full bg-green-500/70" />
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-destructive/70" />
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-yellow-400/70" />
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-green-500/70" />
           </div>
           <div className="flex-1 flex justify-center">
-            <div className="h-5 bg-background border border-border rounded-full w-44 text-[10px] text-muted-foreground flex items-center justify-center">
+            <div className="h-4 md:h-5 bg-background border border-border rounded-full w-32 md:w-44 text-[9px] md:text-[10px] text-muted-foreground flex items-center justify-center">
               pimsuea.com/design
             </div>
           </div>
         </div>
 
         {/* Editor body */}
-        <div className="flex h-72">
+        <div className="flex h-44 sm:h-56 md:h-72">
           {/* Toolbar */}
-          <div className="w-14 border-r border-border bg-secondary/20 flex flex-col items-center py-4 gap-3 shrink-0">
+          <div className="w-11 md:w-14 border-r border-border bg-secondary/20 flex flex-col items-center py-3 md:py-4 gap-2 md:gap-3 shrink-0">
             {[
               { Icon: MousePointer2, active: true },
               { Icon: Type, active: false },
@@ -115,7 +136,7 @@ function CanvasHeroGraphic() {
             />
 
             {/* T-shirt */}
-            <div className="relative text-border z-10">
+            <div className="relative text-border z-10 scale-75 sm:scale-90 md:scale-100 origin-center">
               <svg
                 width="200"
                 height="240"
@@ -133,13 +154,28 @@ function CanvasHeroGraphic() {
               <motion.div
                 initial={{ scale: 0, opacity: 0, rotate: -8 }}
                 animate={{ scale: 1, opacity: 1, rotate: -8 }}
-                transition={{ delay: 1, duration: 0.5, type: "spring", stiffness: 200 }}
+                transition={{
+                  delay: 1,
+                  duration: 0.5,
+                  type: "spring",
+                  stiffness: 200,
+                }}
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] border border-primary border-dashed bg-primary/5 flex items-center justify-center"
               >
-                <span className="font-heavy text-[11px] text-primary tracking-widest uppercase">PimSuea</span>
+                <span className="font-heavy text-[11px] text-primary tracking-widest uppercase">
+                  PimSuea
+                </span>
                 {/* Handles */}
-                {["-top-1.5 -left-1.5", "-top-1.5 -right-1.5", "-bottom-1.5 -left-1.5", "-bottom-1.5 -right-1.5"].map((pos) => (
-                  <div key={pos} className={`absolute ${pos} w-2.5 h-2.5 bg-background border border-primary`} />
+                {[
+                  "-top-1.5 -left-1.5",
+                  "-top-1.5 -right-1.5",
+                  "-bottom-1.5 -left-1.5",
+                  "-bottom-1.5 -right-1.5",
+                ].map((pos) => (
+                  <div
+                    key={pos}
+                    className={`absolute ${pos} w-2.5 h-2.5 bg-background border border-primary`}
+                  />
                 ))}
               </motion.div>
             </div>
@@ -223,7 +259,12 @@ function StepVisual1() {
       <motion.div
         initial={{ y: -100, opacity: 0, rotate: -4 }}
         animate={isInView ? { y: 0, opacity: 1, rotate: 0 } : {}}
-        transition={{ delay: 0.2, duration: 0.7, type: "spring", stiffness: 100 }}
+        transition={{
+          delay: 0.2,
+          duration: 0.7,
+          type: "spring",
+          stiffness: 100,
+        }}
         className="absolute top-6 left-1/2 -translate-x-1/2 bg-card border border-border shadow-lg rounded-xl px-4 py-3 flex items-center gap-3"
       >
         <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
@@ -268,7 +309,9 @@ function StepVisual2() {
           </div>
           <div>
             <p className="font-bold text-sm">{t.instantPricingTitle}</p>
-            <p className="text-xs text-muted-foreground">{t.instantPricingSub}</p>
+            <p className="text-xs text-muted-foreground">
+              {t.instantPricingSub}
+            </p>
           </div>
         </div>
         <div className="space-y-2 text-sm">
@@ -276,7 +319,10 @@ function StepVisual2() {
             [t.canvasGarment, "฿110"],
             [t.canvasPrintTier, "฿22"],
           ].map(([label, price]) => (
-            <div key={label} className="flex justify-between text-muted-foreground">
+            <div
+              key={label}
+              className="flex justify-between text-muted-foreground"
+            >
               <span>{label}</span>
               <span>{price}</span>
             </div>
@@ -371,45 +417,50 @@ function HowItWorksSection() {
     },
   ];
 
-  const refs = [useRef(null), useRef(null), useRef(null)];
-  const inViews = refs.map((ref) => useInView(ref, { amount: 0.6 })); // eslint-disable-line react-hooks/rules-of-hooks
+  const step0Ref = useRef<HTMLDivElement>(null);
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const stepRefs = [step0Ref, step1Ref, step2Ref];
+
+  const step0InView = useInView(step0Ref, { margin: "-45% 0px -45% 0px" });
+  const step1InView = useInView(step1Ref, { margin: "-45% 0px -45% 0px" });
+  const step2InView = useInView(step2Ref, { margin: "-45% 0px -45% 0px" });
 
   useEffect(() => {
-    if (inViews[2]) setActiveStep(2);
-    else if (inViews[1]) setActiveStep(1);
-    else if (inViews[0]) setActiveStep(0);
-  }, [inViews[0], inViews[1], inViews[2]]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (step2InView) setActiveStep(2);
+    else if (step1InView) setActiveStep(1);
+    else if (step0InView) setActiveStep(0);
+  }, [step0InView, step1InView, step2InView]);
 
   const visuals = [<StepVisual1 />, <StepVisual2 />, <StepVisual3 />];
 
   return (
     <section id="how" className="py-24 border-t border-border">
       <div className="max-w-5xl mx-auto px-6">
-        <h2 className="font-black text-4xl md:text-5xl mb-16 text-center">{t.howItWorksTitle}</h2>
+        <h2 className="font-black text-4xl md:text-5xl mb-16 text-center">
+          {t.howItWorksTitle}
+        </h2>
 
         {/* Desktop: sticky text left + scrolling visuals right */}
         <div className="hidden md:grid md:grid-cols-2 relative">
           {/* Sticky text */}
-          <div className="sticky top-24 self-start h-[calc(100vh-6rem)] flex items-center pr-16">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeStep}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.25 }}
-              >
-                <span className="font-black text-8xl text-border leading-none block">
-                  {HOW_IT_WORKS_STEPS[activeStep].number}
-                </span>
-                <h3 className="font-black text-3xl mt-4 leading-tight">
-                  {HOW_IT_WORKS_STEPS[activeStep].title}
-                </h3>
-                <p className="font-light text-lg text-muted-foreground mt-4 leading-relaxed">
-                  {HOW_IT_WORKS_STEPS[activeStep].body}
-                </p>
-              </motion.div>
-            </AnimatePresence>
+          <div className="sticky top-24 self-start z-10 h-[calc(100vh-6rem)] flex items-center pr-16">
+            <motion.div
+              key={activeStep}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <span className="font-black text-8xl text-border leading-none block">
+                {HOW_IT_WORKS_STEPS[activeStep].number}
+              </span>
+              <h3 className="font-black text-3xl mt-4 leading-tight">
+                {HOW_IT_WORKS_STEPS[activeStep].title}
+              </h3>
+              <p className="font-light text-lg text-muted-foreground mt-4 leading-relaxed">
+                {HOW_IT_WORKS_STEPS[activeStep].body}
+              </p>
+            </motion.div>
           </div>
 
           {/* Scrolling visuals */}
@@ -417,7 +468,7 @@ function HowItWorksSection() {
             {visuals.map((visual, i) => (
               <div
                 key={i}
-                ref={refs[i]}
+                ref={stepRefs[i]}
                 className="h-screen flex items-center justify-center"
               >
                 {visual}
@@ -432,9 +483,13 @@ function HowItWorksSection() {
             <div key={i} className="space-y-6">
               {visuals[i]}
               <div className="text-center">
-                <span className="font-black text-6xl text-border block">{step.number}</span>
+                <span className="font-black text-6xl text-border block">
+                  {step.number}
+                </span>
                 <h3 className="font-black text-2xl mt-2">{step.title}</h3>
-                <p className="font-light text-muted-foreground mt-2 max-w-xs mx-auto">{step.body}</p>
+                <p className="font-light text-muted-foreground mt-2 max-w-xs mx-auto">
+                  {step.body}
+                </p>
               </div>
             </div>
           ))}
@@ -464,7 +519,9 @@ function FAQSection() {
       <div className="max-w-3xl mx-auto px-6">
         <div className="text-center mb-14">
           <h2 className="font-black text-4xl md:text-5xl mb-4">{t.faqTitle}</h2>
-          <p className="text-muted-foreground font-light text-lg">{t.faqSubtitle}</p>
+          <p className="text-muted-foreground font-light text-lg">
+            {t.faqSubtitle}
+          </p>
         </div>
         <div className="divide-y divide-border">
           {faqs.map((item, i) => {
@@ -476,7 +533,9 @@ function FAQSection() {
                   onClick={() => setOpenIndex(isOpen ? null : i)}
                   aria-expanded={isOpen}
                 >
-                  <span className="font-bold text-base md:text-lg leading-snug">{item.q}</span>
+                  <span className="font-bold text-base md:text-lg leading-snug">
+                    {item.q}
+                  </span>
                   <ChevronDown
                     className={`w-5 h-5 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
                   />
@@ -513,13 +572,15 @@ function WhoWeAreSection() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, amount: 0.2 });
 
-  const isEn = lang === 'en';
+  const isEn = lang === "en";
 
   return (
     <section className="border-t border-border bg-[#F8F9FA]">
       <div className="max-w-5xl mx-auto px-6 py-24 lg:py-32">
-        <div ref={ref} className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-
+        <div
+          ref={ref}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center"
+        >
           {/* Left — 2 Photos placeholder */}
           <motion.div
             initial={{ opacity: 0, x: -32 }}
@@ -528,7 +589,6 @@ function WhoWeAreSection() {
             className="relative order-last lg:order-first w-full max-w-lg mx-auto lg:mx-0"
           >
             <div className="grid grid-cols-3 gap-3 sm:gap-4 relative z-10">
-
               {/* Photo 1 (shifted down - Haka) */}
               <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
                 <img
@@ -538,8 +598,12 @@ function WhoWeAreSection() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">Haka</p>
-                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">COO · CBO</p>
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">
+                    Haka
+                  </p>
+                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">
+                    COO · CBO
+                  </p>
                 </div>
               </div>
 
@@ -552,8 +616,12 @@ function WhoWeAreSection() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">Touch</p>
-                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">CEO · CTO</p>
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">
+                    Touch
+                  </p>
+                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">
+                    CEO · CTO
+                  </p>
                 </div>
               </div>
 
@@ -566,8 +634,12 @@ function WhoWeAreSection() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
-                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">Khaopan</p>
-                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">CMO</p>
+                  <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">
+                    Khaopan
+                  </p>
+                  <p className="text-white/70 text-[9px] sm:text-[10px] uppercase tracking-[0.2em] font-light mt-0.5">
+                    CMO
+                  </p>
                 </div>
               </div>
             </div>
@@ -576,7 +648,9 @@ function WhoWeAreSection() {
             <div className="flex justify-center mt-6">
               <div className="bg-white/90 backdrop-blur-md border border-border/50 shadow-xl rounded-xl px-5 py-3 flex items-center gap-3 w-max">
                 <div className="w-2.5 h-2.5 rounded-full bg-action animate-pulse shrink-0" />
-                <span className="text-foreground text-sm font-semibold tracking-wide">Bangkok, Thailand</span>
+                <span className="text-foreground text-sm font-semibold tracking-wide">
+                  Bangkok, Thailand
+                </span>
               </div>
             </div>
 
@@ -600,9 +674,17 @@ function WhoWeAreSection() {
             <div className="space-y-2">
               <h2 className="font-black text-4xl md:text-5xl leading-[1.2] md:leading-[1.15] tracking-tight py-2">
                 {isEn ? (
-                  <>Engineered for creators.<br /><span className="text-primary">Built from experience.</span></>
+                  <>
+                    Engineered for creators.
+                    <br />
+                    <span className="text-primary">Built from experience.</span>
+                  </>
                 ) : (
-                  <>ออกแบบโดยครีเอเตอร์<br /><span className="text-primary">พัฒนาโดยวิศวกร</span></>
+                  <>
+                    ออกแบบโดยครีเอเตอร์
+                    <br />
+                    <span className="text-primary">พัฒนาโดยวิศวกร</span>
+                  </>
                 )}
               </h2>
             </div>
@@ -615,30 +697,40 @@ function WhoWeAreSection() {
               {isEn ? (
                 <>
                   <p>
-                    PimSuea wasn't born in a boardroom. It started exactly where our users are:
-                    trying to order custom team shirts and hitting a wall of minimums, slow LINE replies,
-                    and unpredictable pricing.
+                    PimSuea wasn't born in a boardroom. It started exactly where
+                    our users are: trying to order custom team shirts and
+                    hitting a wall of minimums, slow LINE replies, and
+                    unpredictable pricing.
                   </p>
                   <p>
-                    As engineering students, we realized the problem wasn't
-                    the printing—it was the infrastructure. We built PimSuea to replace the friction of
-                    the traditional factory model with the precision of modern software.{" "}
-                    <span className="font-medium text-foreground">No middlemen. No guessing. Just your design, engineered flawlessly.</span>
+                    As engineering students, we realized the problem wasn't the
+                    printing—it was the infrastructure. We built PimSuea to
+                    replace the friction of the traditional factory model with
+                    the precision of modern software.{" "}
+                    <span className="font-medium text-foreground">
+                      No middlemen. No guessing. Just your design, engineered
+                      flawlessly.
+                    </span>
                   </p>
                 </>
               ) : (
                 <>
                   <p>
-                    PimSuea ไม่ได้เริ่มต้นจากโรงงานสกรีน แต่เริ่มจากความหงุดหงิดที่เราเจอเหมือนคุณ—
-                    การต้องง้อขั้นต่ำ รอแอดมินตอบแชท และไม่เคยรู้ราคาที่แท้จริงจนกว่าจะตกลงสั่งทำ
+                    PimSuea ไม่ได้เริ่มต้นจากโรงงานสกรีน
+                    แต่เริ่มจากความหงุดหงิดที่เราเจอเหมือนคุณ— การต้องง้อขั้นต่ำ
+                    รอแอดมินตอบแชท และไม่เคยรู้ราคาที่แท้จริงจนกว่าจะตกลงสั่งทำ
                   </p>
                   <p>
-                    ในฐานะนิสิตวิศวกรรมศาสตร์ เรามองเห็นว่าปัญหานี้แก้ได้ด้วยเทคโนโลยี
+                    ในฐานะนิสิตวิศวกรรมศาสตร์
+                    เรามองเห็นว่าปัญหานี้แก้ได้ด้วยเทคโนโลยี
                     เราจึงสร้างแพลตฟอร์มที่เปลี่ยนความยุ่งยากทั้งหมดให้จบได้ในหน้าเว็บเดียว...
                     ลากวางลาย เห็นม็อคอัพจริง และคำนวณราคาเรียลไทม์
                   </p>
                   <p>
-                    <span className="font-medium text-foreground">เราไม่ได้แค่ทำร้านสกรีนเสื้อ แต่เรากำลังสร้างโครงสร้างพื้นฐานใหม่ให้คนทำเสื้อทุกคน</span>
+                    <span className="font-medium text-foreground">
+                      เราไม่ได้แค่ทำร้านสกรีนเสื้อ
+                      แต่เรากำลังสร้างโครงสร้างพื้นฐานใหม่ให้คนทำเสื้อทุกคน
+                    </span>
                   </p>
                 </>
               )}
@@ -646,13 +738,14 @@ function WhoWeAreSection() {
 
             {/* Sign-off */}
             <div className="pt-4 border-t border-border space-y-1">
-              <p className="font-bold text-base text-foreground">The PimSuea Team</p>
+              <p className="font-bold text-base text-foreground">
+                The PimSuea Team
+              </p>
               <p className="text-sm text-muted-foreground font-light">
                 Engineers by trade, creators by passion.
               </p>
             </div>
           </motion.div>
-
         </div>
       </div>
     </section>
@@ -671,14 +764,15 @@ function WhoWeAreSection() {
 
 function GiftSpotlightSection() {
   const { t } = useLandingLang();
-  const ctaHref = appUrl('/checkout');
+  const ctaHref = appUrl("/checkout");
   const [addonPrice, setAddonPrice] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAddons()
       .then((addons) => {
-        const gift = addons.find((a) => a.code === 'gift_service');
-        if (gift) setAddonPrice(`+฿${Math.round(gift.price_thb).toLocaleString()}`);
+        const gift = addons.find((a) => a.code === "gift_service");
+        if (gift)
+          setAddonPrice(`+฿${Math.round(gift.price_thb).toLocaleString()}`);
       })
       .catch(() => setAddonPrice(null));
   }, []);
@@ -686,9 +780,11 @@ function GiftSpotlightSection() {
   const displayPrice = addonPrice ?? t.giftAddonPrice;
 
   return (
-    <section id="gift" className="py-20 border-t border-border bg-gradient-to-b from-background to-secondary/20">
+    <section
+      id="gift"
+      className="py-20 border-t border-border bg-gradient-to-b from-background to-secondary/20"
+    >
       <div className="max-w-5xl mx-auto px-6">
-        
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
           <h2 className="font-heavy text-4xl md:text-5xl text-foreground tracking-tight">
@@ -703,7 +799,6 @@ function GiftSpotlightSection() {
         <div className="rounded-2xl border-2 border-primary/30 bg-card p-8 md:p-12 shadow-xl relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.04] via-primary/[0.01] to-transparent pointer-events-none" />
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            
             {/* Left Content */}
             <div className="space-y-4 max-w-xl">
               <span className="inline-block px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest text-primary border border-primary/30 bg-primary/10">
@@ -750,9 +845,7 @@ function GiftSpotlightSection() {
                 </span>
               </div>
               <a href={ctaHref} className="w-full md:w-auto">
-                <Button
-                  className="w-full md:w-auto bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm rounded-full px-8 py-6 shadow-lg shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02]"
-                >
+                <Button className="w-full md:w-auto bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm rounded-full px-8 py-6 shadow-lg shadow-orange-500/20 transition-all duration-300 hover:scale-[1.02]">
                   {t.giftAddonCta}
                 </Button>
               </a>
@@ -760,10 +853,8 @@ function GiftSpotlightSection() {
                 {t.giftAddonNote}
               </span>
             </div>
-
           </div>
         </div>
-
       </div>
     </section>
   );
@@ -772,7 +863,7 @@ function GiftSpotlightSection() {
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NewLanding() {
-  const [lang, setLang] = useState<Language>('en');
+  const [lang, setLang] = useState<Language>("en");
   const t = translations[lang];
   const [scrolled, setScrolled] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -803,7 +894,13 @@ export default function NewLanding() {
 
   useEffect(() => {
     getProducts()
-      .then(data => setProducts(data.filter(p => filterActivePrintMethods(p.print_methods).length > 0)))
+      .then((data) =>
+        setProducts(
+          data.filter(
+            (p) => filterActivePrintMethods(p.print_methods).length > 0,
+          ),
+        ),
+      )
       .catch(console.error)
       .finally(() => setLoadingProducts(false));
   }, []);
@@ -818,294 +915,315 @@ export default function NewLanding() {
     "@graph": [
       {
         "@type": "Organization",
-        "name": "PimSuea",
-        "url": "https://pimsuea.com",
-        "logo": "https://pimsuea.com/logo.svg",
-        "description": "Print-on-demand t-shirt platform | แพลตฟอร์มสั่งพิมพ์เสื้อยืดออนไลน์",
-        "sameAs": [],
+        name: "PimSuea",
+        url: "https://pimsuea.com",
+        logo: "https://pimsuea.com/logo.svg",
+        description:
+          "Print-on-demand t-shirt platform | แพลตฟอร์มสั่งพิมพ์เสื้อยืดออนไลน์",
+        sameAs: [],
       },
       {
         "@type": "WebSite",
-        "name": "PimSuea",
-        "url": "https://pimsuea.com",
+        name: "PimSuea",
+        url: "https://pimsuea.com",
       },
     ],
   };
 
   return (
     <LandingLangContext.Provider value={{ lang, t, setLang }}>
-    <PageSEO
-      title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
-      description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG printing. Fast delivery across Thailand."
-      canonical="https://pimsuea.com/"
-    />
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-    />
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-
-      {/* ── Nav ─────────────────────────────────────────────────────── */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled ? "bg-background/95 backdrop-blur border-b border-border shadow-sm" : "bg-transparent"
-        }`}
-      >
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/">
-            <img src="/logo.svg" alt="PimSuea" className="h-8" />
-          </Link>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setLang(lang === 'en' ? 'th' : 'en')}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-            >
-              <Globe className="w-4 h-4" />
-              {lang === 'en' ? 'ไทย' : 'English'}
-            </button>
-            <a
-              href={appUrl('/login')}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
-            >
-              {t.navLogin}
-            </a>
-            <a href={appUrl('/catalog')}>
-              <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
-                {t.navStartDesigning} <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </a>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="min-h-screen flex items-center pt-16">
-        <div className="max-w-5xl mx-auto px-6 py-24 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
-          {/* Text */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7 }}
-            className="space-y-6"
-          >
-            <h1 className="font-black text-5xl md:text-6xl lg:text-7xl leading-[1.2] md:leading-[1.15] tracking-tight py-2">
-              {t.heroTitle1}{" "}
-              <span className="text-primary">{t.heroTitle2}</span>
-            </h1>
-            <p className="font-light text-xl text-muted-foreground leading-relaxed max-w-md">
-              {t.heroSubtitle}
-            </p>
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <a href={appUrl('/catalog')}>
-                <Button
-                  size="lg"
-                  className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-base px-8"
-                >
-                  {t.heroStartDesigning} <ArrowRight className="w-5 h-5 ml-2" />
+      <PageSEO
+        title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
+        description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG printing. Fast delivery across Thailand."
+        canonical="https://pimsuea.com/"
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <div className="min-h-screen bg-background text-foreground">
+        {/* ── Nav ─────────────────────────────────────────────────────── */}
+        <header
+          className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+            scrolled
+              ? "bg-background/95 backdrop-blur border-b border-border shadow-sm"
+              : "bg-transparent"
+          }`}
+        >
+          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+            <Link to="/">
+              <img src="/logo.svg" alt="PimSuea" className="h-8" />
+            </Link>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setLang(lang === "en" ? "th" : "en")}
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
+              >
+                <Globe className="w-4 h-4" />
+                {lang === "en" ? "ไทย" : "English"}
+              </button>
+              <a href={appUrl("/catalog")}>
+                <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
+                  {t.navStartDesigning} <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </a>
-              <a
-                href="#catalog"
-                onClick={scrollToCatalog}
-                className="font-light text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
-              >
-                {t.heroViewCatalog}
-              </a>
             </div>
-          </motion.div>
-
-          {/* Graphic */}
-          <div className="order-first lg:order-last">
-            <CanvasHeroGraphic />
           </div>
-        </div>
-      </section>
+        </header>
 
-      {/* ── Logo Cloud ───────────────────────────────────────────────── */}
-      <LogoCloudSection />
-
-      {/* ── How It Works ─────────────────────────────────────────────── */}
-      <HowItWorksSection />
-
-      {/* ── Painkillers Grid ─────────────────────────────────────────── */}
-      <section className="py-24 border-t border-border bg-secondary/10">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="font-black text-4xl md:text-5xl mb-4">
-            {t.builtDifferentTitle}
-          </h2>
-          <p className="font-light text-muted-foreground text-lg mb-16 max-w-lg">
-            {t.builtDifferentSubtitle}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              {
-                title: t.feature1Title,
-                quote: t.feature1Quote,
-                iconText: "01",
-                icon: <Activity className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
-              },
-              {
-                title: t.feature2Title,
-                quote: t.feature2Quote,
-                iconText: "02",
-                icon: <Clock className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
-              },
-              {
-                title: t.feature3Title,
-                quote: t.feature3Quote,
-                iconText: "03",
-                icon: <Layers className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
-              },
-              {
-                title: t.feature4Title,
-                quote: t.feature4Quote,
-                iconText: "04",
-                icon: <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />,
-                onClick: openReprintPolicy,
-                actionText: t.reprintBadgePolicyLink || "Details",
-              },
-            ].map(({ title, quote, iconText, icon, onClick, actionText }) => (
-              <motion.div
-                key={title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.2 }}
-                whileHover={{ y: -8, scale: 1.01 }}
-                transition={{ duration: 0.4, type: "spring", stiffness: 120 }}
-                onClick={onClick}
-                className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-10 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 ${onClick ? 'cursor-pointer' : ''}`}
-              >
-                {/* Background Glow on Hover */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                {/* Number Watermark */}
-                <span className="absolute -bottom-6 -right-4 font-black text-8xl md:text-9xl text-muted/10 select-none group-hover:text-primary/5 transition-colors duration-500">
-                  {iconText}
-                </span>
-
-                <div className="relative z-10">
-                  <div className="mb-8 inline-flex items-center justify-center rounded-xl bg-secondary/30 p-4 ring-1 ring-border group-hover:bg-primary/10 group-hover:ring-primary/30 transition-all duration-300">
-                    {icon}
-                  </div>
-                  <h3 className="font-black text-2xl md:text-3xl mb-4 group-hover:text-primary transition-colors duration-300">{title}</h3>
-                  <p className="font-light text-muted-foreground text-lg leading-relaxed max-w-sm mb-3">"{quote}"</p>
-                  {actionText && (
-                    <span className="text-sm font-bold text-primary underline underline-offset-4 group-hover:text-primary/80 transition-colors inline-flex items-center gap-1">
-                      {actionText} →
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Gift Service add-on */}
-      <GiftSpotlightSection />
-
-      {/* ── Product Catalog ───────────────────────────────────────────── */}
-      <section id="catalog" className="py-24 border-t border-border">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="font-black text-4xl md:text-5xl mb-4">{t.catalogTitle}</h2>
-          <p className="font-light text-muted-foreground text-lg mb-12">
-            {t.catalogSubtitle}
-          </p>
-
-          {loadingProducts ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : products.length === 0 ? (
-            <p className="text-muted-foreground font-light text-center py-16">
-              {t.catalogNoProducts}
-            </p>
-          ) : (
-            <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide -mx-6 px-6">
-              {products.map((product) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden hover:border-primary/40 hover:shadow-xl transition-all duration-300 flex-shrink-0 w-72 snap-start flex flex-col group"
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
+        <section className="pt-16 pb-8 md:min-h-screen md:flex md:items-center">
+          <div className="max-w-5xl mx-auto px-6 py-6 md:py-24 grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-16 items-center w-full">
+            {/* Text */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7 }}
+              className="space-y-4 md:space-y-6"
+            >
+              <h1 className="font-black text-4xl md:text-6xl lg:text-7xl leading-[1.15] md:leading-[1.15] tracking-tight">
+                {t.heroTitle1}{" "}
+                <span className="text-primary">{t.heroTitle2}</span>
+              </h1>
+              <p className="font-light text-lg md:text-xl text-muted-foreground leading-relaxed max-w-md">
+                {t.heroSubtitle}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-1 md:pt-2">
+                <a href={appUrl("/catalog")}>
+                  <Button
+                    size="lg"
+                    className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-base px-8"
+                  >
+                    {t.heroStartDesigning}{" "}
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </a>
+                <a
+                  href="#catalog"
+                  onClick={scrollToCatalog}
+                  className="font-light text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
                 >
-                  <div className="aspect-square bg-slate-50/80 overflow-hidden relative">
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5" className="w-24 h-24">
-                          <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
-                        </svg>
-                      </div>
+                  {t.heroViewCatalog}
+                </a>
+              </div>
+            </motion.div>
+
+            {/* Graphic */}
+            <div className="order-first lg:order-last">
+              <CanvasHeroGraphic />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Logo Cloud ───────────────────────────────────────────────── */}
+        <LogoCloudSection />
+
+        {/* ── How It Works ─────────────────────────────────────────────── */}
+        <HowItWorksSection />
+
+        {/* ── Painkillers Grid ─────────────────────────────────────────── */}
+        <section className="py-24 border-t border-border bg-secondary/10">
+          <div className="max-w-5xl mx-auto px-6">
+            <h2 className="font-black text-4xl md:text-5xl mb-4">
+              {t.builtDifferentTitle}
+            </h2>
+            <p className="font-light text-muted-foreground text-lg mb-16 max-w-lg">
+              {t.builtDifferentSubtitle}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                {
+                  title: t.feature1Title,
+                  quote: t.feature1Quote,
+                  iconText: "01",
+                  icon: (
+                    <Activity className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+                  ),
+                },
+                {
+                  title: t.feature2Title,
+                  quote: t.feature2Quote,
+                  iconText: "02",
+                  icon: (
+                    <Clock className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+                  ),
+                },
+                {
+                  title: t.feature3Title,
+                  quote: t.feature3Quote,
+                  iconText: "03",
+                  icon: (
+                    <Layers className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+                  ),
+                },
+                {
+                  title: t.feature4Title,
+                  quote: t.feature4Quote,
+                  iconText: "04",
+                  icon: (
+                    <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />
+                  ),
+                  onClick: openReprintPolicy,
+                  actionText: t.reprintBadgePolicyLink || "Details",
+                },
+              ].map(({ title, quote, iconText, icon, onClick, actionText }) => (
+                <motion.div
+                  key={title}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  whileHover={{ y: -8, scale: 1.01 }}
+                  transition={{ duration: 0.4, type: "spring", stiffness: 120 }}
+                  onClick={onClick}
+                  className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-10 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 ${onClick ? "cursor-pointer" : ""}`}
+                >
+                  {/* Background Glow on Hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                  {/* Number Watermark */}
+                  <span className="absolute -bottom-6 -right-4 font-black text-8xl md:text-9xl text-muted/10 select-none group-hover:text-primary/5 transition-colors duration-500">
+                    {iconText}
+                  </span>
+
+                  <div className="relative z-10">
+                    <div className="mb-8 inline-flex items-center justify-center rounded-xl bg-secondary/30 p-4 ring-1 ring-border group-hover:bg-primary/10 group-hover:ring-primary/30 transition-all duration-300">
+                      {icon}
+                    </div>
+                    <h3 className="font-black text-2xl md:text-3xl mb-4 group-hover:text-primary transition-colors duration-300">
+                      {title}
+                    </h3>
+                    <p className="font-light text-muted-foreground text-lg leading-relaxed max-w-sm mb-3">
+                      "{quote}"
+                    </p>
+                    {actionText && (
+                      <span className="text-sm font-bold text-primary underline underline-offset-4 group-hover:text-primary/80 transition-colors inline-flex items-center gap-1">
+                        {actionText} →
+                      </span>
                     )}
-                  </div>
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-base text-slate-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">
-                        {product.name}
-                      </h3>
-                      <p className="text-xs text-slate-500 font-normal">
-                        {t.catalogStartingAt}{" "}
-                        <span className="font-extrabold text-sm text-slate-900">
-                          ฿{(product.starting_price ?? product.price).toLocaleString()}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="mt-auto pt-2">
-                      <a href={appUrl(`/product/${product.id}`)} className="block">
-                        <Button
-                          className="w-full bg-primary hover:bg-primary/90 text-white rounded-full font-bold uppercase tracking-wider text-xs py-5 shadow-md shadow-primary/15 hover:shadow-primary/30 transition-all duration-300"
-                        >
-                          {t.catalogDesignShirt}
-                        </Button>
-                      </a>
-                    </div>
                   </div>
                 </motion.div>
               ))}
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* ── FAQ ──────────────────────────────────────────────────────── */}
-      <FAQSection />
+        {/* Gift Service add-on */}
+        <GiftSpotlightSection />
 
-      {/* ── Who We Are ───────────────────────────────────────────────── */}
-      <WhoWeAreSection />
+        {/* ── Product Catalog ───────────────────────────────────────────── */}
+        <section id="catalog" className="py-24 border-t border-border">
+          <div className="max-w-5xl mx-auto px-6">
+            <h2 className="font-black text-4xl md:text-5xl mb-4">
+              {t.catalogTitle}
+            </h2>
+            <p className="font-light text-muted-foreground text-lg mb-12">
+              {t.catalogSubtitle}
+            </p>
 
-      {/* ── Footer CTA ───────────────────────────────────────────────── */}
-      <section className="bg-foreground text-background py-32 text-center">
-        <div className="max-w-2xl mx-auto px-6 space-y-8">
-          <h2 className="font-black text-5xl md:text-6xl lg:text-7xl leading-tight">
-            {t.footerTitle}
-          </h2>
-          <a href={appUrl('/catalog')}>
-            <Button
-              size="lg"
-              className="bg-action text-action-foreground hover:bg-action/90 font-black uppercase tracking-widest text-base px-12 py-6 text-lg mt-4"
-            >
-              {t.footerEnterCanvas}
-            </Button>
-          </a>
-        </div>
-      </section>
+            {loadingProducts ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : products.length === 0 ? (
+              <p className="text-muted-foreground font-light text-center py-16">
+                {t.catalogNoProducts}
+              </p>
+            ) : (
+              <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide -mx-6 px-6">
+                {products.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden hover:border-primary/40 hover:shadow-xl transition-all duration-300 flex-shrink-0 w-72 snap-start flex flex-col group"
+                  >
+                    <div className="aspect-square bg-slate-50/80 overflow-hidden relative">
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="0.5"
+                            className="w-24 h-24"
+                          >
+                            <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-base text-slate-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">
+                          {product.name}
+                        </h3>
+                        <p className="text-xs text-slate-500 font-normal">
+                          {t.catalogStartingAt}{" "}
+                          <span className="font-extrabold text-sm text-slate-900">
+                            ฿
+                            {(
+                              product.starting_price ?? product.price
+                            ).toLocaleString()}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="mt-auto pt-2">
+                        <a
+                          href={appUrl(`/product/${product.id}`)}
+                          className="block"
+                        >
+                          <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-full font-bold uppercase tracking-wider text-xs py-5 shadow-md shadow-primary/15 hover:shadow-primary/30 transition-all duration-300">
+                            {t.catalogDesignShirt}
+                          </Button>
+                        </a>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
 
-      <SiteFooter variant="marketing" lang={lang} onTermsClick={openTerms} />
+        {/* ── FAQ ──────────────────────────────────────────────────────── */}
+        <FAQSection />
 
-      <TermsModal
-        open={termsOpen}
-        onClose={closeTerms}
-        initialExpandedSection={termsSection}
-        lang={lang}
-      />
-    </div>
+        {/* ── Who We Are ───────────────────────────────────────────────── */}
+        <WhoWeAreSection />
+
+        {/* ── Footer CTA ───────────────────────────────────────────────── */}
+        <section className="bg-foreground text-background py-32 text-center">
+          <div className="max-w-2xl mx-auto px-6 space-y-8">
+            <h2 className="font-black text-5xl md:text-6xl lg:text-7xl leading-tight">
+              {t.footerTitle}
+            </h2>
+            <a href={appUrl("/catalog")}>
+              <Button
+                size="lg"
+                className="bg-action text-action-foreground hover:bg-action/90 font-black uppercase tracking-widest text-base px-12 py-6 text-lg mt-4"
+              >
+                {t.footerEnterCanvas}
+              </Button>
+            </a>
+          </div>
+        </section>
+
+        <SiteFooter variant="marketing" lang={lang} onTermsClick={openTerms} />
+
+        <TermsModal
+          open={termsOpen}
+          onClose={closeTerms}
+          initialExpandedSection={termsSection}
+          lang={lang}
+        />
+      </div>
     </LandingLangContext.Provider>
   );
 }
