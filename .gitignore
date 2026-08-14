@@ -37,6 +37,9 @@ ENV/
 .coverage
 htmlcov/
 
+# ── Local dev binaries (Stripe CLI, etc.) ────────────────────────────────────
+tools/bin/
+
 # ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 ._*

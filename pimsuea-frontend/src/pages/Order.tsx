@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { getDesignById, getProductById, createOrder, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee, fetchAddons } from "@/services/api";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { getDesignById, getProductById, createCheckoutSession, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee, fetchAddons } from "@/services/api";
 import CouponInput, { type AppliedCoupon, type CouponItem, computeDiscount } from "@/components/CouponInput";
 import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from "@/constants/printing";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2, Copy } from "lucide-react";
+import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -21,6 +21,7 @@ import {
   validateAddressField,
   firstAddressError,
 } from "@/lib/addressValidation";
+import { parsePreviewUrls, resolvePreviewDisplayUrl, getPreviewDisplayUrl } from "@/lib/previews";
 
 // Interfaces
 interface SidePriceBreakdown { side: string; tier: string; print_per_unit: number; }
@@ -29,27 +30,6 @@ interface ItemPriceBreakdown {
   shirt_per_unit: number;
   total_print_per_unit: number;
   total_per_unit: number;
-}
-
-function parsePreviewUrls(raw: string | null | undefined): Record<string, string> {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
-  } catch { /* not JSON */ }
-  return { __legacy: raw }; // old single-URL design
-}
-
-function resolvePreview(map: Record<string, string> | undefined, colorId: string, fallback: string): string {
-  if (map) {
-    if (map[colorId]) return map[colorId];
-    if (map['__legacy']) return map['__legacy'];
-    const first = Object.values(map)[0];
-    if (first) return first;
-  }
-  // fallback may itself be a raw JSON map (preview_url === preview_image_url)
-  const fallbackMap = parsePreviewUrls(fallback);
-  return Object.values(fallbackMap)[0] ?? fallback;
 }
 
 interface CartItem {
@@ -173,8 +153,6 @@ export default function Order() {
   
   // Notification State
   const [notification, setNotification] = useState<{type: 'success' | 'error', title: string, message: string} | null>(null);
-  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [termsSection, setTermsSection] = useState<string | undefined>();
 
@@ -210,7 +188,7 @@ export default function Order() {
   }, [isAddOpen]);
 
   // Data State
-  const { cartItems: contextCartItems, addToCart: ctxAddToCart, clearCart, removeFromCart, updateCartItem } = useCart();
+  const { cartItems: contextCartItems, addToCart: ctxAddToCart, removeFromCart, updateCartItem } = useCart();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>({
     fullName: '', phone: '', addressLine1: '', addressLine2: '', province: '', district: '', postalCode: ''
@@ -349,7 +327,7 @@ export default function Order() {
                 id: ctxId,
                 designId: design.id,
                 designName: design.design_name,
-                designImage: resolvePreview(previewUrls, initialColorId, design.preview_image_url),
+                designImage: resolvePreviewDisplayUrl(previewUrls, initialColorId, design.preview_image_url),
                 previewUrls,
                 productId: String(product.id),
                 productName: product.name,
@@ -425,7 +403,7 @@ export default function Order() {
                          id: cItem.id,
                          designId: cItem.design_id || "custom",
                          designName: cItem.design_name || "Custom Design",
-                         designImage: resolvePreview(previewUrls, colorId, cItem.preview_url || ''),
+                         designImage: resolvePreviewDisplayUrl(previewUrls, colorId, cItem.preview_url || ''),
                          previewUrls,
                          productId: String(product.id),
                          productName: product.name,
@@ -525,7 +503,7 @@ export default function Order() {
                 id: ctxId,
                 designId: design.id,
                 designName: design.design_name,
-                designImage: resolvePreview(previewUrls, initialColorId, design.preview_image_url),
+                designImage: resolvePreviewDisplayUrl(previewUrls, initialColorId, design.preview_image_url),
                 previewUrls,
                 productId: String(product.id),
                 productName: product.name,
@@ -662,7 +640,7 @@ export default function Order() {
                   const colorObj = item.availableColors.find((c: any) => c.name === value);
                   if (colorObj) {
                       next.color_id = colorObj.id;
-                      next.designImage = resolvePreview(item.previewUrls, colorObj.id, item.designImage);
+                      next.designImage = resolvePreviewDisplayUrl(item.previewUrls, colorObj.id);
                   }
               }
               return next;
@@ -726,23 +704,20 @@ export default function Order() {
                 gift_recipient: item.is_gift ? item.gift_recipient : null,
             })),
             shipping: shippingInfo,
-            total: grandTotal,
             coupon_code: appliedCoupon?.code ?? null,
         };
 
-        const result = await createOrder(orderPayload);
-
-        clearCart();
-        setPlacedOrderId(result.orderId);
-        setStep(4);
-      } catch (error) {
-          console.error("Order submission failed:", error);
+        const { url } = await createCheckoutSession(orderPayload);
+        window.location.href = url;
+      } catch (error: unknown) {
+          console.error("Checkout session failed:", error);
+          const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error
+              || 'เกิดข้อผิดพลาดในการชำระเงิน กรุณาลองใหม่อีกครั้ง';
           setNotification({
              type: 'error',
              title: 'เกิดข้อผิดพลาด',
-             message: 'เกิดข้อผิดพลาดในการสั่งซื้อ กรุณาลองใหม่อีกครั้ง'
+             message,
           });
-      } finally {
           setLoading(false);
       }
   };
@@ -765,7 +740,7 @@ export default function Order() {
       )}
 
       {/* Steps Indicator */}
-      {step < 4 && <div className="flex items-center justify-center mb-8">
+      <div className="flex items-center justify-center mb-8">
           <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">1</div>
               <span className="hidden sm:inline text-sm">ตะกร้าสินค้า</span>
@@ -780,7 +755,7 @@ export default function Order() {
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">3</div>
               <span className="hidden sm:inline text-sm">สรุป & จ่ายเงิน</span>
           </div>
-      </div>}
+      </div>
 
       {step === 1 && (
         <div className="space-y-6">
@@ -936,7 +911,7 @@ export default function Order() {
                                              )}
                                              
                                              <div className="bg-gray-50 rounded-xl mb-3 overflow-hidden aspect-square flex items-center justify-center">
-                                                 <img src={Object.values(parsePreviewUrls(design.preview_image_url))[0] || "https://via.placeholder.com/150"} alt={design.design_name} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
+                                                 <img src={getPreviewDisplayUrl(design.preview_image_url) || "https://via.placeholder.com/150"} alt={design.design_name} className="w-full h-full object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
                                              </div>
                                              
                                              <div className="px-1 text-center">
@@ -1138,88 +1113,7 @@ export default function Order() {
           </div>
       )}
 
-      {step === 4 && (
-        <div className="max-w-xl mx-auto space-y-6">
-          <div className="text-center">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold">สั่งซื้อสำเร็จแล้ว!</h2>
-            <p className="text-gray-500 mt-1">กรุณาชำระเงินตามขั้นตอนด้านล่าง</p>
-          </div>
-
-          <div className="bg-gray-50 rounded-xl border p-4">
-            <p className="text-sm text-gray-500 mb-1">หมายเลขคำสั่งซื้อ</p>
-            <div className="flex items-center gap-3">
-              <span className="text-xl font-bold font-mono flex-1">#{placedOrderId}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(String(placedOrderId));
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-                className="shrink-0"
-              >
-                {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-                {copied ? 'คัดลอกแล้ว' : 'คัดลอก'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="bg-white border rounded-xl divide-y overflow-hidden">
-            {/* Step 1: Add LINE friend */}
-            <div className="p-4 space-y-3">
-              <p className="font-semibold">1. เพิ่มเพื่อน LINE ของ PimSuea</p>
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-                {import.meta.env.VITE_LINE_QR_URL && (
-                  <img
-                    src={import.meta.env.VITE_LINE_QR_URL}
-                    alt="LINE QR Code"
-                    className="w-40 h-40 sm:w-48 sm:h-48 object-contain border rounded-lg"
-                  />
-                )}
-                <div>
-                  <p className="text-sm text-gray-500">หรือค้นหา LINE ID:</p>
-                  <p className="text-lg font-bold text-green-600">{import.meta.env.VITE_LINE_ID || '@PimSuea'}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Pay via PromptPay */}
-            <div className="p-4 space-y-3">
-              <p className="font-semibold">2. ชำระเงินผ่าน PromptPay</p>
-              <p className="text-sm text-gray-500">
-                ยอดชำระ: <span className="font-bold text-gray-800 text-base">฿{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-              </p>
-              {import.meta.env.VITE_PROMPTPAY_QR_URL && (
-                <img
-                  src={import.meta.env.VITE_PROMPTPAY_QR_URL}
-                  alt="PromptPay QR Code"
-                  className="w-64 h-64 sm:w-80 sm:h-80 object-contain mx-auto border rounded-xl"
-                />
-              )}
-            </div>
-
-            {/* Step 3: Send order ID + slip via LINE */}
-            <div className="p-4 space-y-2">
-              <p className="font-semibold">3. แจ้งชำระเงินในแชท LINE</p>
-              <p className="text-sm text-gray-500">
-                พิมพ์ <span className="font-mono font-bold text-gray-800">#{placedOrderId}</span> แล้วแนบสลิปการโอนเงินในแชท LINE ได้เลยค่ะ
-              </p>
-              <p className="text-xs text-gray-400">ทีมงานจะยืนยันการชำระเงินภายใน 1–2 ชั่วโมง</p>
-            </div>
-          </div>
-
-          <Link to="/orders">
-            <Button className="w-full" size="lg">
-              ดูคำสั่งซื้อของฉัน <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      {step < 4 && (
-        <div className="sticky bottom-0 z-20 -mx-4 px-4 py-4 mt-8 flex justify-between gap-3 bg-slate-50/95 backdrop-blur-sm border-t border-gray-200 pb-safe">
+      <div className="sticky bottom-0 z-20 -mx-4 px-4 py-4 mt-8 flex justify-between gap-3 bg-slate-50/95 backdrop-blur-sm border-t border-gray-200 pb-safe">
             {step > 1 ? (
                 <Button variant="outline" onClick={handleBack} className="min-h-11">ย้อนกลับ</Button>
             ) : <div />}
@@ -1231,11 +1125,10 @@ export default function Order() {
             ) : (
                 <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700 min-h-11" disabled={loading || hasDtfItems}>
                     {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    ยืนยันการสั่งซื้อ
+                    ชำระเงิน
                 </Button>
             )}
         </div>
-      )}
 
       <TermsModal
         open={termsOpen}

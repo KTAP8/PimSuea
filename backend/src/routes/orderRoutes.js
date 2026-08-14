@@ -7,9 +7,9 @@ const requireAuth = require('../middleware/requireAuth');
 router.get('/', requireAuth, orderController.getUserOrders);
 router.get('/:id', requireAuth, orderController.getOrderDetails);
 
-// Create Order (Protected)
+// Legacy direct order creation — replaced by Stripe Checkout
 router.post('/', requireAuth, orderController.createOrder);
 
-module.exports = router;
-// Update Order (Protected)
 router.put('/:id', requireAuth, orderController.updateOrder);
+
+module.exports = router;

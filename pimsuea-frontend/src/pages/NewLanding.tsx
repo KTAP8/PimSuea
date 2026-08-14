@@ -11,6 +11,7 @@ import {
   ShieldCheck, Clock, Activity, ChevronDown, Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LogoCloud } from "@/components/ui/logo-cloud-4";
 import { TermsModal, REPRINT_GUARANTEE_SECTION_ID } from "@/components/TermsModal";
 import { SiteFooter } from "@/components/SiteFooter";
 import { type Language, translations } from "@/translations/landing";
@@ -24,6 +25,30 @@ const LandingLangContext = createContext<{ lang: Language; t: typeof translation
 
 function useLandingLang() {
   return useContext(LandingLangContext);
+}
+
+const TRUST_LOGOS = [
+  { src: "https://svgl.app/library/nvidia-wordmark-light.svg", alt: "Nvidia Logo" },
+  { src: "https://svgl.app/library/supabase_wordmark_light.svg", alt: "Supabase Logo" },
+  { src: "https://svgl.app/library/openai_wordmark_light.svg", alt: "OpenAI Logo" },
+  { src: "https://svgl.app/library/turso-wordmark-light.svg", alt: "Turso Logo" },
+  { src: "https://svgl.app/library/vercel_wordmark.svg", alt: "Vercel Logo" },
+  { src: "https://svgl.app/library/github_wordmark_light.svg", alt: "GitHub Logo" },
+  { src: "https://svgl.app/library/claude-ai-wordmark-icon_light.svg", alt: "Claude AI Logo" },
+  { src: "https://svgl.app/library/clerk-wordmark-light.svg", alt: "Clerk Logo" },
+];
+
+function LogoCloudSection() {
+  const { t } = useLandingLang();
+
+  return (
+    <section className="py-10">
+      <p className="mb-5 text-center font-medium text-lg text-muted-foreground md:text-xl px-6">
+        {t.trustBar}
+      </p>
+      <LogoCloud logos={TRUST_LOGOS} />
+    </section>
+  );
 }
 
 // ─── Canvas Hero Mockup ───────────────────────────────────────────────────
@@ -818,7 +843,7 @@ export default function NewLanding() {
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
     />
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
 
       {/* ── Nav ─────────────────────────────────────────────────────── */}
       <header
@@ -895,6 +920,9 @@ export default function NewLanding() {
           </div>
         </div>
       </section>
+
+      {/* ── Logo Cloud ───────────────────────────────────────────────── */}
+      <LogoCloudSection />
 
       {/* ── How It Works ─────────────────────────────────────────────── */}
       <HowItWorksSection />

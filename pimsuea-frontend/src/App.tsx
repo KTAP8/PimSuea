@@ -15,6 +15,7 @@ import MyOrders from './pages/MyOrders';
 import MyProducts from './pages/MyProducts';
 import Wallet from './pages/Wallet';
 import Order from './pages/Order';
+import CheckoutSuccess from './pages/CheckoutSuccess';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
@@ -33,6 +34,7 @@ import { isAppHost } from './lib/site';
 function shouldShowAppFooter(pathname: string): boolean {
   if (pathname.startsWith('/studio/')) return false;
   if (pathname === '/checkout') return false;
+  if (pathname === '/checkout/success') return false;
   if (pathname === '/onboarding') return false;
   return true;
 }
@@ -103,6 +105,7 @@ function AppLayout() {
               <Route path="/my-products" element={<MyProducts />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/checkout" element={<Order />} />
+              <Route path="/checkout/success" element={<CheckoutSuccess />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
 

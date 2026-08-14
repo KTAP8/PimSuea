@@ -70,8 +70,29 @@ See [`backend/.env.example`](backend/.env.example) and [`pimsuea-frontend/.env.e
 | `VITE_APP_URL` | frontend | No — defaults to `https://app.pimsuea.com`; set to `http://localhost:5173` locally |
 | `VITE_MARKETING_URL` | frontend | No — defaults to `https://pimsuea.com` |
 | `FRONTEND_URL` | backend | Production: `https://app.pimsuea.com` |
+| `STRIPE_SECRET_KEY` | backend | Yes — Stripe Checkout + webhooks |
+| `STRIPE_WEBHOOK_SECRET` | backend | Yes in prod; local: from `stripe listen` (see below) |
+| `STRIPE_PENDING_ORDER_TTL_HOURS` | backend | No — defaults to `24` (abandoned checkout expiry) |
 
 **Where to find Supabase keys:** Supabase dashboard → Project Settings → API → Project URL, `anon` (publishable), and `service_role` (secret).
+
+### Stripe payments (local dev)
+
+Checkout uses **Stripe Checkout** (PromptPay + Thai cards). Orders are created only after payment succeeds via webhook.
+
+1. Add `STRIPE_SECRET_KEY` (test mode) to `backend/.env`.
+2. Run the API (`npm run dev` in `backend/`).
+3. In another terminal, forward webhooks:
+
+```bash
+./tools/bin/stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+4. Copy the `whsec_...` signing secret from the CLI output into `backend/.env` as `STRIPE_WEBHOOK_SECRET`, then restart the API.
+5. In the [Stripe Dashboard](https://dashboard.stripe.com/test/settings/payment_methods), enable **PromptPay** and **Cards** for test mode.
+6. Complete a test checkout from the app (`/checkout` → **ชำระเงิน**). Use test card `4242 4242 4242 4242` or PromptPay test flow.
+
+Success redirect: `/checkout/success?session_id=...` — polls until the webhook fulfills the order.
 
 **Troubleshooting startup:**
 

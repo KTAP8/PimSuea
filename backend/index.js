@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { generalLimiter, strictLimiter } = require('./src/middleware/rateLimiter');
+const { startExpireCheckoutDraftsJob } = require('./src/jobs/expireCheckoutDrafts');
 
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const catalogRoutes = require('./src/routes/catalogRoutes');
@@ -10,6 +11,8 @@ const designRoutes = require('./src/routes/designRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
 const walletRoutes = require('./src/routes/walletRoutes');
 const articleRoutes = require('./src/routes/articleRoutes');
+const paymentRoutes = require('./src/routes/paymentRoutes');
+const stripeWebhookRoutes = require('./src/routes/stripeWebhookRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +30,10 @@ const ALLOWED_ORIGINS = [
 app.use(cors({
   origin: "*"
 }));
+
+// Stripe webhook must receive raw body — register before express.json()
+app.use('/api/webhooks/stripe', stripeWebhookRoutes);
+
 app.use(express.json({
     verify: (req, _res, buf) => { req.rawBody = buf; }
 }));
@@ -38,6 +45,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/catalog', catalogRoutes);
 app.use('/api/designs', designRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/cart', require('./src/routes/cartRoutes'));
@@ -53,6 +61,8 @@ app.use('/api/terms', require('./src/routes/termsRoutes'));
 app.get('/', (req, res) => {
   res.send('PimSuea Backend API is running!');
 });
+
+startExpireCheckoutDraftsJob();
 
 // Start server
 app.listen(PORT, () => {

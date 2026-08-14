@@ -114,6 +114,30 @@ export const createOrder = async (orderData: any): Promise<any> => {
     return response.data;
 };
 
+export interface CheckoutSessionResponse {
+    url: string;
+    sessionId: string;
+}
+
+export interface CheckoutSessionStatus {
+    status: 'paid' | 'pending' | 'expired';
+    orderId?: string;
+}
+
+export const createCheckoutSession = async (orderData: {
+    items: unknown[];
+    shipping: unknown;
+    coupon_code?: string | null;
+}): Promise<CheckoutSessionResponse> => {
+    const response = await api.post<CheckoutSessionResponse>('/payments/checkout-session', orderData);
+    return response.data;
+};
+
+export const getCheckoutSessionStatus = async (sessionId: string): Promise<CheckoutSessionStatus> => {
+    const response = await api.get<CheckoutSessionStatus>(`/payments/session/${sessionId}`);
+    return response.data;
+};
+
 export const recordTermsAcceptance = async (): Promise<void> => {
     await api.post('/terms/accept');
 };

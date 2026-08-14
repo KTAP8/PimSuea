@@ -11,10 +11,24 @@ const statusMap: Record<string, { label: string; color: string }> = {
   pending_payment: { label: "รอชำระเงิน", color: "bg-yellow-100 text-yellow-800" },
   pending: { label: "รอดำเนินการ", color: "bg-blue-50 text-blue-800" },
   paid_processing: { label: "ชำระแล้ว & กำลังผลิต", color: "bg-blue-100 text-blue-800" },
+  printing: { label: "กำลังพิมพ์", color: "bg-blue-100 text-blue-800" },
   shipped: { label: "จัดส่งแล้ว", color: "bg-purple-100 text-purple-800" },
   delivered: { label: "ส่งถึงปลายทาง", color: "bg-green-100 text-green-800" },
   cancelled: { label: "ยกเลิก", color: "bg-red-100 text-red-800" },
 };
+
+function paymentMethodLabel(method?: string | null): string {
+  switch (method) {
+    case 'stripe_promptpay':
+      return 'PromptPay (Stripe)';
+    case 'stripe_card':
+      return 'บัตรเครดิต/เดบิต (Stripe)';
+    case 'stripe':
+      return 'Stripe';
+    default:
+      return method || 'โอนเงินผ่านธนาคาร (คำสั่งซื้อเก่า)';
+  }
+}
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -259,8 +273,9 @@ export default function MyOrders() {
                         </div>
                     </div>
 
-                    {/* LINE Contact Reminder — shown only when pending payment */}
-                    {selectedOrder.status === 'pending_payment' && (
+                    {/* Legacy manual payment reminder — old orders only */}
+                    {selectedOrder.status === 'pending_payment'
+                      && !selectedOrder.payment_method?.startsWith('stripe') && (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
                         <p className="font-semibold text-green-800 flex items-center gap-2">
                           <MessageCircle className="w-5 h-5" /> ยังไม่ได้แจ้งชำระเงิน? ส่งหมายเลขคำสั่งซื้อหาเราผ่าน LINE
@@ -422,7 +437,7 @@ export default function MyOrders() {
                              <div className="border p-6 rounded-xl h-full">
                                 <div className="flex justify-between items-center mb-4">
                                     <span className="text-gray-600">ประเภทธุรกรรม</span>
-                                    <span className="font-medium text-right">{selectedOrder.payment_method || "โอนเงินผ่านธนาคาร"}</span>
+                                    <span className="font-medium text-right">{paymentMethodLabel(selectedOrder.payment_method)}</span>
                                 </div>
                                 <div className="pt-4 border-t mt-auto">
                                     <div className="flex justify-between items-center text-xl font-bold">
