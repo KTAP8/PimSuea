@@ -40,8 +40,8 @@ const LandingLangContext = createContext<{
   t: (typeof translations)["en"];
   setLang: (l: Language) => void;
 }>({
-  lang: "en",
-  t: translations.en,
+  lang: "th",
+  t: translations.th,
   setLang: () => {},
 });
 
@@ -865,7 +865,7 @@ function GiftSpotlightSection() {
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NewLanding() {
-  const [lang, setLang] = useState<Language>("en");
+  const [lang, setLang] = useState<Language>("th");
   const t = translations[lang];
   const [scrolled, setScrolled] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -983,8 +983,8 @@ export default function NewLanding() {
               transition={{ duration: 0.7 }}
               className="space-y-4 md:space-y-6"
             >
-              <h1 className="font-black text-4xl md:text-6xl lg:text-7xl leading-[1.15] md:leading-[1.15] tracking-tight">
-                {t.heroTitle1}{" "}
+              <h1 className="font-black text-4xl md:text-6xl lg:text-7xl tracking-tight flex flex-col gap-3 md:gap-5 leading-none">
+                <span>{t.heroTitle1}</span>
                 <span className="text-primary">{t.heroTitle2}</span>
               </h1>
               <p className="font-light text-lg md:text-xl text-muted-foreground leading-relaxed max-w-md">
