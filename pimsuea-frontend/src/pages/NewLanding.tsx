@@ -30,6 +30,7 @@ import {
   REPRINT_GUARANTEE_SECTION_ID,
 } from "@/components/TermsModal";
 import { SiteFooter } from "@/components/SiteFooter";
+import { InspirationShowcaseSection } from "@/components/marketing/InspirationShowcase";
 import { type Language, translations } from "@/translations/landing";
 import { appUrl } from "@/lib/site";
 
@@ -81,7 +82,7 @@ function CanvasHeroGraphic() {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.3 }}
-      className="relative w-full max-w-[280px] sm:max-w-md md:max-w-lg mx-auto"
+      className="relative w-full max-w-70 sm:max-w-md md:max-w-lg mx-auto"
     >
       {/* Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/10 blur-[80px] rounded-full -z-10" />
@@ -160,7 +161,7 @@ function CanvasHeroGraphic() {
                   type: "spring",
                   stiffness: 200,
                 }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[72px] h-[72px] border border-primary border-dashed bg-primary/5 flex items-center justify-center"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-18 h-18 border border-primary border-dashed bg-primary/5 flex items-center justify-center"
               >
                 <span className="font-heavy text-[11px] text-primary tracking-widest uppercase">
                   PimSuea
@@ -218,7 +219,7 @@ function CanvasHeroGraphic() {
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 1.2 }}
-        className="absolute -right-4 top-1/4 bg-card border border-border shadow-xl rounded-lg px-3 py-2 flex items-center gap-2 hidden md:flex"
+        className="absolute -right-4 top-1/4 bg-card border border-border shadow-xl rounded-lg px-3 py-2 hidden md:flex items-center gap-2"
       >
         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
         <span className="text-sm font-bold">฿132 / piece</span>
@@ -228,7 +229,7 @@ function CanvasHeroGraphic() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 1.5 }}
-        className="absolute -left-4 bottom-1/4 bg-card border border-border shadow-xl rounded-lg px-3 py-2 flex items-center gap-2 hidden md:flex"
+        className="absolute -left-4 bottom-1/4 bg-card border border-border shadow-xl rounded-lg px-3 py-2 hidden md:flex items-center gap-2"
       >
         <Zap className="w-4 h-4 text-action" />
         <span className="text-sm font-bold">{t.instantPreview}</span>
@@ -590,13 +591,13 @@ function WhoWeAreSection() {
           >
             <div className="grid grid-cols-3 gap-3 sm:gap-4 relative z-10">
               {/* Photo 1 (shifted down - Haka) */}
-              <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
+              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
                 <img
                   src="/photos/Founder_Haka.jpg"
                   alt="Founder Haka"
                   className="absolute inset-0 w-full h-full object-cover object-[center_top] group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
                   <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">
                     Haka
@@ -608,13 +609,13 @@ function WhoWeAreSection() {
               </div>
 
               {/* Photo 2 (center, no offset - Touch) */}
-              <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl group">
+              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl group">
                 <img
                   src="/photos/Founder_Touch.jpg"
                   alt="Founder Touch"
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
                   <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">
                     Touch
@@ -626,13 +627,13 @@ function WhoWeAreSection() {
               </div>
 
               {/* Photo 3 (shifted down - Khaopan) */}
-              <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
+              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
                 <img
                   src="/photos/Founder_Khaopan.jpg"
                   alt="Founder Khaopan"
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
                   <p className="text-white font-bold text-xs sm:text-sm tracking-wide drop-shadow-md">
                     Khaopan
@@ -782,7 +783,7 @@ function GiftSpotlightSection() {
   return (
     <section
       id="gift"
-      className="py-20 border-t border-border bg-gradient-to-b from-background to-secondary/20"
+      className="py-20 border-t border-border bg-linear-to-b from-background to-secondary/20"
     >
       <div className="max-w-5xl mx-auto px-6">
         {/* Section Header */}
@@ -797,7 +798,7 @@ function GiftSpotlightSection() {
 
         {/* Standalone Gift Service Add-On Spotlight Card */}
         <div className="rounded-2xl border-2 border-primary/30 bg-card p-8 md:p-12 shadow-xl relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/[0.04] via-primary/[0.01] to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-r from-primary/4 via-primary/1 to-transparent pointer-events-none" />
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
             {/* Left Content */}
             <div className="space-y-4 max-w-xl">
@@ -1021,6 +1022,9 @@ export default function NewLanding() {
         {/* ── How It Works ─────────────────────────────────────────────── */}
         <HowItWorksSection />
 
+        {/* ── Inspiration Showcase ─────────────────────────────────────── */}
+        <InspirationShowcaseSection t={t} />
+
         {/* ── Painkillers Grid ─────────────────────────────────────────── */}
         <section className="py-24 border-t border-border bg-secondary/10">
           <div className="max-w-5xl mx-auto px-6">
@@ -1078,7 +1082,7 @@ export default function NewLanding() {
                   className={`group relative overflow-hidden rounded-2xl border border-border bg-card p-8 md:p-10 transition-all duration-300 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 ${onClick ? "cursor-pointer" : ""}`}
                 >
                   {/* Background Glow on Hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                   {/* Number Watermark */}
                   <span className="absolute -bottom-6 -right-4 font-black text-8xl md:text-9xl text-muted/10 select-none group-hover:text-primary/5 transition-colors duration-500">
@@ -1136,7 +1140,7 @@ export default function NewLanding() {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    className="rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden hover:border-primary/40 hover:shadow-xl transition-all duration-300 flex-shrink-0 w-72 snap-start flex flex-col group"
+                    className="rounded-2xl border border-white/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl overflow-hidden hover:border-primary/40 hover:shadow-xl transition-all duration-300 shrink-0 w-72 snap-start flex flex-col group"
                   >
                     <div className="aspect-square bg-slate-50/80 overflow-hidden relative">
                       {product.image_url ? (
@@ -1161,7 +1165,7 @@ export default function NewLanding() {
                     </div>
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div className="space-y-2">
-                        <h3 className="font-bold text-base text-slate-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem]">
+                        <h3 className="font-bold text-base text-slate-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-10">
                           {product.name}
                         </h3>
                         <p className="text-xs text-slate-500 font-normal">
@@ -1207,7 +1211,7 @@ export default function NewLanding() {
             <a href={appUrl("/catalog")}>
               <Button
                 size="lg"
-                className="bg-action text-action-foreground hover:bg-action/90 font-black uppercase tracking-widest text-base px-12 py-6 text-lg mt-4"
+                className="bg-action text-action-foreground hover:bg-action/90 font-black uppercase tracking-widest text-lg px-12 py-6 mt-4"
               >
                 {t.footerEnterCanvas}
               </Button>

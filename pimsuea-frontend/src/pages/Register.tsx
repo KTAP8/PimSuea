@@ -189,7 +189,7 @@ export default function Register() {
                       const ok = rule.test(password);
                       return (
                         <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-green-600" : "text-gray-400"}`}>
-                          <Check className={`w-3 h-3 flex-shrink-0 ${ok ? "opacity-100" : "opacity-30"}`} />
+                          <Check className={`w-3 h-3 shrink-0 ${ok ? "opacity-100" : "opacity-30"}`} />
                           {rule.label}
                         </li>
                       );

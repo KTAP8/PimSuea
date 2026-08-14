@@ -728,7 +728,7 @@ export default function Order() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Alert Notification */}
       {notification && (
-        <div className="fixed top-safe-offset right-4 pr-safe z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-safe-offset right-4 pr-safe z-100 w-full max-w-md animate-in fade-in slide-in-from-top-2">
             <Alert variant={notification.type === 'error' ? 'destructive' : 'default'} className={`shadow-lg ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white'}`}>
                 {notification.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
                 <AlertTitle className="font-semibold">{notification.title}</AlertTitle>
@@ -873,7 +873,7 @@ export default function Order() {
                              <Plus className="w-5 h-5 mr-2"/> ซื้อสินค้าเพิ่ม
                          </Button>
                      </SheetTrigger>
-                     <SheetContent side="right" className="w-[85vw] sm:w-[400px] md:w-[540px] bg-gray-50 border-l border-gray-100 pt-12 shadow-2xl">
+                     <SheetContent side="right" className="w-[85vw] sm:w-100 md:w-135 bg-gray-50 border-l border-gray-100 pt-12 shadow-2xl">
                          <SheetHeader className="mb-6 px-2">
                              <SheetTitle className="font-bold text-2xl text-gray-900 flex items-center gap-3">
                                 <span className="bg-primary/10 p-2 rounded-xl text-primary"><Plus className="w-5 h-5" /></span>

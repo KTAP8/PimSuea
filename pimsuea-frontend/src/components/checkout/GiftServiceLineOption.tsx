@@ -92,7 +92,7 @@ export function GiftServiceLineOption({
     <div
       className={`w-full mt-4 rounded-2xl border transition-all duration-300 overflow-hidden ${
         enabled
-          ? 'border-primary/40 bg-gradient-to-b from-primary/[0.04] to-background shadow-md shadow-primary/5'
+          ? 'border-primary/40 bg-linear-to-b from-primary/4 to-background shadow-md shadow-primary/5'
           : 'border-border/80 bg-card hover:border-primary/30 shadow-xs'
       }`}
     >
@@ -193,7 +193,7 @@ export function GiftServiceLineOption({
                   value={message}
                   onChange={(e) => onMessageChange(e.target.value.slice(0, MAX_GIFT_MESSAGE_LENGTH))}
                   placeholder="เขียนข้อความถึงผู้รับ..."
-                  className="min-h-[84px] w-full rounded-xl border border-input bg-background/90 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none shadow-xs"
+                  className="min-h-21 w-full rounded-xl border border-input bg-background/90 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none shadow-xs"
                   maxLength={MAX_GIFT_MESSAGE_LENGTH}
                 />
               </div>

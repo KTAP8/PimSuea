@@ -114,7 +114,7 @@ export default function Catalog() {
                     <div className="bg-white border border-gray-100 rounded-2xl sm:rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 h-full flex flex-col group-hover:-translate-y-1 min-w-0">
                       
                       {/* Image Container */}
-                      <div className="aspect-[4/5] sm:aspect-square bg-gray-50/50 flex items-center justify-center text-8xl relative overflow-hidden">
+                      <div className="aspect-4/5 sm:aspect-square bg-gray-50/50 flex items-center justify-center text-8xl relative overflow-hidden">
                            {product.image_url ? (
                               <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                            ) : (
@@ -124,11 +124,11 @@ export default function Catalog() {
                               <img src={product.hover_image_url} alt={`${product.name} hover`} className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                            )}
                            {/* Premium Hover Gradient Overlay */}
-                           <div className="absolute inset-0 bg-gradient-to-t from-gray-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                           <div className="absolute inset-0 bg-linear-to-t from-gray-900/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                       </div>
 
                       {/* Content Container */}
-                      <div className="p-3 sm:p-6 flex-1 flex flex-col relative bg-gradient-to-b from-white to-gray-50/30 min-w-0">
+                      <div className="p-3 sm:p-6 flex-1 flex flex-col relative bg-linear-to-b from-white to-gray-50/30 min-w-0">
                           <div className="mb-2 sm:mb-3 min-w-0">
                               <h3 className="font-bold text-sm sm:text-xl text-gray-900 leading-snug line-clamp-2 group-hover:text-primary transition-colors">
                                   {product.name}

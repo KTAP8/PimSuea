@@ -58,7 +58,7 @@ function ElegantShape({
                 <div
                     className={cn(
                         "absolute inset-0 rounded-full",
-                        "bg-gradient-to-r to-transparent",
+                        "bg-linear-to-r to-transparent",
                         gradient,
                         "backdrop-blur-[2px] border-2 border-white/[0.15]",
                         "shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]",
@@ -99,7 +99,7 @@ function HeroGeometric({
 
     return (
         <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#030303]">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
+            <div className="absolute inset-0 bg-linear-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
 
             <div className="absolute inset-0 overflow-hidden">
                 <ElegantShape
@@ -170,13 +170,13 @@ function HeroGeometric({
                         animate="visible"
                     >
                         <h1 className="text-4xl sm:text-6xl md:text-8xl font-bold mb-6 md:mb-8 tracking-tight">
-                            <span className="bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">
+                            <span className="bg-clip-text text-transparent bg-linear-to-b from-white to-white/80">
                                 {title1}
                             </span>
                             <br />
                             <span
                                 className={cn(
-                                    "bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 "
+                                    "bg-clip-text text-transparent bg-linear-to-r from-indigo-300 via-white/90 to-rose-300 "
                                 )}
                             >
                                 {title2}
@@ -202,7 +202,7 @@ function HeroGeometric({
                 </div>
             </div>
 
-            <div className="absolute inset-0 bg-gradient-to-t from-[#030303] via-transparent to-[#030303]/80 pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-t from-[#030303] via-transparent to-[#030303]/80 pointer-events-none" />
         </div>
     );
 }

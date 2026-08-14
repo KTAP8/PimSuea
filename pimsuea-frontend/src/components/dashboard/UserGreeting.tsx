@@ -58,7 +58,7 @@ export function UserGreeting({ stats }: Props) {
                             className="group flex items-center justify-between bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(8,99,109,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
                             
                             {/* Decorative background gradient on hover */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                             
                             <div className="flex items-center gap-4 relative z-10">
                                 <div className="p-3 rounded-xl bg-slate-100/80 text-slate-500 group-hover:bg-primary group-hover:text-white transition-colors duration-300 shadow-sm">

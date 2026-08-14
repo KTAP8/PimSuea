@@ -28,7 +28,7 @@ export function ContinueDesigning({ designs, loading }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading
                     ? Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="bg-slate-100 rounded-3xl aspect-[4/3] animate-pulse" />
+                        <div key={i} className="bg-slate-100 rounded-3xl aspect-4/3 animate-pulse" />
                     ))
                     : designs.map(design => (
                         <Link

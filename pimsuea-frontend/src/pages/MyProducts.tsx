@@ -72,7 +72,7 @@ export default function MyProducts() {
         
         {/* Empty State / First Design Prompt */}
         {designs.length === 0 && (
-          <Link to="/catalog" className="col-span-1 md:col-span-full border-2 border-dashed border-gray-200 bg-gray-50/50 rounded-[2rem] flex flex-col items-center justify-center p-12 text-gray-400 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300 cursor-pointer min-h-[320px] group">
+          <Link to="/catalog" className="col-span-1 md:col-span-full border-2 border-dashed border-gray-200 bg-gray-50/50 rounded-[2rem] flex flex-col items-center justify-center p-12 text-gray-400 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300 cursor-pointer min-h-80 group">
               <div className="w-20 h-20 bg-white rounded-full shadow-md flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                  <Plus className="w-10 h-10 text-primary/70 group-hover:text-primary transition-colors" />
               </div>
@@ -83,7 +83,7 @@ export default function MyProducts() {
 
         {designs.map((design) => (
           <div key={design.id} className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 flex flex-col group hover:-translate-y-1">
-            <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} className="block relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
+            <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} className="relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
                 <img
                     src={getPreviewDisplayUrl(design.preview_image_url) || "https://via.placeholder.com/300?text=No+Preview"}
                     alt={design.design_name} 
@@ -110,10 +110,10 @@ export default function MyProducts() {
                     แตะเพื่อดูรายละเอียด
                   </span>
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/5 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block" />
+                <div className="absolute inset-0 bg-linear-to-t from-gray-900/5 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 pointer-events-none hidden md:block" />
             </Link>
             
-            <div className="p-5 sm:p-6 flex-1 flex flex-col bg-gradient-to-b from-white to-gray-50/30">
+            <div className="p-5 sm:p-6 flex-1 flex flex-col bg-linear-to-b from-white to-gray-50/30">
               <div className="mb-4">
                   <h3 className="font-bold text-lg sm:text-xl text-gray-900 leading-snug line-clamp-1 mb-1.5" title={design.design_name}>{design.design_name || "Untitled Design"}</h3>
                   <p className="text-xs font-medium text-gray-400">
@@ -157,7 +157,7 @@ export default function MyProducts() {
         ))}
 
         {designs.length > 0 && (
-          <Link to="/catalog" className="border-2 border-dashed border-gray-200 bg-gray-50/50 rounded-[2rem] flex flex-col items-center justify-center p-6 text-gray-400 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300 cursor-pointer min-h-[320px] group hover:-translate-y-1">
+          <Link to="/catalog" className="border-2 border-dashed border-gray-200 bg-gray-50/50 rounded-[2rem] flex flex-col items-center justify-center p-6 text-gray-400 hover:border-primary/50 hover:bg-primary/5 hover:text-primary transition-all duration-300 cursor-pointer min-h-80 group hover:-translate-y-1">
               <div className="w-14 h-14 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                  <Plus className="w-7 h-7" />
               </div>

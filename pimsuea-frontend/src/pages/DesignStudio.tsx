@@ -90,7 +90,7 @@ export default function DesignStudio() {
                 </div>
 
                 <div className="flex-1 flex items-center justify-center md:w-1/3 min-w-0 px-1">
-                    <div className="relative flex flex-col items-center w-full max-w-[11rem] sm:max-w-xs md:max-w-none">
+                    <div className="relative flex flex-col items-center w-full max-w-44 sm:max-w-xs md:max-w-none">
                         <input
                             value={d.designName}
                             onChange={e => d.handleDesignNameChange(e.target.value)}
@@ -190,7 +190,7 @@ export default function DesignStudio() {
                 </aside>
 
                 {/* Canvas + mobile context bar */}
-                <div className="flex flex-col min-h-0 overflow-hidden grid grid-rows-[minmax(0,1fr)_auto] md:grid-rows-none md:flex-1 md:basis-0">
+                <div className="grid grid-rows-[minmax(0,1fr)_auto] min-h-0 overflow-hidden md:flex md:flex-col md:flex-1 md:basis-0">
                     <div ref={d.containerRef} className="min-h-0 relative overflow-hidden bg-gray-50/30">
 
                         {/* Top overlay: size editor (desktop) + remove button */}
@@ -242,7 +242,7 @@ export default function DesignStudio() {
                 <aside className="md:hidden shrink-0 w-full bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.06)] grid grid-cols-4 items-center pt-2 pb-safe-bar px-safe border-t border-gray-100 z-30">
 
                     {/* Upload */}
-                    <label className={`flex flex-col items-center justify-center gap-0.5 cursor-pointer min-h-[3.25rem] md:min-h-0 ${d.isUploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                    <label className={`flex flex-col items-center justify-center gap-0.5 cursor-pointer min-h-13 md:min-h-0 ${d.isUploading ? 'opacity-60 pointer-events-none' : ''}`}>
                         <span className={`w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all border border-transparent ${d.isUploading ? 'bg-gray-200' : 'bg-gray-50 text-gray-600 active:bg-gray-100'}`}>
                             {d.isUploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <Upload className="w-5 h-5" />}
                         </span>
@@ -253,7 +253,7 @@ export default function DesignStudio() {
                     {/* Library toggle */}
                     <button
                         type="button"
-                        className={`flex flex-col items-center justify-center gap-0.5 min-h-[3.25rem] md:min-h-0 ${d.showImageLibrary ? 'text-primary' : 'text-gray-500'}`}
+                        className={`flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showImageLibrary ? 'text-primary' : 'text-gray-500'}`}
                         onClick={toggleImageLibrary}
                     >
                         <span className={`w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all border ${d.showImageLibrary ? 'bg-primary/10 text-primary border-primary/20' : 'bg-gray-50 border-transparent active:bg-gray-100'}`}>
@@ -265,7 +265,7 @@ export default function DesignStudio() {
                     {/* Layers toggle */}
                     <button
                         type="button"
-                        className={`relative flex flex-col items-center justify-center gap-0.5 min-h-[3.25rem] md:min-h-0 ${d.showLayerPanel ? 'text-primary' : 'text-gray-500'}`}
+                        className={`relative flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showLayerPanel ? 'text-primary' : 'text-gray-500'}`}
                         onClick={toggleLayerPanel}
                     >
                         <span className={`relative w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all border ${d.showLayerPanel ? 'bg-primary/10 text-primary border-primary/20' : 'bg-gray-50 border-transparent active:bg-gray-100'}`}>
@@ -282,7 +282,7 @@ export default function DesignStudio() {
                     {/* Mobile: price & size tools */}
                     <button
                         type="button"
-                        className={`flex md:hidden flex-col items-center justify-center gap-0.5 min-h-[3.25rem] ${showMobileTools ? 'text-primary' : 'text-gray-500'}`}
+                        className={`flex md:hidden flex-col items-center justify-center gap-0.5 min-h-13 ${showMobileTools ? 'text-primary' : 'text-gray-500'}`}
                         onClick={() => setShowMobileTools(v => !v)}
                     >
                         <span className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border ${showMobileTools ? 'bg-primary/10 text-primary border-primary/20' : 'bg-gray-50 border-transparent active:bg-gray-100'}`}>

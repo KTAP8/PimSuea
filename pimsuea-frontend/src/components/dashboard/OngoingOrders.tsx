@@ -60,7 +60,7 @@ export function OngoingOrders({ orders, loading }: Props) {
                                         {status.label}
                                     </span>
                                 </div>
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 flex-shrink-0 ml-4 hidden sm:flex">
+                                <div className="w-10 h-10 rounded-full items-center justify-center bg-slate-50 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 shrink-0 ml-4 hidden sm:flex">
                                     <ArrowRight className="w-5 h-5 text-slate-700" />
                                 </div>
                             </Link>

@@ -31,7 +31,7 @@ export function MockupModal({ results, onClose }: Props) {
                     {results.map(({ side, url }) => (
                         <div key={side} className="flex flex-col items-center gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100 w-64">
                             <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">{side}</span>
-                            <div className="relative overflow-hidden rounded-xl bg-white w-full aspect-[4/5] border border-slate-100">
+                            <div className="relative overflow-hidden rounded-xl bg-white w-full aspect-4/5 border border-slate-100">
                                 <img src={url} alt={`mockup-${side}`} className="w-full h-full object-cover" />
                             </div>
                             <a href={url} download={`mockup-${side}.png`} className="w-full">

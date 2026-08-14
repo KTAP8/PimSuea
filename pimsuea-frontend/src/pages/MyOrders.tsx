@@ -273,12 +273,11 @@ export default function MyOrders() {
                         </div>
                     </div>
 
-                    {/* Legacy manual payment reminder — old orders only */}
-                    {selectedOrder.status === 'pending_payment'
-                      && !selectedOrder.payment_method?.startsWith('stripe') && (
+                    {/* Payment support via LINE */}
+                    {selectedOrder.status === 'pending_payment' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">
                         <p className="font-semibold text-green-800 flex items-center gap-2">
-                          <MessageCircle className="w-5 h-5" /> ยังไม่ได้แจ้งชำระเงิน? ส่งหมายเลขคำสั่งซื้อหาเราผ่าน LINE
+                          <MessageCircle className="w-5 h-5" /> มีปัญหาการชำระเงิน? ส่งหมายเลขคำสั่งซื้อมาที่ LINE
                         </p>
                         <div className="flex items-center gap-3">
                           <div className="flex-1 bg-white border border-green-200 rounded-lg px-4 py-2 font-mono font-bold text-lg">
@@ -457,7 +456,7 @@ export default function MyOrders() {
       
       {/* Floating Notification Toast */}
       {notification && (
-        <div className="fixed top-4 right-4 z-[100] w-full max-w-md animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-4 right-4 z-100 w-full max-w-md animate-in fade-in slide-in-from-top-2">
             <Alert variant={notification.type === 'error' ? 'destructive' : 'default'} className={`shadow-lg ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-white'}`}>
                 {notification.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4" />}
                 <AlertTitle className="font-semibold">{notification.title}</AlertTitle>
