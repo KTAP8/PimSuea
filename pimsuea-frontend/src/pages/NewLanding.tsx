@@ -33,6 +33,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { InspirationShowcaseSection } from "@/components/marketing/InspirationShowcase";
 import { type Language, translations } from "@/translations/landing";
 import { appUrl } from "@/lib/site";
+import { getProductName } from "@/lib/productName";
 
 const LandingLangContext = createContext<{
   lang: Language;
@@ -1134,7 +1135,9 @@ export default function NewLanding() {
               </p>
             ) : (
               <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide -mx-6 px-6">
-                {products.map((product) => (
+                {products.map((product) => {
+                  const productName = getProductName(product, lang);
+                  return (
                   <motion.div
                     key={product.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -1146,7 +1149,7 @@ export default function NewLanding() {
                       {product.image_url ? (
                         <img
                           src={product.image_url}
-                          alt={product.name}
+                          alt={productName}
                           className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
@@ -1166,7 +1169,7 @@ export default function NewLanding() {
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div className="space-y-2">
                         <h3 className="font-bold text-base text-slate-900 leading-snug group-hover:text-primary transition-colors line-clamp-2 min-h-10">
-                          {product.name}
+                          {productName}
                         </h3>
                         <p className="text-xs text-slate-500 font-normal">
                           {t.catalogStartingAt}{" "}
@@ -1190,7 +1193,8 @@ export default function NewLanding() {
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

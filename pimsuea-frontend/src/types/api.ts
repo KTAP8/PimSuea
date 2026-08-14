@@ -80,6 +80,7 @@ export interface PrintMethod {
 export interface Product {
     id: number;
     name: string;
+    name_en?: string | null;
     description: string;
     price: number;
     starting_price?: number; // New calculated field

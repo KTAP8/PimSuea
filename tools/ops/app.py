@@ -129,6 +129,7 @@ def product_edit(product_id: str):
             if action == "save_meta":
                 products_svc.update_product_metadata(product_id, {
                     "title": request.form.get("title"),
+                    "title_en": request.form.get("title_en") or None,
                     "details": request.form.get("details"),
                     "care_instructions": request.form.get("care_instructions"),
                     "is_active": request.form.get("is_active") == "on",

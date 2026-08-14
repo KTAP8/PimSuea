@@ -14,8 +14,12 @@
     <h2>Metadata</h2>
     <div class="grid-2">
       <div>
-        <label>Title</label>
+        <label>Title (TH)</label>
         <input type="text" name="title" value="{{ product.title or '' }}" required />
+      </div>
+      <div>
+        <label>Title (EN)</label>
+        <input type="text" name="title_en" value="{{ product.title_en or '' }}" placeholder="English name (optional)" />
       </div>
       <div>
         <label>Category</label>

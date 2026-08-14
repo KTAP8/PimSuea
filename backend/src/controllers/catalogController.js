@@ -28,6 +28,7 @@ exports.getProducts = async (req, res) => {
       .select(`
         id,
         name:title,
+        name_en:title_en,
         price:base_price,
         min_price,
         description:details,
@@ -95,6 +96,7 @@ exports.getProductById = async (req, res) => {
       .select(`
         id,
         name:title,
+        name_en:title_en,
         price:base_price,
         min_price,
         description:details,

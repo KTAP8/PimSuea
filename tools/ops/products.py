@@ -75,7 +75,7 @@ def get_shirt_pricing(product_id: str) -> list[dict]:
 
 def update_product_metadata(product_id: str, payload: dict) -> None:
     allowed = {
-        "title", "details", "care_instructions", "is_active",
+        "title", "title_en", "details", "care_instructions", "is_active",
         "is_beginner_friendly", "category_id", "base_price", "min_price",
         "size_guide",
     }
@@ -93,6 +93,7 @@ def clone_product(source_id: str, new_title: str | None = None) -> str:
     product_row = {
         "id": new_id,
         "title": new_title or f"{src['title']} (copy)",
+        "title_en": src.get("title_en"),
         "details": src.get("details"),
         "care_instructions": src.get("care_instructions"),
         "base_price": src.get("base_price"),
