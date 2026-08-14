@@ -1,6 +1,6 @@
-import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InfiniteSlider } from "@/components/ui/infinite-slider";
 import { appUrl } from "@/lib/site";
 import { translations } from "@/translations/landing";
 
@@ -31,20 +31,18 @@ export function InspirationShowcaseSection({
           {t.inspirationSubtitle}
         </p>
 
-        <div className="flex gap-5 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide -mx-6 px-6">
-          {INSPIRATION_IMAGES.map((src, index) => (
-            <motion.img
-              key={src}
-              src={src}
-              alt=""
-              loading="lazy"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="shrink-0 w-64 md:w-72 aspect-4/5 rounded-2xl object-cover snap-start hover:scale-[1.02] transition-transform duration-300"
-            />
-          ))}
+        <div className="-mx-6">
+          <InfiniteSlider gap={20} speed={35} speedOnHover={12}>
+            {INSPIRATION_IMAGES.map((src) => (
+              <img
+                key={src}
+                src={src}
+                alt=""
+                loading="lazy"
+                className="shrink-0 w-64 md:w-72 aspect-4/5 rounded-2xl object-cover"
+              />
+            ))}
+          </InfiniteSlider>
         </div>
 
         <div className="mt-10">
