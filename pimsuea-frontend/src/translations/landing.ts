@@ -137,6 +137,23 @@ export const translations = {
     giftAddonPrice: "+฿179",
     giftAddonCta: "Add Gift Service at checkout",
     giftAddonNote: "Available on any order — select per item when you check out",
+
+    // Nationwide Delivery Section
+    deliveryTitle: "Delivered across Thailand",
+    deliverySubtitle: "Door-to-door shipping to every province — home, campus, or office.",
+    deliveryBadge: "Nationwide Delivery",
+    deliveryStat1Value: "77",
+    deliveryStat1Label: "Provinces Covered",
+    deliveryStat1Desc: "We ship to every province in Thailand, across all regions.",
+    deliveryStat2Value: "5–14 Days",
+    deliveryStat2Label: "Production & Shipping",
+    deliveryStat2Desc: "Standard turnaround from payment confirmation to delivery. Transit time varies by location.",
+    deliveryStat3Value: "100%",
+    deliveryStat3Label: "QC Before Shipping",
+    deliveryStat3Desc: "Every order is checked for print quality and packed carefully before dispatch.",
+    deliveryMapBannerTitle: "77 provinces nationwide",
+    deliveryMapBannerSub: "Trusted courier partners with parcel tracking once your order ships.",
+    deliveryFootnote: "Delivery fee is calculated at checkout based on order quantity.",
   },
   th: {
     navStartDesigning: "เริ่มออกแบบ",
@@ -274,5 +291,22 @@ export const translations = {
     giftAddonPrice: "+฿179",
     giftAddonCta: "เลือกบริการของขวัญตอนชำระเงิน",
     giftAddonNote: "เพิ่มได้ทุกคำสั่งซื้อ — เลือกเป็นรายการในขั้นตอนชำระเงิน",
+
+    // Nationwide Delivery Section
+    deliveryTitle: "จัดส่งทั่วประเทศไทย",
+    deliverySubtitle: "ส่งตรงถึงบ้าน มหาวิทยาลัย หรือที่ทำงาน ครอบคลุมทุกจังหวัด",
+    deliveryBadge: "จัดส่งครอบคลุมทั่วประเทศ",
+    deliveryStat1Value: "77",
+    deliveryStat1Label: "จังหวัดทั่วไทย",
+    deliveryStat1Desc: "จัดส่งถึงทุกจังหวัดในประเทศไทย ทุกภาค",
+    deliveryStat2Value: "5–14 วัน",
+    deliveryStat2Label: "ผลิตและจัดส่ง",
+    deliveryStat2Desc: "ระยะเวลามาตรฐานนับจากยืนยันการชำระเงิน ระยะเวลาขนส่งขึ้นอยู่กับพื้นที่",
+    deliveryStat3Value: "100%",
+    deliveryStat3Label: "ตรวจ QC ก่อนจัดส่ง",
+    deliveryStat3Desc: "ตรวจสอบคุณภาพงานพิมพ์และแพ็กอย่างดีก่อนส่งออก",
+    deliveryMapBannerTitle: "ครอบคลุม 77 จังหวัด",
+    deliveryMapBannerSub: "จัดส่งทุกจังหวัดผ่านขนส่งเอกชน พร้อมเลขพัสดุเมื่อสินค้าออกจากระบบ",
+    deliveryFootnote: "ค่าจัดส่งคำนวณตอนชำระเงินตามจำนวนชิ้นในคำสั่งซื้อ",
   }
 };

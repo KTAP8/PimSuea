@@ -31,6 +31,7 @@ import {
 } from "@/components/TermsModal";
 import { SiteFooter } from "@/components/SiteFooter";
 import { InspirationShowcaseSection } from "@/components/marketing/InspirationShowcase";
+import { NationwideDeliverySection } from "@/components/marketing/NationwideDeliverySection";
 import { type Language, translations } from "@/translations/landing";
 import { appUrl } from "@/lib/site";
 import { getProductName } from "@/lib/productName";
@@ -1111,6 +1112,9 @@ export default function NewLanding() {
             </div>
           </div>
         </section>
+
+        {/* ── Nationwide Delivery Map Section ───────────────────────────── */}
+        <NationwideDeliverySection t={t} />
 
         {/* Gift Service add-on */}
         <GiftSpotlightSection />
