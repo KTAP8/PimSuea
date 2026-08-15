@@ -253,24 +253,24 @@ export default function DesignStudio() {
           </label>
           <button
             type="button"
-            className={`flex flex-col items-center justify-center gap-1 ${d.showImageLibrary ? "text-primary" : "text-gray-400"}`}
+            className={`flex flex-col items-center justify-center gap-1 ${d.showImageLibrary ? "text-primary" : "text-gray-600"}`}
             onClick={toggleImageLibrary}
           >
             <span
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${d.showImageLibrary ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent"}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${d.showImageLibrary ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent hover:bg-gray-100"}`}
             >
               <ImageIcon className="w-5 h-5" />
             </span>
-            <span className="text-[10px] font-semibold">Library</span>
+            <span className={`text-[10px] font-semibold ${d.showImageLibrary ? "" : "text-gray-500"}`}>Library</span>
           </button>
           <div className="w-10 h-px bg-gray-100" />
           <button
             type="button"
-            className={`relative flex flex-col items-center justify-center gap-1 ${d.showLayerPanel ? "text-primary" : "text-gray-400"}`}
+            className={`relative flex flex-col items-center justify-center gap-1 ${d.showLayerPanel ? "text-primary" : "text-gray-600"}`}
             onClick={toggleLayerPanel}
           >
             <span
-              className={`relative w-12 h-12 rounded-2xl flex items-center justify-center border ${d.showLayerPanel ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent"}`}
+              className={`relative w-12 h-12 rounded-2xl flex items-center justify-center border ${d.showLayerPanel ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent hover:bg-gray-100"}`}
             >
               <Layers className="w-5 h-5" />
               {d.canvasImages.length > 0 && (
@@ -279,7 +279,7 @@ export default function DesignStudio() {
                 </span>
               )}
             </span>
-            <span className="text-[10px] font-semibold">Layers</span>
+            <span className={`text-[10px] font-semibold ${d.showLayerPanel ? "" : "text-gray-500"}`}>Layers</span>
           </button>
         </aside>
 
@@ -388,7 +388,7 @@ export default function DesignStudio() {
           {/* Library toggle */}
           <button
             type="button"
-            className={`flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showImageLibrary ? "text-primary" : "text-gray-500"}`}
+            className={`flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showImageLibrary ? "text-primary" : "text-gray-600"}`}
             onClick={toggleImageLibrary}
           >
             <span
@@ -402,7 +402,7 @@ export default function DesignStudio() {
           {/* Layers toggle */}
           <button
             type="button"
-            className={`relative flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showLayerPanel ? "text-primary" : "text-gray-500"}`}
+            className={`relative flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showLayerPanel ? "text-primary" : "text-gray-600"}`}
             onClick={toggleLayerPanel}
           >
             <span
