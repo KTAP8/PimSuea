@@ -83,7 +83,7 @@ export default function MyProducts() {
 
         {designs.map((design) => (
           <div key={design.id} className="bg-white border border-gray-100 rounded-[2rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 flex flex-col group hover:-translate-y-1">
-            <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} className="relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
+            <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} state={{ studioSource: 'my_products' }} className="relative aspect-square bg-gray-50/50 flex items-center justify-center p-8 cursor-pointer overflow-hidden">
                 <img
                     src={getPreviewDisplayUrl(design.preview_image_url) || "https://via.placeholder.com/300?text=No+Preview"}
                     alt={design.design_name} 
@@ -143,7 +143,7 @@ export default function MyProducts() {
                       </Button>
                   </Link>
                   )}
-                  <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} className="col-span-1">
+                  <Link to={`/studio/${design.base_product_id}?designId=${design.id}`} state={{ studioSource: 'my_products' }} className="col-span-1">
                       <Button variant="outline" className="w-full rounded-xl border-gray-200 hover:border-primary/50 text-gray-600 px-0 hover:bg-primary/5 h-11">
                           <Edit2 className="w-4 h-4" />
                       </Button>

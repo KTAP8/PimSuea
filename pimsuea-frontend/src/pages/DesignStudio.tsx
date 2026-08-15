@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { trackStudioOrderOpened } from "../lib/studioAnalytics";
 import { useCanvasDesign } from "../hooks/useCanvasDesign";
 import { ImageLibraryPanel } from "../components/canvas/ImageLibraryPanel";
 import { LayerPanel } from "../components/canvas/LayerPanel";
@@ -90,9 +91,24 @@ export default function DesignStudio() {
     if (d.isDirty) {
       setShowLeaveModal(true);
     } else {
+      d.reportStudioExit("back", false);
       navigate(-1);
     }
   };
+
+  const openOrderPanel = () => {
+    trackStudioOrderOpened();
+    setShowOrderPanel(true);
+  };
+
+  // Track abandon on tab close / refresh
+  useEffect(() => {
+    const onPageHide = () => {
+      d.reportStudioExit("pagehide", d.isDirty);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [d.isDirty, d.reportStudioExit]);
 
   return (
     <div className="flex flex-col h-dvh-screen max-h-dvh min-h-0 overflow-hidden bg-background">
@@ -168,7 +184,7 @@ export default function DesignStudio() {
           <div className="hidden md:block w-px h-5 bg-gray-200 mx-1 rounded-full"></div>
 
           <button
-            onClick={() => setShowOrderPanel(true)}
+            onClick={openOrderPanel}
             disabled={!d.currentTemplate}
             title="Order"
             className="flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:gap-1.5 md:px-4 md:py-2 bg-action text-white rounded-xl text-sm font-bold shadow-sm shadow-action/20 transition-all hover:bg-action/90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none shrink-0"
@@ -546,7 +562,10 @@ export default function DesignStudio() {
       {/* Leave confirmation modal */}
       {showLeaveModal && (
         <LeaveConfirmModal
-          onConfirm={() => navigate(-1)}
+          onConfirm={() => {
+            d.reportStudioExit("leave_modal", true);
+            navigate(-1);
+          }}
           onCancel={() => setShowLeaveModal(false)}
         />
       )}

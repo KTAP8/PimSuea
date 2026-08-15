@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import Konva from 'konva';
 import { MD5 } from 'crypto-js';
@@ -17,6 +17,25 @@ import {
     inferSaveScaleFactor,
     type CanvasDataMeta,
 } from '../utils/canvasCoords';
+import {
+    startStudioSession,
+    endStudioSession,
+    trackStudioCanvasReady,
+    trackStudioArtworkAdded,
+    trackStudioPreviewOpened,
+    trackStudioSaveSucceeded,
+    trackStudioSaveBlockedName,
+    trackStudioSaveFailed,
+    trackStudioAddToCart,
+    trackStudioAddToCartFailed,
+    trackStudioLeft,
+    trackStudioCanvasBlank,
+    trackStudioTemplateLoadFailed,
+    trackStudioArtworkRestoreFailed,
+    trackStudioUploadFailed,
+    trackStudioMockupFailed,
+    type StudioSource,
+} from '../lib/studioAnalytics';
 
 export const SIDE_ORDER = ['front', 'back'];
 
@@ -24,6 +43,7 @@ export function useCanvasDesign() {
     const { id } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { addToCart } = useCart();
     const designIdParam = searchParams.get('designId');
     const printingTypeParam = (searchParams.get('printingType') || searchParams.get('printing_type'))?.toUpperCase();
@@ -107,6 +127,61 @@ export function useCanvasDesign() {
     const [isUploading, setIsUploading] = useState(false);
     const [deleteImageName, setDeleteImageName] = useState<string | null>(null);
     const [dpiWarningFile, setDpiWarningFile] = useState<{ file: File; dpi: number } | null>(null);
+
+    const studioSessionStarted = useRef(false);
+    const studioOpenedAt = useRef(0);
+    const blankCanvasReported = useRef(false);
+    const containerBlankReported = useRef(false);
+
+    const hasAnyArtwork = useCallback(() => {
+        if (canvasImages.length > 0) return true;
+        return Object.values(sideCanvasImages.current).some((imgs) => imgs.length > 0);
+    }, [canvasImages]);
+
+    const reportStudioExit = useCallback((
+        exitType: 'back' | 'leave_modal' | 'pagehide',
+        isDirtyNow: boolean,
+    ) => {
+        trackStudioLeft({
+            had_artwork: hasAnyArtwork(),
+            is_dirty: isDirtyNow,
+            exit_type: exitType,
+        });
+    }, [hasAnyArtwork]);
+
+    // ── Studio analytics session ─────────────────────────────────────────────
+    useEffect(() => {
+        if (!id || studioSessionStarted.current) return;
+        studioSessionStarted.current = true;
+        studioOpenedAt.current = Date.now();
+
+        const navState = location.state as { studioSource?: StudioSource } | null;
+        startStudioSession({
+            product_id: id,
+            design_id: designIdParam,
+            is_existing: !!designIdParam,
+            printing_type: printingTypeParam ?? printingType ?? 'DTG',
+            source: navState?.studioSource ?? (designIdParam ? 'existing_design' : 'unknown'),
+        });
+
+        return () => {
+            endStudioSession();
+            studioSessionStarted.current = false;
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
+
+    // ── Blank canvas detector (template loaded but bg never appears) ─────────
+    useEffect(() => {
+        if (!currentTemplate || bgImage) return;
+        const timer = window.setTimeout(() => {
+            if (currentTemplateRef.current && !bgImage && !blankCanvasReported.current) {
+                blankCanvasReported.current = true;
+                trackStudioCanvasBlank('timeout');
+            }
+        }, 8000);
+        return () => window.clearTimeout(timer);
+    }, [currentTemplate, bgImage]);
 
     // ── Close color picker on outside click ──────────────────────────────────
     useEffect(() => {
@@ -219,7 +294,13 @@ export function useCanvasDesign() {
 
         const containerW = containerRef.current.clientWidth;
         const containerH = containerRef.current.clientHeight;
-        if (containerW < 16 || containerH < 16) return;
+        if (containerW < 16 || containerH < 16) {
+            if (!containerBlankReported.current) {
+                containerBlankReported.current = true;
+                trackStudioCanvasBlank('container_too_small');
+            }
+            return;
+        }
 
         const sf = Math.min(containerW / imgW, containerH / imgH, 1) * 0.95;
         if (!Number.isFinite(sf) || sf <= 0) return;
@@ -307,6 +388,7 @@ export function useCanvasDesign() {
             const loaded = results.filter((ci): ci is CanvasImage => ci !== null);
             if (loaded.length < pending.length) {
                 console.warn(`[CanvasDesign] Restored ${loaded.length}/${pending.length} layer(s) on ${template.side}`);
+                trackStudioArtworkRestoreFailed(loaded.length, pending.length);
             }
             sideCanvasImages.current[template.side] = loaded;
             setCanvasImages(loaded);
@@ -327,6 +409,9 @@ export function useCanvasDesign() {
             const finishLayout = () => {
                 recalculateStageSize(false);
                 restoreSideImages(template);
+                if (studioOpenedAt.current) {
+                    trackStudioCanvasReady(Date.now() - studioOpenedAt.current);
+                }
             };
 
             // Wait for container layout to settle (especially mobile) before restoring layers
@@ -334,7 +419,10 @@ export function useCanvasDesign() {
                 requestAnimationFrame(finishLayout);
             });
         };
-        img.onerror = () => console.error('[CanvasDesign] image load failed:', template.image_url);
+        img.onerror = () => {
+            console.error('[CanvasDesign] image load failed:', template.image_url);
+            trackStudioTemplateLoadFailed();
+        };
         img.src = r2ProxyUrl(template.image_url);
     }, [currentTemplate, recalculateStageSize, restoreSideImages]);
 
@@ -454,7 +542,7 @@ export function useCanvasDesign() {
     };
 
     // ── Image helpers ─────────────────────────────────────────────────────────
-    const addImageFromUrl = (url: string) => {
+    const addImageFromUrl = (url: string, method: 'upload' | 'library' = 'library') => {
         if (!printZone) return;
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
@@ -465,7 +553,11 @@ export function useCanvasDesign() {
             const x = printZone.left + (printZone.width - w) / 2;
             const y = printZone.top + (printZone.height - h) / 2;
             const newId = Math.random().toString(36).substring(7);
-            setCanvasImages(prev => [...prev, { id: newId, image: img, src: url, x, y, width: w, height: h }]);
+            setCanvasImages(prev => {
+                const next = [...prev, { id: newId, image: img, src: url, x, y, width: w, height: h }];
+                trackStudioArtworkAdded(method, next.length);
+                return next;
+            });
             setSelectedId(newId);
             markDirty();
         };
@@ -493,10 +585,12 @@ export function useCanvasDesign() {
         setIsUploading(true);
         try {
             const url = await uploadFile(file, 'asset');
-            addImageFromUrl(url);
+            addImageFromUrl(url, 'upload');
             fetchUserUploads();
         } catch (err) {
             console.error('[CanvasDesign] upload failed:', err);
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            trackStudioUploadFailed(status ? `http_${status}` : 'unknown');
         } finally {
             setIsUploading(false);
             setDpiWarningFile(null);
@@ -772,6 +866,10 @@ export function useCanvasDesign() {
             });
             setMockupUrl(results);
             setShowMockup(true);
+            trackStudioPreviewOpened();
+        } catch (err) {
+            console.error('[CanvasDesign] Mockup failed:', err);
+            trackStudioMockupFailed(err instanceof Error ? err.message : 'unknown');
         } finally {
             setGeneratingMockup(false);
         }
@@ -786,10 +884,12 @@ export function useCanvasDesign() {
         if (!trimmedName || trimmedName.toLowerCase() === 'untitled design') {
             setSaveStatus('error');
             setNameError(true);
+            trackStudioSaveBlockedName();
             return null;
         }
         setIsSaving(true);
         setSaveStatus('idle');
+        const isFirstSave = !designId;
         try {
             sideCanvasImages.current[currentTemplate.side] = canvasImages;
             const sf = lastScaleFactor.current ?? 1;
@@ -897,6 +997,7 @@ export function useCanvasDesign() {
             setSaveStatus('saved');
             setIsDirty(false);
             setTimeout(() => setSaveStatus('idle'), 2500);
+            trackStudioSaveSucceeded(isFirstSave);
 
             // Compute price from the freshly saved print_dimensions
             if (currentTemplate && selectedColorId) {
@@ -910,6 +1011,8 @@ export function useCanvasDesign() {
             return { savedDesignId, printFileUrl: printFileUrl ?? '', previewUrl, canvasData };
         } catch (err) {
             console.error('[CanvasDesign] Save failed:', err);
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            trackStudioSaveFailed(status, err instanceof Error ? err.message : 'unknown');
             setSaveStatus('error');
             return null;
         } finally {
@@ -936,9 +1039,11 @@ export function useCanvasDesign() {
                 preview_url: result.previewUrl,
                 design_name: designName,
             });
+            trackStudioAddToCart(navigateToOrder);
             if (navigateToOrder) navigate('/checkout');
         } catch (err) {
             console.error('[CanvasDesign] Add to cart failed:', err);
+            trackStudioAddToCartFailed(err instanceof Error ? err.message : 'unknown');
         } finally {
             setIsAddingToCart(false);
         }
@@ -969,5 +1074,6 @@ export function useCanvasDesign() {
         selectedSize, setSelectedSize, availableSizes, quantity, setQuantity,
         isAddingToCart, handleAddToCart,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
+        reportStudioExit, hasAnyArtwork,
     };
 }

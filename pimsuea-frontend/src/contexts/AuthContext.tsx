@@ -3,6 +3,7 @@ import { type AuthChangeEvent, type User, type Session } from "@supabase/supabas
 import { supabase } from "@/lib/supabase";
 import { recordTermsAcceptance } from "@/services/api";
 import { shouldRecordSignupConsent, clearPendingTermsAcceptance } from "@/lib/legal";
+import { identifyUser, resetAnalytics } from "@/lib/analytics";
 
 export interface UserProfile {
   id: string;
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
+        identifyUser(session.user.id);
         fetchProfile(session.user.id);
       } else {
         setProfileLoading(false);
@@ -84,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
+        identifyUser(session.user.id);
         // Token refresh on tab focus must not refetch profile — that unmounts the whole app.
         if (event !== 'TOKEN_REFRESHED') {
           fetchProfile(session.user.id);
@@ -104,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
         }
       } else {
+        resetAnalytics();
         profileUserIdRef.current = null;
         setProfile(null);
         setProfileLoading(false);
@@ -114,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchProfile]);
 
   const signOut = async () => {
+    resetAnalytics();
     await supabase.auth.signOut();
   };
 

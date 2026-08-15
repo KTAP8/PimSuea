@@ -100,6 +100,7 @@ export default function ProductDetails() {
         state: {
             printMethodId: selectedMethodId,
             quantity: quantity,
+            studioSource: 'catalog',
         }
     });
   };

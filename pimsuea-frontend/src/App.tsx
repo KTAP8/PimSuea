@@ -4,6 +4,7 @@ import { useState } from 'react';
 // All non-root routes redirect to / until this date
 export const LAUNCH_DATE = new Date('2026-03-27T12:00:00+07:00');
 import { Analytics } from '@vercel/analytics/react';
+import { AnalyticsProvider } from './components/AnalyticsProvider';
 import { Sidebar } from './components/Sidebar';
 import { SiteFooter } from './components/SiteFooter';
 import { TermsModal } from './components/TermsModal';
@@ -133,6 +134,7 @@ function App() {
       <CartProvider>
        <Router>
          <Layout />
+         <AnalyticsProvider />
          <Analytics />
        </Router>
       </CartProvider>

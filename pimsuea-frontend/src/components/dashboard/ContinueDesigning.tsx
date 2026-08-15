@@ -34,6 +34,7 @@ export function ContinueDesigning({ designs, loading }: Props) {
                         <Link
                             key={design.id}
                             to={`/studio/${design.base_product_id}?designId=${design.id}`}
+                            state={{ studioSource: 'dashboard' }}
                             className="group bg-white border border-slate-100/80 rounded-3xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col ring-1 ring-slate-900/5"
                         >
                             <div className="aspect-video sm:aspect-square bg-slate-50/50 relative flex items-center justify-center p-8 overflow-hidden">
