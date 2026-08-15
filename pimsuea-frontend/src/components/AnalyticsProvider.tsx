@@ -1,10 +1,8 @@
-import { useEffect } from 'react';
 import { initAnalytics } from '@/lib/analytics';
 
 /** Initializes PostHog once at app boot. Renders nothing. */
 export function AnalyticsProvider() {
-    useEffect(() => {
-        initAnalytics();
-    }, []);
+    // Sync init during render so studio mount effects can capture on first paint.
+    initAnalytics();
     return null;
 }

@@ -133,8 +133,8 @@ function App() {
     <AuthProvider>
       <CartProvider>
        <Router>
-         <Layout />
          <AnalyticsProvider />
+         <Layout />
          <Analytics />
        </Router>
       </CartProvider>
