@@ -39,12 +39,12 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
     // Load from DB when user is authenticated; clear on logout
     useEffect(() => {
         setCartItems([]);
-        if (!user) return;
+        if (authLoading || !user) return;
 
         const loadCart = async () => {
             try {
@@ -74,7 +74,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
         loadCart();
-    }, [user?.id]); // Re-run when user changes; fires after auth resolves
+    }, [authLoading, user?.id]);
 
     const addToCart = (item: Omit<CartItem, 'id'>): string => {
         const id = crypto.randomUUID();

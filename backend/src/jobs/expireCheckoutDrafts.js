@@ -1,5 +1,5 @@
 const { supabaseAdmin } = require('../config/supabaseClient');
-const { getStripe } = require('../config/stripeClient');
+const { getStripe, sessionMatchesConfiguredStripeMode } = require('../config/stripeClient');
 
 async function expireCheckoutDrafts() {
   if (!supabaseAdmin) return;
@@ -28,6 +28,10 @@ async function expireCheckoutDrafts() {
   const toExpire = [];
 
   for (const draft of drafts) {
+    if (!sessionMatchesConfiguredStripeMode(draft.stripe_checkout_session_id)) {
+      continue;
+    }
+
     if (!stripe || !draft.stripe_checkout_session_id) {
       toExpire.push(draft.id);
       continue;
@@ -41,6 +45,7 @@ async function expireCheckoutDrafts() {
       }
     } catch (err) {
       console.warn('[expireCheckoutDrafts] could not verify session for draft', draft.id, err.message);
+      continue;
     }
 
     toExpire.push(draft.id);

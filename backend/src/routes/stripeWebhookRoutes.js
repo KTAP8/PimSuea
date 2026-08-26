@@ -1,10 +1,19 @@
 const express = require('express');
-const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 
-router.post('/', express.raw({ type: 'application/json' }), (req, _res, next) => {
-  req.rawBody = req.body;
-  next();
-}, paymentController.handleStripeWebhook);
+function stripeWebhookStack() {
+  return [
+    express.raw({ type: 'application/json' }),
+    (req, _res, next) => {
+      req.rawBody = req.body;
+      next();
+    },
+    paymentController.handleStripeWebhook,
+  ];
+}
 
-module.exports = router;
+function attachStripeWebhook(app, path) {
+  app.post(path, ...stripeWebhookStack());
+}
+
+module.exports = { attachStripeWebhook };

@@ -1,14 +1,13 @@
 const { supabaseAdmin } = require('../config/supabaseClient');
-const { getStripe } = require('../config/stripeClient');
+const { getStripe, sessionMatchesConfiguredStripeMode } = require('../config/stripeClient');
 const {
   fulfillDraftById,
   buildStripeMetaFromSession,
 } = require('../controllers/paymentController');
 
 /**
- * Safety net: find checkout drafts still pending/expired in DB but paid in Stripe,
- * then run normal fulfillment so orders are not lost when webhooks or success-page
- * polling fail.
+ * Safety net: find checkout drafts still pending/expired/stuck in DB but paid
+ * in Stripe, then run normal fulfillment so orders are not lost when webhooks fail.
  */
 async function reconcilePaidCheckoutDrafts() {
   if (!supabaseAdmin) {
@@ -27,7 +26,7 @@ async function reconcilePaidCheckoutDrafts() {
   const { data: drafts, error } = await supabaseAdmin
     .from('checkout_drafts')
     .select('id, stripe_checkout_session_id, status')
-    .in('status', ['pending', 'expired'])
+    .in('status', ['pending', 'expired', 'completing'])
     .not('stripe_checkout_session_id', 'is', null)
     .is('order_id', null);
 
@@ -41,6 +40,11 @@ async function reconcilePaidCheckoutDrafts() {
   let errors = 0;
 
   for (const draft of drafts || []) {
+    if (!sessionMatchesConfiguredStripeMode(draft.stripe_checkout_session_id)) {
+      skipped += 1;
+      continue;
+    }
+
     try {
       const session = await stripe.checkout.sessions.retrieve(draft.stripe_checkout_session_id);
 

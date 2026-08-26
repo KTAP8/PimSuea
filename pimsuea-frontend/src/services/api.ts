@@ -147,6 +147,29 @@ export const updateOrder = async (id: number | string, data: any): Promise<any> 
     return response.data;
 };
 
+export interface PrintComposeLayer {
+    src: string;
+    relX: number;
+    relY: number;
+    relW: number;
+    relH: number;
+    rotation?: number;
+}
+
+export interface PrintComposeSide {
+    physical_w_cm?: number;
+    physical_h_cm?: number;
+    layers: PrintComposeLayer[];
+}
+
+/** Server-side LANCZOS print compose from original R2 assets (300 DPI PNG). */
+export const composePrintFiles = async (
+    sides: Record<string, PrintComposeSide>,
+): Promise<Record<string, string>> => {
+    const response = await api.post<{ urls: Record<string, string> }>('/print/compose', { sides });
+    return response.data.urls;
+};
+
 export const uploadFile = async (file: Blob | File, type: 'preview' | 'print' | 'asset', fileName?: string): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);

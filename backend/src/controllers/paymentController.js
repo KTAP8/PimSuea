@@ -36,60 +36,26 @@ function buildStripeMetaFromSession(session) {
   };
 }
 
-async function fulfillDraftById(draftId, stripeMeta, options = {}) {
-  const { allowExpired = false } = options;
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (!supabaseAdmin) throw new Error('Supabase admin not configured');
+function isUniqueViolation(err) {
+  return err?.code === '23505' || /duplicate key/i.test(err?.message || '');
+}
 
-  if (stripeMeta.checkoutSessionId) {
-    const { data: existingOrder } = await supabaseAdmin
-      .from('orders')
-      .select('id')
-      .eq('stripe_checkout_session_id', stripeMeta.checkoutSessionId)
-      .maybeSingle();
-    if (existingOrder) {
-      await supabaseAdmin
-        .from('checkout_drafts')
-        .update({
-          status: 'completed',
-          order_id: existingOrder.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', draftId);
-      return { orderId: existingOrder.id, alreadyFulfilled: true };
-    }
-  }
+async function findOrderIdBySession(sessionId) {
+  if (!sessionId) return null;
+  const { data, error } = await supabaseAdmin
+    .from('orders')
+    .select('id')
+    .eq('stripe_checkout_session_id', sessionId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
 
-  const { data: draft, error } = await supabaseAdmin
-    .from('checkout_drafts')
-    .select('*')
-    .eq('id', draftId)
-    .single();
-
-  if (error || !draft) {
-    throw new Error(`Checkout draft not found: ${draftId}`);
-  }
-
-  if (draft.status === 'completed' && draft.order_id) {
-    return { orderId: draft.order_id, alreadyFulfilled: true };
-  }
-
-  if (draft.status === 'cancelled') {
-    throw new Error('Checkout draft is cancelled');
-  }
-
-  if (draft.status === 'expired' && !allowExpired) {
-    throw new Error('Checkout draft is expired');
-  }
-
-  const pricedPayload = draft.payload;
-  const { orderId } = await fulfillOrder({
-    pricedPayload,
-    userId: draft.user_id,
-    authHeader: null,
-    stripeMeta,
-  });
-
+async function markDraftCompleted(draftId, orderId) {
   await supabaseAdmin
     .from('checkout_drafts')
     .update({
@@ -98,8 +64,133 @@ async function fulfillDraftById(draftId, stripeMeta, options = {}) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', draftId);
+}
 
-  return { orderId, alreadyFulfilled: false };
+async function releaseDraftClaim(draft, err) {
+  const expired = draft.expires_at && new Date(draft.expires_at) < new Date();
+  await supabaseAdmin
+    .from('checkout_drafts')
+    .update({
+      status: expired ? 'expired' : 'pending',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', draft.id)
+    .eq('status', 'completing');
+  console.error('[fulfillDraftById] released claim', draft.id, err.message);
+}
+
+async function waitForExistingFulfillment(draftId, sessionId) {
+  for (let i = 0; i < 20; i += 1) {
+    const existingId = await findOrderIdBySession(sessionId);
+    if (existingId) {
+      await markDraftCompleted(draftId, existingId);
+      return { orderId: existingId, alreadyFulfilled: true };
+    }
+
+    const { data: draft } = await supabaseAdmin
+      .from('checkout_drafts')
+      .select('status, order_id')
+      .eq('id', draftId)
+      .maybeSingle();
+
+    if (draft?.status === 'completed' && draft.order_id) {
+      return { orderId: draft.order_id, alreadyFulfilled: true };
+    }
+
+    await sleep(200);
+  }
+
+  throw new Error(`Checkout fulfillment already in progress for draft ${draftId}`);
+}
+
+async function claimCheckoutDraft(draftId, { allowExpired }) {
+  const now = new Date().toISOString();
+  const statuses = allowExpired ? ['pending', 'expired'] : ['pending'];
+
+  const { data: claimed, error } = await supabaseAdmin
+    .from('checkout_drafts')
+    .update({ status: 'completing', updated_at: now })
+    .eq('id', draftId)
+    .in('status', statuses)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw error;
+  if (claimed) return claimed;
+
+  const staleBefore = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const { data: stale, error: staleErr } = await supabaseAdmin
+    .from('checkout_drafts')
+    .update({ status: 'completing', updated_at: now })
+    .eq('id', draftId)
+    .eq('status', 'completing')
+    .lt('updated_at', staleBefore)
+    .select('*')
+    .maybeSingle();
+
+  if (staleErr) throw staleErr;
+  return stale ?? null;
+}
+
+async function fulfillDraftById(draftId, stripeMeta, options = {}) {
+  const { allowExpired = false } = options;
+
+  if (!supabaseAdmin) throw new Error('Supabase admin not configured');
+
+  const existingId = await findOrderIdBySession(stripeMeta.checkoutSessionId);
+  if (existingId) {
+    await markDraftCompleted(draftId, existingId);
+    return { orderId: existingId, alreadyFulfilled: true };
+  }
+
+  const claimed = await claimCheckoutDraft(draftId, { allowExpired });
+
+  if (!claimed) {
+    const { data: draft, error } = await supabaseAdmin
+      .from('checkout_drafts')
+      .select('*')
+      .eq('id', draftId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!draft) throw new Error(`Checkout draft not found: ${draftId}`);
+
+    if (draft.status === 'completed' && draft.order_id) {
+      return { orderId: draft.order_id, alreadyFulfilled: true };
+    }
+    if (draft.status === 'cancelled') {
+      throw new Error('Checkout draft is cancelled');
+    }
+    if (draft.status === 'expired' && !allowExpired) {
+      throw new Error('Checkout draft is expired');
+    }
+    if (draft.status === 'completing') {
+      return waitForExistingFulfillment(draftId, stripeMeta.checkoutSessionId);
+    }
+    throw new Error(`Checkout draft is ${draft.status}`);
+  }
+
+  try {
+    const { orderId } = await fulfillOrder({
+      pricedPayload: claimed.payload,
+      userId: claimed.user_id,
+      authHeader: null,
+      stripeMeta,
+    });
+
+    await markDraftCompleted(draftId, orderId);
+    return { orderId, alreadyFulfilled: false };
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const winnerId = await findOrderIdBySession(stripeMeta.checkoutSessionId);
+      if (winnerId) {
+        await markDraftCompleted(draftId, winnerId);
+        return { orderId: winnerId, alreadyFulfilled: true };
+      }
+    }
+    await releaseDraftClaim(claimed, err);
+    throw err;
+  }
 }
 
 async function fulfillCheckoutSession(session, { eventType, allowExpired = false } = {}) {
@@ -235,17 +326,9 @@ exports.getCheckoutSessionStatus = async (req, res) => {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (
-      session.payment_status === 'paid'
-      && (draft.status === 'pending' || draft.status === 'expired')
-    ) {
-      const { orderId } = await fulfillDraftById(
-        draft.id,
-        buildStripeMetaFromSession(session),
-        { allowExpired: true },
-      );
-
-      return res.json({ status: 'paid', orderId });
+    if (session.payment_status === 'paid') {
+      // Webhook / reconcile create the order. Polling only waits.
+      return res.json({ status: 'pending' });
     }
 
     if (session.status === 'expired') {

@@ -12,7 +12,7 @@ const orderRoutes = require('./src/routes/orderRoutes');
 const walletRoutes = require('./src/routes/walletRoutes');
 const articleRoutes = require('./src/routes/articleRoutes');
 const paymentRoutes = require('./src/routes/paymentRoutes');
-const stripeWebhookRoutes = require('./src/routes/stripeWebhookRoutes');
+const { attachStripeWebhook } = require('./src/routes/stripeWebhookRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,10 +32,10 @@ app.use(cors({
 }));
 
 // Stripe webhook must receive raw body — register before express.json().
-// Canonical path is /api/webhooks/stripe. Also accept POST / because the
-// live Stripe Dashboard endpoint was registered as the Render service root.
-app.use('/api/webhooks/stripe', stripeWebhookRoutes);
-app.use('/', stripeWebhookRoutes);
+// Canonical path is /api/webhooks/stripe. POST / is only for the live
+// Dashboard endpoint that was registered as the Render service root.
+attachStripeWebhook(app, '/api/webhooks/stripe');
+attachStripeWebhook(app, '/');
 
 app.use(express.json({
     verify: (req, _res, buf) => { req.rawBody = buf; }
@@ -53,6 +53,7 @@ app.use('/api/wallet', walletRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/cart', require('./src/routes/cartRoutes'));
 app.use('/api/uploads', require('./src/routes/uploadRoutes'));
+app.use('/api/print', require('./src/routes/printRoutes'));
 app.use('/api/pricing', require('./src/routes/pricingRoutes'));
 app.use('/api/waitlist', require('./src/routes/waitlistRoutes'));
 app.use('/api/delivery-fee', require('./src/routes/deliveryFeeRoutes'));

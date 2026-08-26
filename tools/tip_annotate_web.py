@@ -7,7 +7,7 @@ and get the same annotated / mockup / combined outputs as the CLI batch mode.
 Usage:
   pip install -r requirements-annotate.txt
   python tip_annotate_web.py
-  open http://127.0.0.1:5050
+  open http://127.0.0.1:5053
 """
 
 from __future__ import annotations
@@ -190,7 +190,8 @@ def api_process():
             })
 
             ann_name = f"{side}_annotated.png"
-            annotated = _ensure_named(Path(side_result["annotated"]), work_dir / ann_name)
+            annotated = _ensure_named(
+                Path(side_result["annotated"]), work_dir / ann_name)
             files.append({
                 "name": ann_name,
                 "label": f"{side.title()} annotated",
@@ -269,5 +270,5 @@ def api_download(session_id: str, filename: str):
 
 
 if __name__ == "__main__":
-    print("Tip Annotate UI → http://127.0.0.1:5050")
-    app.run(host="127.0.0.1", port=5050, debug=False)
+    print("Tip Annotate UI → http://127.0.0.1:5053")
+    app.run(host="127.0.0.1", port=5053, debug=False)

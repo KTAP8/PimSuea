@@ -3,9 +3,16 @@ import { useParams, useSearchParams, useNavigate, useLocation } from 'react-rout
 import { useCart } from '../contexts/CartContext';
 import Konva from 'konva';
 import { MD5 } from 'crypto-js';
-import api, { getProductTemplates, getProductById, uploadFile, r2ProxyUrl, getPrice } from '../services/api';
+import api, {
+    getProductTemplates,
+    getProductById,
+    uploadFile,
+    r2ProxyUrl,
+    getPrice,
+    composePrintFiles,
+    type PrintComposeSide,
+} from '../services/api';
 import { compositeSingleSide, OUTPUT_SCALE } from '../utils/mockupCompositor';
-import { injectPngDpi } from '../utils/canvasExporter';
 import { useAuth } from '../contexts/AuthContext';
 import { isLegacyDtfPrintingType } from '../constants/printing';
 import type { ProductTemplate, Color } from '../types/api';
@@ -667,55 +674,36 @@ export function useCanvasDesign() {
         };
     };
 
-    const capturePrintBlob = async (): Promise<Blob | null> => {
-        if (!stageRef.current || !printZone || !currentTemplate) return null;
-        const pz = currentTemplate.print_area_config;
-        const pixelRatio = ((pz.physical_w_cm ?? 30.48) / 2.54 * 300) / printZone.width;
-        const tr = transformerRef.current;
-        const prevNodes = tr?.nodes() ?? [];
-        tr?.nodes([]);
-        bgNodeRef.current?.hide();
-        printZoneNodeRef.current?.hide();
-        stageRef.current.getLayers()[0]?.batchDraw();
-        const dataURL = stageRef.current.toDataURL({
-            x: printZone.left, y: printZone.top,
-            width: printZone.width, height: printZone.height,
-            pixelRatio, mimeType: 'image/png',
-        });
-        bgNodeRef.current?.show();
-        printZoneNodeRef.current?.show();
-        if (prevNodes.length) tr?.nodes(prevNodes);
-        stageRef.current.getLayers()[0]?.batchDraw();
-        const base64 = dataURL.replace(/^data:image\/png;base64,/, '');
-        const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-        return new Blob([new Uint8Array(injectPngDpi(raw, 300))], { type: 'image/png' });
-    };
-
-    const captureOffScreenBlob = async (tmpl: ProductTemplate, images: CanvasImage[]): Promise<Blob | null> => {
-        if (!images.length) return null;
-        const bgImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const i = new window.Image();
-            i.crossOrigin = 'anonymous';
-            i.onload = () => resolve(i);
-            i.onerror = reject;
-            i.src = r2ProxyUrl(tmpl.image_url);
-        });
-        const containerW = containerRef.current?.clientWidth || window.innerWidth - 80;
-        const containerH = (containerRef.current?.clientHeight || window.innerHeight) - 48;
-        const sf = Math.min(containerW / bgImg.width, containerH / bgImg.height, 1) * 0.95;
-        const pz = tmpl.print_area_config;
-        const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
-        const pixelRatio = ((pz.physical_w_cm ?? 30.48) / 2.54 * 300) / pzScaled.width;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(pzScaled.width * pixelRatio);
-        canvas.height = Math.round(pzScaled.height * pixelRatio);
-        const ctx = canvas.getContext('2d')!;
-        ctx.scale(pixelRatio, pixelRatio);
-        ctx.translate(-pzScaled.left, -pzScaled.top);
-        images.forEach(ci => ctx.drawImage(ci.image, ci.x, ci.y, ci.width, ci.height));
-        const base64 = canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
-        const raw = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-        return new Blob([new Uint8Array(injectPngDpi(raw, 300))], { type: 'image/png' });
+    const buildComposeSides = (
+        serializedSides: Record<string, SerializableImage[]>,
+    ): Record<string, PrintComposeSide> => {
+        const composeSides: Record<string, PrintComposeSide> = {};
+        for (const [sideName, layers] of Object.entries(serializedSides)) {
+            if (!layers.length) continue;
+            const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                ?? templates.find(t => t.side === sideName);
+            if (!tmpl) continue;
+            const validLayers = layers.filter(l =>
+                l.src &&
+                l.relX != null && l.relY != null &&
+                l.relW != null && l.relH != null,
+            );
+            if (!validLayers.length) continue;
+            const pz = tmpl.print_area_config;
+            composeSides[sideName.toLowerCase()] = {
+                physical_w_cm: pz.physical_w_cm ?? 30.48,
+                physical_h_cm: pz.physical_h_cm ?? 40.64,
+                layers: validLayers.map(l => ({
+                    src: l.src,
+                    relX: l.relX!,
+                    relY: l.relY!,
+                    relW: l.relW!,
+                    relH: l.relH!,
+                    rotation: l.rotation ?? 0,
+                })),
+            };
+        }
+        return composeSides;
     };
 
     // ── Price calculation ─────────────────────────────────────────────────────
@@ -770,14 +758,14 @@ export function useCanvasDesign() {
 
     // ── Export ────────────────────────────────────────────────────────────────
     const handleExport = async () => {
-        if (!currentTemplate || !printZone) return;
+        if (!currentTemplate || !printZone || !canvasImages.length) return;
         setIsExporting(true);
         setExportedUrl(null);
         try {
-            const blob = await capturePrintBlob();
-            if (!blob) return;
-            const url = await uploadFile(blob, 'print', `${Math.random().toString(36).substring(7)}_konva_test.png`);
-            setExportedUrl(url);
+            const serialized = canvasImages.map(ci => serializeCanvasImage(ci, printZone));
+            const sideKey = currentTemplate.side.toLowerCase();
+            const urls = await composePrintFiles(buildComposeSides({ [currentTemplate.side]: serialized }));
+            setExportedUrl(urls[sideKey] ?? null);
         } catch (err) {
             console.error('[CanvasDesign] Export failed:', err);
         } finally {
@@ -915,16 +903,12 @@ export function useCanvasDesign() {
             const canvasData = {
                 renderer: 'konva',
                 version: '3',
+                printComposer: 'lanczos-v1',
                 stageScaleFactor: sf,
                 activeSide: currentTemplate.side,
                 sides,
             };
             const hash = MD5(JSON.stringify(canvasData)).toString();
-
-            let existingDesign: any = null;
-            if (designId) {
-                try { ({ data: existingDesign } = await api.get(`/designs/${designId}`)); } catch {}
-            }
 
             // Preview
             const previewDataUrl = stageRef.current.toDataURL({ pixelRatio: 0.5 });
@@ -933,28 +917,11 @@ export function useCanvasDesign() {
             const previewUrl = await uploadFile(previewBlob, 'preview', `preview_${colorKey}_${Date.now()}.png`);
             const previewMap = JSON.stringify({ [colorKey]: previewUrl });
 
-            // Print files
+            // Print files — server LANCZOS compose from original R2 assets
+            const composeSides = buildComposeSides(sides);
             let printFileUrl: string | null = null;
-            if (existingDesign?.design_hash === hash && existingDesign?.print_file_url) {
-                printFileUrl = existingDesign.print_file_url;
-            } else {
-                const printFiles: Record<string, string> = {};
-                const currentBlob = await capturePrintBlob();
-                if (currentBlob) {
-                    const url = await uploadFile(currentBlob, 'print', `print_${Math.random().toString(36).substring(7)}.png`);
-                    printFiles[currentTemplate.side.toLowerCase()] = url;
-                }
-                for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
-                    if (sideName === currentTemplate.side || !imgs.length) continue;
-                    const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
-                        ?? templates.find(t => t.side === sideName);
-                    if (!tmpl) continue;
-                    const blob = await captureOffScreenBlob(tmpl, imgs);
-                    if (blob) {
-                        const url = await uploadFile(blob, 'print', `print_${Math.random().toString(36).substring(7)}.png`);
-                        printFiles[sideName.toLowerCase()] = url;
-                    }
-                }
+            if (Object.keys(composeSides).length > 0) {
+                const printFiles = await composePrintFiles(composeSides);
                 printFileUrl = JSON.stringify(printFiles);
             }
 

@@ -1,4 +1,11 @@
-const { S3Client, DeleteObjectCommand, ListObjectsV2Command, CopyObjectCommand } = require('@aws-sdk/client-s3');
+const {
+  S3Client,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  CopyObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+} = require('@aws-sdk/client-s3');
 
 const r2 = new S3Client({
   region: 'auto',
@@ -184,6 +191,37 @@ async function copyObject(srcBucket, srcKey, dstBucket, dstKey) {
   }));
 }
 
+/**
+ * Downloads an object from R2 as a Buffer.
+ * @param {string} bucketName
+ * @param {string} key
+ * @returns {Promise<Buffer>}
+ */
+async function getObjectBuffer(bucketName, key) {
+  const res = await r2.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+  const chunks = [];
+  for await (const chunk of res.Body) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Uploads bytes to R2.
+ * @param {string} bucketName
+ * @param {string} key
+ * @param {Buffer} body
+ * @param {string} [contentType]
+ */
+async function putObject(bucketName, key, body, contentType = 'application/octet-stream') {
+  await r2.send(new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  }));
+}
+
 module.exports = {
   r2,
   getPublicUrl,
@@ -191,6 +229,8 @@ module.exports = {
   deleteObject,
   listObjects,
   copyObject,
+  getObjectBuffer,
+  putObject,
   normalizePublicUrl,
   normalizeStoredUrlField,
   normalizeCanvasData,

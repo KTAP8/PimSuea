@@ -26,6 +26,14 @@ function isLocalhostUrl(url) {
   }
 }
 
+function sessionMatchesConfiguredStripeMode(sessionId) {
+  if (!sessionId) return false;
+  const key = process.env.STRIPE_SECRET_KEY || '';
+  if (key.startsWith('sk_live_')) return sessionId.startsWith('cs_live_');
+  if (key.startsWith('sk_test_')) return sessionId.startsWith('cs_test_');
+  return true;
+}
+
 function getFrontendUrl() {
   const configured = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
   const liveKey = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_');
@@ -52,4 +60,5 @@ module.exports = {
   getPendingOrderTtlHours,
   getFrontendUrl,
   thbToStripeAmount,
+  sessionMatchesConfiguredStripeMode,
 };
