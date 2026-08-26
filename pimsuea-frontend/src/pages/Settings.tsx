@@ -17,10 +17,6 @@ import {
   Tag,
   Building2,
   Sparkles,
-  Instagram,
-  Search,
-  Users,
-  HelpCircle,
   Mail,
   ShieldCheck,
   Calendar,
@@ -29,6 +25,11 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import {
+  AI_ASSISTANT_TOOLS,
+  isAiAssistantSource,
+  REFERRAL_SOURCES,
+} from "@/lib/referralSources";
 
 // Modern purpose options with Lucide icons
 const DESIGN_PURPOSES = [
@@ -58,15 +59,6 @@ const DESIGN_PURPOSES = [
   },
 ];
 
-// Modern referral sources
-const REFERRAL_SOURCES = [
-  { value: "instagram", label: "Instagram", icon: Instagram },
-  { value: "tiktok", label: "TikTok", icon: Sparkles },
-  { value: "search", label: "ค้นหาออนไลน์", icon: Search },
-  { value: "word_of_mouth", label: "เพื่อนแนะนำ", icon: Users },
-  { value: "other", label: "อื่น ๆ", icon: HelpCircle },
-];
-
 type SettingsTab = "profile" | "preferences" | "security";
 
 export default function Settings() {
@@ -80,6 +72,7 @@ export default function Settings() {
   const [age, setAge] = useState("");
   const [designPurpose, setDesignPurpose] = useState("");
   const [referralSource, setReferralSource] = useState("");
+  const [referralDetail, setReferralDetail] = useState("");
 
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -104,6 +97,7 @@ export default function Settings() {
       setAge(profile.age != null ? String(profile.age) : "");
       setDesignPurpose(profile.design_purpose ?? "");
       setReferralSource(profile.referral_source ?? "");
+      setReferralDetail(profile.referral_detail ?? "");
     }
   }, [profile]);
 
@@ -121,6 +115,9 @@ export default function Settings() {
       age: age ? parseInt(age, 10) : null,
       design_purpose: designPurpose || null,
       referral_source: referralSource || null,
+      referral_detail: isAiAssistantSource(referralSource)
+        ? referralDetail || null
+        : null,
     });
 
     if (error) {
@@ -521,7 +518,12 @@ export default function Settings() {
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => setReferralSource(opt.value)}
+                        onClick={() => {
+                          setReferralSource(opt.value);
+                          if (!isAiAssistantSource(opt.value)) {
+                            setReferralDetail("");
+                          }
+                        }}
                         className={cn(
                           "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border transition-all duration-300 cursor-pointer group text-center",
                           isSelected
@@ -544,6 +546,34 @@ export default function Settings() {
                     );
                   })}
                 </div>
+
+                {isAiAssistantSource(referralSource) && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      ใช้ AI ตัวไหน?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {AI_ASSISTANT_TOOLS.map((tool) => {
+                        const isToolSelected = referralDetail === tool.value;
+                        return (
+                          <button
+                            key={tool.value}
+                            type="button"
+                            onClick={() => setReferralDetail(tool.value)}
+                            className={cn(
+                              "px-4 py-2 rounded-full border text-xs font-bold transition-all cursor-pointer",
+                              isToolSelected
+                                ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/20"
+                                : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                            )}
+                          >
+                            {tool.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Save action footer */}

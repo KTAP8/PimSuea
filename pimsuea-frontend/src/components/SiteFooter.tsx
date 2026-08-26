@@ -18,6 +18,16 @@ interface AppFooterProps {
 
 type SiteFooterProps = MarketingFooterProps | AppFooterProps;
 
+function FooterRouterLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const className =
+    'text-sm font-light text-muted-foreground hover:text-primary transition-colors';
+  return (
+    <Link to={to} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 function FooterLink({
   href,
   onClick,
@@ -83,6 +93,9 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
               <FooterLink href="#how">{t.footerLinkHow}</FooterLink>
               <FooterLink href="#catalog">{t.footerLinkCatalog}</FooterLink>
               <FooterLink href="#gift">{t.footerLinkTiers}</FooterLink>
+              <FooterRouterLink to="/print-on-demand">{t.footerLinkPrintOnDemand}</FooterRouterLink>
+              <FooterRouterLink to="/pricing">{t.footerLinkPricing}</FooterRouterLink>
+              <FooterRouterLink to="/vs-printful">{t.footerLinkVsPrintful}</FooterRouterLink>
             </nav>
           </div>
 

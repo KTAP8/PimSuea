@@ -30,6 +30,10 @@ import { CartProvider } from './contexts/CartContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RedirectToApp } from './components/RedirectToApp';
 import { AppRootRedirect } from './components/AppRootRedirect';
+import PrintOnDemandPage from './pages/marketing/PrintOnDemandPage';
+import PricingPage from './pages/marketing/PricingPage';
+import VsPrintfulPage from './pages/marketing/VsPrintfulPage';
+import { MarketingPageTracker } from './components/MarketingPageTracker';
 import { isAppHost } from './lib/site';
 
 function shouldShowAppFooter(pathname: string): boolean {
@@ -44,18 +48,28 @@ function MarketingLayout() {
   const preLaunch = !import.meta.env.DEV && new Date() < LAUNCH_DATE;
 
   return (
-    <Routes>
+    <>
+      <MarketingPageTracker />
+      <Routes>
       <Route
         path="/"
         element={preLaunch ? <Landing /> : <NewLanding />}
       />
       <Route path="/home" element={<Navigate to="/" replace />} />
+      {!preLaunch && (
+        <>
+          <Route path="/print-on-demand" element={<PrintOnDemandPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/vs-printful" element={<VsPrintfulPage />} />
+        </>
+      )}
       {preLaunch ? (
         <Route path="*" element={<Navigate to="/" replace />} />
       ) : (
         <Route path="*" element={<RedirectToApp />} />
       )}
     </Routes>
+    </>
   );
 }
 

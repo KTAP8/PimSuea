@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  AI_ASSISTANT_TOOLS,
+  isAiAssistantSource,
+  REFERRAL_SOURCE_AI,
+  REFERRAL_SOURCES_ONBOARDING,
+} from "@/lib/referralSources";
+import { cn } from "@/lib/utils";
 import { Loader2, AlertCircle, ChevronRight, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,14 +21,6 @@ const DESIGN_PURPOSES = [
   { value: "own_brand",       icon: "🏷️", label: "แบรนด์ของฉัน", desc: "เริ่มต้นหรือขยายแบรนด์เสื้อผ้า" },
   { value: "company_team",    icon: "🏢", label: "บริษัท / ทีม", desc: "เครื่องแบบองค์กรและทีมงาน" },
   { value: "personal",        icon: "✨", label: "ใช้ส่วนตัว", desc: "ออกแบบชิ้นงานพิเศษสำหรับตัวเอง" },
-];
-
-const REFERRAL_SOURCES = [
-  { value: "instagram",     label: "Instagram", icon: "📱" },
-  { value: "tiktok",        label: "TikTok", icon: "🎵" },
-  { value: "search",        label: "ค้นหาออนไลน์", icon: "🔍" },
-  { value: "word_of_mouth", label: "เพื่อนแนะนำ", icon: "🗣️" },
-  { value: "other",         label: "อื่น ๆ", icon: "✨" },
 ];
 
 const slideVariants = {
@@ -60,10 +59,13 @@ export default function Onboarding() {
 
   // Step 3
   const [referralSource, setReferralSource] = useState<string | null>(null);
+  const [referralDetail, setReferralDetail] = useState<string | null>(null);
 
   const canContinueStep1 = firstName.trim() && lastName.trim() && age.trim();
   const canContinueStep2 = designPurpose !== null;
-  const canContinueStep3 = referralSource !== null;
+  const canContinueStep3 =
+    referralSource !== null &&
+    (!isAiAssistantSource(referralSource) || referralDetail !== null);
 
   const nextStep = () => {
       setDirection(1);
@@ -87,6 +89,9 @@ export default function Onboarding() {
       age: parseInt(age),
       design_purpose: designPurpose,
       referral_source: referralSource,
+      referral_detail: isAiAssistantSource(referralSource)
+        ? referralDetail
+        : null,
       onboarding_completed: true,
     }, { onConflict: 'id' });
     
@@ -320,10 +325,15 @@ export default function Onboarding() {
                                   </div>
 
                                   <div className="grid grid-cols-2 gap-3">
-                                      {REFERRAL_SOURCES.map((opt) => (
+                                      {REFERRAL_SOURCES_ONBOARDING.map((opt) => (
                                           <button
                                               key={opt.value}
-                                              onClick={() => setReferralSource(opt.value)}
+                                              onClick={() => {
+                                                setReferralSource(opt.value);
+                                                if (opt.value !== REFERRAL_SOURCE_AI) {
+                                                  setReferralDetail(null);
+                                                }
+                                              }}
                                               className={`flex flex-col items-center justify-center gap-3 p-5 border bg-background transition-all duration-300 group ${
                                                   referralSource === opt.value
                                                       ? 'border-primary bg-primary/5 text-primary shadow-sm scale-[1.02]'
@@ -335,6 +345,31 @@ export default function Onboarding() {
                                           </button>
                                       ))}
                                   </div>
+
+                                  {isAiAssistantSource(referralSource) && (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        ใช้ AI ตัวไหน?
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {AI_ASSISTANT_TOOLS.map((tool) => (
+                                          <button
+                                            key={tool.value}
+                                            type="button"
+                                            onClick={() => setReferralDetail(tool.value)}
+                                            className={cn(
+                                              "px-4 py-2 border text-xs font-bold transition-all",
+                                              referralDetail === tool.value
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "border-border text-muted-foreground hover:border-primary/50"
+                                            )}
+                                          >
+                                            {tool.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
 
                                   <div className="flex gap-3 pt-6">
                                       <Button 

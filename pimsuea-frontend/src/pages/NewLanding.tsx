@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { PageSEO } from "@/components/PageSEO";
+import { buildGeoJsonLd, JsonLdScript } from "@/lib/geoSchema";
+import { GEO_URLS } from "@/content/geoFacts";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence, useInView } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import { getProducts, fetchAddons } from "@/services/api";
 import { filterActivePrintMethods } from "@/constants/printing";
 import type { Product } from "@/types/api";
@@ -543,22 +545,17 @@ function FAQSection() {
                     className={`w-5 h-5 shrink-0 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
                   />
                 </button>
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div
-                      key="answer"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <p className="pb-5 text-muted-foreground font-light leading-relaxed">
-                        {item.a}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Answer always in DOM for crawlers; visually collapsed via CSS */}
+                <div
+                  className={`overflow-hidden transition-all duration-300 ${
+                    isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                  }`}
+                  aria-hidden={!isOpen}
+                >
+                  <p className="pb-5 text-muted-foreground font-light leading-relaxed">
+                    {item.a}
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -913,25 +910,10 @@ export default function NewLanding() {
     document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "Organization",
-        name: "PimSuea",
-        url: "https://pimsuea.com",
-        logo: "https://pimsuea.com/logo.svg",
-        description:
-          "Print-on-demand t-shirt platform | แพลตฟอร์มสั่งพิมพ์เสื้อยืดออนไลน์",
-        sameAs: [],
-      },
-      {
-        "@type": "WebSite",
-        name: "PimSuea",
-        url: "https://pimsuea.com",
-      },
-    ],
-  };
+  const jsonLd = buildGeoJsonLd({
+    pageUrl: GEO_URLS.home,
+    pageName: "PimSuea — Print on demand Thailand",
+  });
 
   return (
     <LandingLangContext.Provider value={{ lang, t, setLang }}>
@@ -940,10 +922,7 @@ export default function NewLanding() {
         description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG printing. Fast delivery across Thailand."
         canonical="https://pimsuea.com/"
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLdScript data={jsonLd} />
       <div className="min-h-screen bg-background text-foreground">
         {/* ── Nav ─────────────────────────────────────────────────────── */}
         <header

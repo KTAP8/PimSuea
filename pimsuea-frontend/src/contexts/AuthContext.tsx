@@ -12,6 +12,7 @@ export interface UserProfile {
   age: number | null;
   design_purpose: string | null;
   referral_source: string | null;
+  referral_detail: string | null;
   onboarding_completed: boolean;
   terms_accepted_at: string | null;
   terms_version: number | null;
@@ -56,7 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const { data } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, age, design_purpose, referral_source, onboarding_completed, terms_accepted_at, terms_version, privacy_accepted_at')
+      .select('id, first_name, last_name, age, design_purpose, referral_source, referral_detail, onboarding_completed, terms_accepted_at, terms_version, privacy_accepted_at')
       .eq('id', userId)
       .single();
     setProfile(data ?? null);
