@@ -17,9 +17,29 @@ function getPendingOrderTtlHours() {
   return Number.isFinite(hours) && hours > 0 ? hours : 24;
 }
 
+function isLocalhostUrl(url) {
+  try {
+    const host = new URL(url).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
+
 function getFrontendUrl() {
-  const base = process.env.FRONTEND_URL || 'http://localhost:5173';
-  return base.replace(/\/$/, '');
+  const configured = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+  const liveKey = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_live_');
+  const productionFallback = 'https://app.pimsuea.com';
+
+  if (liveKey && (!configured || isLocalhostUrl(configured))) {
+    console.error(
+      'FRONTEND_URL is missing or localhost while STRIPE_SECRET_KEY is live — using',
+      productionFallback,
+    );
+    return productionFallback;
+  }
+
+  return configured || 'http://localhost:5173';
 }
 
 /** THB → Stripe amount in satang (smallest unit) */

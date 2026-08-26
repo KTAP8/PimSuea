@@ -31,8 +31,11 @@ app.use(cors({
   origin: "*"
 }));
 
-// Stripe webhook must receive raw body — register before express.json()
+// Stripe webhook must receive raw body — register before express.json().
+// Canonical path is /api/webhooks/stripe. Also accept POST / because the
+// live Stripe Dashboard endpoint was registered as the Render service root.
 app.use('/api/webhooks/stripe', stripeWebhookRoutes);
+app.use('/', stripeWebhookRoutes);
 
 app.use(express.json({
     verify: (req, _res, buf) => { req.rawBody = buf; }
