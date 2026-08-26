@@ -90,9 +90,9 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
           <div className="space-y-4">
             <p className="font-bold text-sm text-foreground">{t.footerExplore}</p>
             <nav className="flex flex-col gap-2.5">
-              <FooterLink href="#how">{t.footerLinkHow}</FooterLink>
-              <FooterLink href="#catalog">{t.footerLinkCatalog}</FooterLink>
-              <FooterLink href="#gift">{t.footerLinkTiers}</FooterLink>
+              <FooterRouterLink to="/#how">{t.footerLinkHow}</FooterRouterLink>
+              <FooterRouterLink to="/#catalog">{t.footerLinkCatalog}</FooterRouterLink>
+              <FooterRouterLink to="/#gift">{t.footerLinkTiers}</FooterRouterLink>
               <FooterRouterLink to="/print-on-demand">{t.footerLinkPrintOnDemand}</FooterRouterLink>
               <FooterRouterLink to="/pricing">{t.footerLinkPricing}</FooterRouterLink>
               <FooterRouterLink to="/vs-printful">{t.footerLinkVsPrintful}</FooterRouterLink>
@@ -106,7 +106,7 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
               <FooterLink href={lineUrl} external>
                 {t.footerLinkLine} ({lineDisplayId()})
               </FooterLink>
-              <FooterLink href="#faq">{t.footerLinkFaq}</FooterLink>
+              <FooterRouterLink to="/#faq">{t.footerLinkFaq}</FooterRouterLink>
               <FooterLink onClick={onTermsClick}>{t.footerTerms}</FooterLink>
             </nav>
           </div>
