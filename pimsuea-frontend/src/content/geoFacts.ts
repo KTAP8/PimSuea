@@ -28,7 +28,7 @@ export const GEO = {
   },
   payments: ['PromptPay', 'THB'],
   languages: ['Thai', 'English'],
-  pricingSnapshotDate: '2026-03-29',
+  pricingSnapshotDate: '2026-08-26',
 } as const;
 
 /** Public marketing URLs (also listed in sitemap.xml). */
@@ -50,31 +50,72 @@ export function geoSameAs(): string[] {
   return links;
 }
 
-/** Shirt blank pricing (Regular T-Shirt, qty 1–11). Snapshot from shirt_pricing seed. */
-export const SHIRT_BLANK_PRICING = {
-  regularWhite: { minQty: 1, maxQty: 11, thb: 130 },
-  regularBlack: { minQty: 1, maxQty: 11, thb: 130 },
-  oversizeWhite: { minQty: 1, maxQty: 11, thb: 150 },
-  oversizeBlack: { minQty: 1, maxQty: 11, thb: 150 },
+/** Active garment pricing from Supabase `shirt_pricing` (first qty bracket, size M / Free Size). */
+export const GARMENT_PRICING = [
+  {
+    nameTh: 'เสื้อยืดสกรีนลงเนื้อผ้า',
+    nameEn: 'Classic DTG tee',
+    sizeNote: 'S–XL',
+    qtyLabel: '1–11 ชิ้น',
+    colors: [
+      { key: 'White', labelTh: 'สีขาว', labelEn: 'White', thb: 199 },
+      { key: 'Other', labelTh: 'สีอื่น', labelEn: 'Other colors', thb: 219 },
+    ],
+  },
+  {
+    nameTh: 'เสื้อ oversized boxy heavyweight tee สกรีนลงเนื้อผ้า',
+    nameEn: 'Oversized boxy heavyweight tee',
+    sizeNote: 'Free Size',
+    qtyLabel: '1–11 ชิ้น',
+    colors: [
+      { key: 'White', labelTh: 'สีขาว', labelEn: 'White', thb: 390 },
+      { key: 'Other', labelTh: 'สีอื่น', labelEn: 'Other colors', thb: 420 },
+    ],
+  },
+] as const;
+
+/** DTG print add-on from Supabase `print_pricing`, qty 1–11. */
+export const DTG_PRINT_QTY1_11 = {
+  white: [
+    { tier: '3×4"', code: '3x4in', thb: 99 },
+    { tier: 'A5', code: 'A5', thb: 129 },
+    { tier: 'A4', code: 'A4', thb: 159 },
+    { tier: 'A3', code: 'A3', thb: 199 },
+  ],
+  other: [
+    { tier: '3×4"', code: '3x4in', thb: 129 },
+    { tier: 'A5', code: 'A5', thb: 169 },
+    { tier: 'A4', code: 'A4', thb: 209 },
+    { tier: 'A3', code: 'A3', thb: 259 },
+  ],
 } as const;
 
-/** DTG print tiers on white shirt, qty 1–11. Snapshot from print_pricing seed. */
-export const DTG_PRINT_WHITE_QTY1 = [
-  { tier: '3×4"', code: '3x4in', thb: 60 },
-  { tier: 'A5', code: 'A5', thb: 80 },
-  { tier: 'A4', code: 'A4', thb: 100 },
-  { tier: 'A3', code: 'A3', thb: 130 },
-] as const;
+/** Classic white tee + smallest DTG print tier (199 + 99). */
+export const EXAMPLE_STARTING_PRICE_THB = 298;
 
-/** Example all-in per piece (Regular white S/M + smallest print tier). */
-export const EXAMPLE_STARTING_PRICE_THB = 190;
-
-/** Delivery fee tiers — snapshot; live fees at GET /api/delivery-fee?qty=N */
+/** Delivery fees from Supabase `delivery_fees`. */
 export const DELIVERY_FEE_TIERS = [
-  { minQty: 1, maxQty: 11, thb: 60, label: '1–11 ชิ้น' },
-  { minQty: 12, maxQty: 23, thb: 80, label: '12–23 ชิ้น' },
-  { minQty: 24, maxQty: null as number | null, thb: 0, label: '24+ ชิ้น (ฟรี)' },
+  { minQty: 1, maxQty: 5, thb: 50, label: '1–5 ตัว', labelEn: '1–5 pcs' },
+  { minQty: 6, maxQty: 10, thb: 100, label: '6–10 ตัว', labelEn: '6–10 pcs' },
+  {
+    minQty: 11,
+    maxQty: null as number | null,
+    thb: 100,
+    label: '11 ตัวขึ้นไป',
+    labelEn: '11+ pcs',
+  },
 ] as const;
+
+/** @deprecated Use GARMENT_PRICING — kept for llms.txt compatibility scripts. */
+export const SHIRT_BLANK_PRICING = {
+  regularWhite: { minQty: 1, maxQty: 11, thb: 199 },
+  regularBlack: { minQty: 1, maxQty: 11, thb: 219 },
+  oversizeWhite: { minQty: 1, maxQty: 11, thb: 390 },
+  oversizeBlack: { minQty: 1, maxQty: 11, thb: 420 },
+} as const;
+
+/** @deprecated Use DTG_PRINT_QTY1_11.white */
+export const DTG_PRINT_WHITE_QTY1 = DTG_PRINT_QTY1_11.white;
 
 /** Numbered case notes for GEO corroboration (also on /print-on-demand). */
 export const CASE_NOTES = [

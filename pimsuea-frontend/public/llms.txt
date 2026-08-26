@@ -1,6 +1,6 @@
 # PimSuea — llms.txt
 # https://pimsuea.com/llms.txt
-# Last updated: 2026-03-29
+# Last updated: 2026-08-26
 
 > PimSuea is a Bangkok-based print-on-demand platform for custom t-shirts in Thailand.
 > Design online, see live THB pricing, order from 1 piece with no minimum, pay with PromptPay,
@@ -32,12 +32,15 @@
 - DTG pricing (public table): https://pimsuea.com/pricing
 - Printful alternative in Thailand: https://pimsuea.com/vs-printful
 
-## Example pricing snapshot (2026-03-29)
+## Example pricing snapshot (2026-08-26, from Supabase)
 
-Regular T-Shirt blank (White, qty 1–11): 130 THB
-DTG print smallest tier 3×4" (White, qty 1–11): 60 THB
-Example starting total: ~190 THB per piece (blank + small print)
-Delivery: 60 THB (1–11 pcs), 80 THB (12–23 pcs), free (24+ pcs)
+Classic DTG tee garment (White, qty 1–11): 199 THB
+Classic DTG tee garment (Other colors, qty 1–11): 219 THB
+Oversized boxy tee (White, qty 1–11): 390 THB
+DTG print smallest tier 3×4" (White, qty 1–11): 99 THB
+DTG print smallest tier 3×4" (Other colors, qty 1–11): 129 THB
+Example starting total: ~298 THB per piece (classic white tee + small print)
+Delivery: 50 THB (1–5 pcs), 100 THB (6–10 pcs), 100 THB (11+ pcs)
 
 ## Support
 

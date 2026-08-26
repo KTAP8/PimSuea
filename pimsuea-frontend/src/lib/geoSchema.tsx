@@ -131,14 +131,14 @@ export function buildPricingOfferJsonLd(): Record<string, unknown> {
     itemListElement: [
       {
         '@type': 'Offer',
-        name: 'Regular T-Shirt blank (White, qty 1–11)',
-        price: '130',
+        name: 'Classic DTG tee (White, qty 1–11)',
+        price: '199',
         priceCurrency: 'THB',
       },
       {
         '@type': 'Offer',
         name: 'DTG print 3×4" tier (White, qty 1–11)',
-        price: '60',
+        price: '99',
         priceCurrency: 'THB',
       },
     ],
