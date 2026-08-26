@@ -17,10 +17,23 @@ You can also put the same variables in `tools/.env`.
 
 ```bash
 cd tools
-python -m ops.app
+python -m venv .venv && .venv/bin/pip install -r requirements-annotate.txt
+.venv/bin/python -m ops.app
 ```
 
 Open **http://127.0.0.1:5051** (default; `tip_annotate_web.py` uses 5050)
+
+### Migrate catalog assets from Supabase Storage → R2
+
+When product gallery or canvas template URLs still point at `*.supabase.co/storage/...`, they count against Supabase cached egress. Copy them to R2 and rewrite DB URLs:
+
+```bash
+cd tools
+.venv/bin/python -m ops.migrate_all_to_r2 --dry-run   # preview
+.venv/bin/python -m ops.migrate_all_to_r2             # migrate all products
+```
+
+Or use **Migrate to R2** on each product in the ops UI (`/products/<id>`).
 
 ## Features
 
