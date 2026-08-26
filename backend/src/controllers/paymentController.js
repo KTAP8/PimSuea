@@ -21,7 +21,24 @@ function mapPaymentMethod(session) {
   return 'stripe';
 }
 
-async function fulfillDraftById(draftId, stripeMeta) {
+function getPaymentIntentId(session) {
+  return typeof session.payment_intent === 'string'
+    ? session.payment_intent
+    : session.payment_intent?.id ?? null;
+}
+
+function buildStripeMetaFromSession(session) {
+  return {
+    checkoutSessionId: session.id,
+    paymentIntentId: getPaymentIntentId(session),
+    paymentMethod: mapPaymentMethod(session),
+    paidAt: new Date().toISOString(),
+  };
+}
+
+async function fulfillDraftById(draftId, stripeMeta, options = {}) {
+  const { allowExpired = false } = options;
+
   if (!supabaseAdmin) throw new Error('Supabase admin not configured');
 
   if (stripeMeta.checkoutSessionId) {
@@ -57,8 +74,12 @@ async function fulfillDraftById(draftId, stripeMeta) {
     return { orderId: draft.order_id, alreadyFulfilled: true };
   }
 
-  if (draft.status === 'expired' || draft.status === 'cancelled') {
-    throw new Error(`Checkout draft is ${draft.status}`);
+  if (draft.status === 'cancelled') {
+    throw new Error('Checkout draft is cancelled');
+  }
+
+  if (draft.status === 'expired' && !allowExpired) {
+    throw new Error('Checkout draft is expired');
   }
 
   const pricedPayload = draft.payload;
@@ -79,6 +100,36 @@ async function fulfillDraftById(draftId, stripeMeta) {
     .eq('id', draftId);
 
   return { orderId, alreadyFulfilled: false };
+}
+
+async function fulfillCheckoutSession(session, { eventType, allowExpired = false } = {}) {
+  const label = eventType || 'fulfill';
+
+  if (session.payment_status !== 'paid') {
+    console.log(
+      `[stripe] ${label}: session ${session.id} payment_status=${session.payment_status}, skipping fulfillment`,
+    );
+    return null;
+  }
+
+  const draftId = session.metadata?.draft_id;
+  if (!draftId) {
+    console.error(`[stripe] ${label}: session ${session.id} missing metadata.draft_id — cannot fulfill`);
+    return null;
+  }
+
+  const result = await fulfillDraftById(
+    draftId,
+    buildStripeMetaFromSession(session),
+    { allowExpired },
+  );
+
+  console.log(
+    `[stripe] ${label}: draft ${draftId} session ${session.id} → order ${result.orderId}`,
+    result.alreadyFulfilled ? '(already fulfilled)' : '',
+  );
+
+  return result;
 }
 
 exports.createCheckoutSession = async (req, res) => {
@@ -184,17 +235,15 @@ exports.getCheckoutSessionStatus = async (req, res) => {
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status === 'paid' && draft.status === 'pending') {
-      const paymentIntentId = typeof session.payment_intent === 'string'
-        ? session.payment_intent
-        : session.payment_intent?.id;
-
-      const { orderId } = await fulfillDraftById(draft.id, {
-        checkoutSessionId: sessionId,
-        paymentIntentId: paymentIntentId ?? null,
-        paymentMethod: mapPaymentMethod(session),
-        paidAt: new Date().toISOString(),
-      });
+    if (
+      session.payment_status === 'paid'
+      && (draft.status === 'pending' || draft.status === 'expired')
+    ) {
+      const { orderId } = await fulfillDraftById(
+        draft.id,
+        buildStripeMetaFromSession(session),
+        { allowExpired: true },
+      );
 
       return res.json({ status: 'paid', orderId });
     }
@@ -203,7 +252,8 @@ exports.getCheckoutSessionStatus = async (req, res) => {
       await supabaseAdmin
         .from('checkout_drafts')
         .update({ status: 'expired', updated_at: new Date().toISOString() })
-        .eq('id', draft.id);
+        .eq('id', draft.id)
+        .eq('status', 'pending');
       return res.json({ status: 'expired' });
     }
 
@@ -233,21 +283,14 @@ exports.handleStripeWebhook = async (req, res) => {
   }
 
   try {
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const draftId = session.metadata?.draft_id;
-      if (draftId) {
-        const paymentIntentId = typeof session.payment_intent === 'string'
-          ? session.payment_intent
-          : session.payment_intent?.id;
-
-        await fulfillDraftById(draftId, {
-          checkoutSessionId: session.id,
-          paymentIntentId: paymentIntentId ?? null,
-          paymentMethod: mapPaymentMethod(session),
-          paidAt: new Date().toISOString(),
-        });
-      }
+    if (
+      event.type === 'checkout.session.completed'
+      || event.type === 'checkout.session.async_payment_succeeded'
+    ) {
+      await fulfillCheckoutSession(event.data.object, {
+        eventType: event.type,
+        allowExpired: true,
+      });
     } else if (event.type === 'checkout.session.expired') {
       const session = event.data.object;
       const draftId = session.metadata?.draft_id;
@@ -260,7 +303,7 @@ exports.handleStripeWebhook = async (req, res) => {
       }
     }
   } catch (err) {
-    console.error('Webhook handler error:', err);
+    console.error(`Webhook handler error (${event.type}):`, err);
     return res.status(500).json({ error: 'Webhook handler failed' });
   }
 
@@ -268,3 +311,5 @@ exports.handleStripeWebhook = async (req, res) => {
 };
 
 module.exports.fulfillDraftById = fulfillDraftById;
+module.exports.buildStripeMetaFromSession = buildStripeMetaFromSession;
+module.exports.fulfillCheckoutSession = fulfillCheckoutSession;

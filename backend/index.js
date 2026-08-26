@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { generalLimiter, strictLimiter } = require('./src/middleware/rateLimiter');
-const { startExpireCheckoutDraftsJob } = require('./src/jobs/expireCheckoutDrafts');
+const { startCheckoutDraftMaintenanceJob } = require('./src/jobs/checkoutDraftMaintenance');
 
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const catalogRoutes = require('./src/routes/catalogRoutes');
@@ -62,7 +62,7 @@ app.get('/', (req, res) => {
   res.send('PimSuea Backend API is running!');
 });
 
-startExpireCheckoutDraftsJob();
+startCheckoutDraftMaintenanceJob();
 
 // Start server
 app.listen(PORT, () => {
