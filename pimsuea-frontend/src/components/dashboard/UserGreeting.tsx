@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { motion } from 'framer-motion';
 import type { DashboardStats } from '@/hooks/useDashboardStats';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
     stats: DashboardStats;
@@ -12,23 +13,25 @@ interface Props {
 export function UserGreeting({ stats }: Props) {
     const { profile } = useAuth();
     const { cartCount } = useCart();
+    const { t } = useLanguage();
+    const d = t.dashboard;
     const name = profile?.first_name ?? null;
 
     const statCards = [
         {
-            label: 'คำสั่งซื้อของคุณ',
+            label: d.statOrders,
             value: stats.loading ? '–' : String(stats.ongoingCount),
             icon: <ShoppingBag className="w-5 h-5" />,
             to: '/orders',
         },
         {
-            label: 'ดีไซน์ที่บันทึกไว้',
+            label: d.statDesigns,
             value: stats.loading ? '–' : String(stats.designCount),
             icon: <Palette className="w-5 h-5" />,
             to: '/my-products',
         },
         {
-            label: 'สินค้าในตะกร้า',
+            label: d.statCart,
             value: String(cartCount),
             icon: <ShoppingCart className="w-5 h-5" />,
             to: '/checkout',
@@ -43,7 +46,7 @@ export function UserGreeting({ stats }: Props) {
                 transition={{ duration: 0.5, delay: 0.4 }}
                 className="text-2xl font-semibold text-slate-900 mb-6 font-display"
             >
-                สวัสดี{name ? `, คุณ ${name}` : ''}
+                {name ? `${d.greetingWithName} ${name}` : d.greeting}
             </motion.h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -57,7 +60,6 @@ export function UserGreeting({ stats }: Props) {
                         <Link to={card.to}
                             className="group flex items-center justify-between bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(8,99,109,0.12)] hover:border-primary/30 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
                             
-                            {/* Decorative background gradient on hover */}
                             <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                             
                             <div className="flex items-center gap-4 relative z-10">

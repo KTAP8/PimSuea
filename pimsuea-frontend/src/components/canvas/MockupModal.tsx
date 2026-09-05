@@ -1,4 +1,5 @@
 import { Download, X } from 'lucide-react';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface MockupResult {
     side: string;
@@ -11,14 +12,17 @@ interface Props {
 }
 
 export function MockupModal({ results, onClose }: Props) {
+    const { t } = useLanguage();
+    const s = t.studio;
+
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b">
                     <div>
-                        <h2 className="text-lg font-bold tracking-tight">Mockup Preview</h2>
-                        <p className="text-xs text-gray-400 mt-0.5">ตรวจสอบตัวอย่างงานสกรีนบนเสื้อก่อนสั่งซื้อ</p>
+                        <h2 className="text-lg font-bold tracking-tight">{s.mockupPreviewTitle}</h2>
+                        <p className="text-xs text-gray-400 mt-0.5">{s.mockupTitle}</p>
                     </div>
                     <button onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all">
@@ -37,7 +41,7 @@ export function MockupModal({ results, onClose }: Props) {
                             <a href={url} download={`mockup-${side}.png`} className="w-full">
                                 <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all">
                                     <Download className="w-3.5 h-3.5" />
-                                    ดาวน์โหลด
+                                    {s.download}
                                 </button>
                             </a>
                         </div>

@@ -12,6 +12,7 @@ import {
   type AddressField,
   REQUIRED_ADDRESS_FIELDS,
 } from '@/lib/addressValidation';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
   enabled: boolean;
@@ -36,9 +37,12 @@ export function GiftServiceLineOption({
   onRecipientChange,
   addonPrice,
   addonAvailable,
-  addonName = 'Gift Service',
+  addonName,
   validateKey = 0,
 }: Props) {
+  const { t } = useLanguage();
+  const c = t.checkout;
+  const displayAddonName = addonName ?? c.giftServiceDefaultName;
   const [expanded, setExpanded] = useState(enabled);
   const [touchedFields, setTouchedFields] = useState<Set<AddressField>>(new Set());
   const [errors, setErrors] = useState<Partial<Record<AddressField, string>>>({});
@@ -134,7 +138,7 @@ export function GiftServiceLineOption({
             {/* Name & Price */}
             <div className="flex items-center gap-2 flex-wrap min-w-0">
               <span className="font-heavy text-base text-foreground tracking-tight">
-                {addonName}
+                {displayAddonName}
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black bg-primary/10 text-primary border border-primary/20">
                 +฿{displayPrice.toLocaleString()}
@@ -148,7 +152,7 @@ export function GiftServiceLineOption({
               type="button"
               className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors shrink-0"
               onClick={() => setExpanded((v) => !v)}
-              aria-label={expanded ? 'ซ่อนรายละเอียด' : 'แสดงรายละเอียด'}
+              aria-label={expanded ? c.giftHideDetails : c.giftShowDetails}
             >
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -157,12 +161,12 @@ export function GiftServiceLineOption({
 
         {/* Subtitle Description */}
         <p className="text-xs text-muted-foreground font-light leading-relaxed pl-8 sm:pl-11">
-          กล่องของขวัญ + การ์ด ส่งตรงถึงผู้รับ (รวมค่าจัดส่ง) — ไม่แสดงราคาในกล่อง
+          {c.giftDescription}
         </p>
 
         {!addonAvailable && (
           <p className="text-xs text-amber-700 font-medium pl-8 sm:pl-11">
-            บริการของขวัญไม่พร้อมให้บริการในขณะนี้
+            {c.giftUnavailableDesc}
           </p>
         )}
       </div>
@@ -183,7 +187,7 @@ export function GiftServiceLineOption({
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <MessageSquareText className="w-3.5 h-3.5 text-primary" />
-                    ข้อความบนการ์ด (ไม่บังคับ)
+                    {c.giftCardMessage}
                   </Label>
                   <span className="text-[11px] font-medium text-muted-foreground">
                     {message.length}/{MAX_GIFT_MESSAGE_LENGTH}
@@ -192,7 +196,7 @@ export function GiftServiceLineOption({
                 <textarea
                   value={message}
                   onChange={(e) => onMessageChange(e.target.value.slice(0, MAX_GIFT_MESSAGE_LENGTH))}
-                  placeholder="เขียนข้อความถึงผู้รับ..."
+                  placeholder={c.giftCardPlaceholder}
                   className="min-h-21 w-full rounded-xl border border-input bg-background/90 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all resize-none shadow-xs"
                   maxLength={MAX_GIFT_MESSAGE_LENGTH}
                 />
@@ -203,20 +207,20 @@ export function GiftServiceLineOption({
                 <div className="flex items-center gap-2 border-b border-border/80 pb-2">
                   <MapPin className="w-4 h-4 text-primary shrink-0" />
                   <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    ที่อยู่ผู้รับของขวัญ
+                    {c.giftRecipientAddress}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="sm:col-span-2">
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      ชื่อ-นามสกุลผู้รับ <span className="text-red-500">*</span>
+                      {c.recipientName} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={recipient?.fullName ?? ''}
                       onChange={(e) => updateRecipient('fullName', e.target.value)}
                       onBlur={() => handleBlur('fullName')}
-                      placeholder="ระบุชื่อและนามสกุลผู้รับ"
+                      placeholder={c.recipientNamePlaceholder}
                       className={`h-10 text-sm rounded-xl ${fieldClass('fullName')}`}
                     />
                     {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
@@ -224,7 +228,7 @@ export function GiftServiceLineOption({
 
                   <div>
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      เบอร์โทร <span className="text-red-500">*</span>
+                      {c.recipientPhone} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={recipient?.phone ?? ''}
@@ -239,7 +243,7 @@ export function GiftServiceLineOption({
 
                   <div>
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      รหัสไปรษณีย์ <span className="text-red-500">*</span>
+                      {c.recipientPostal} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={recipient?.postalCode ?? ''}
@@ -254,13 +258,13 @@ export function GiftServiceLineOption({
 
                   <div>
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      จังหวัด <span className="text-red-500">*</span>
+                      {c.recipientProvince} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={recipient?.province ?? ''}
                       onChange={(e) => updateRecipient('province', e.target.value)}
                       onBlur={() => handleBlur('province')}
-                      placeholder="เช่น กรุงเทพมหานคร"
+                      placeholder={c.recipientProvincePlaceholder}
                       className={`h-10 text-sm rounded-xl ${fieldClass('province')}`}
                     />
                     {errors.province && <p className="text-red-500 text-xs mt-1">{errors.province}</p>}
@@ -268,13 +272,13 @@ export function GiftServiceLineOption({
 
                   <div>
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      เขต/อำเภอ <span className="text-red-500">*</span>
+                      {c.recipientDistrict} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={recipient?.district ?? ''}
                       onChange={(e) => updateRecipient('district', e.target.value)}
                       onBlur={() => handleBlur('district')}
-                      placeholder="เช่น ปทุมวัน"
+                      placeholder={c.recipientDistrictPlaceholder}
                       className={`h-10 text-sm rounded-xl ${fieldClass('district')}`}
                     />
                     {errors.district && <p className="text-red-500 text-xs mt-1">{errors.district}</p>}
@@ -282,13 +286,13 @@ export function GiftServiceLineOption({
 
                   <div className="sm:col-span-2">
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      ที่อยู่ (บ้านเลขที่, ซอย, ถนน) <span className="text-red-500">*</span>
+                      {c.recipientAddress} <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       value={recipient?.addressLine1 ?? ''}
                       onChange={(e) => updateRecipient('addressLine1', e.target.value)}
                       onBlur={() => handleBlur('addressLine1')}
-                      placeholder="บ้านเลขที่ ซอย อาคาร ถนน"
+                      placeholder={c.recipientAddressPlaceholder}
                       className={`h-10 text-sm rounded-xl ${fieldClass('addressLine1')}`}
                     />
                     {errors.addressLine1 && <p className="text-red-500 text-xs mt-1">{errors.addressLine1}</p>}
@@ -296,12 +300,12 @@ export function GiftServiceLineOption({
 
                   <div className="sm:col-span-2">
                     <Label className="text-xs font-bold text-foreground/80 mb-1 block">
-                      ที่อยู่เพิ่มเติม (ไม่บังคับ)
+                      {c.recipientAddress2}
                     </Label>
                     <Input
                       value={recipient?.addressLine2 ?? ''}
                       onChange={(e) => updateRecipient('addressLine2', e.target.value)}
-                      placeholder="เช่น ชั้น, เลขที่ห้อง, จุดสังเกต"
+                      placeholder={c.recipientAddress2Placeholder}
                       className="h-10 text-sm rounded-xl"
                     />
                   </div>

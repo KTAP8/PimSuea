@@ -1,6 +1,8 @@
 import { Loader2, Minus, Plus, ShoppingCart, X, Zap } from 'lucide-react';
 import type { CanvasPriceBreakdown } from '../../types/canvas';
-import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from '../../constants/printing';
+import { isLegacyDtfPrintingType } from '../../constants/printing';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { dtfDiscontinuedMessage } from '@/translations/app/checkout';
 
 interface Props {
     selectedSize: string;
@@ -25,6 +27,9 @@ export function OrderPanel({
     onAddToCart, onOrderNow, onClose,
     printingType,
 }: Props) {
+    const { lang, t } = useLanguage();
+    const s = t.studio;
+    const c = t.checkout;
     const isDtfLegacy = isLegacyDtfPrintingType(printingType);
     const busy = isAddingToCart || isSaving;
     const checkoutDisabled = busy || isDtfLegacy;
@@ -36,7 +41,7 @@ export function OrderPanel({
             <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                    <h3 className="font-bold text-base text-gray-900">สั่งซื้อสินค้า</h3>
+                    <h3 className="font-bold text-base text-gray-900">{s.orderProduct}</h3>
                     <button onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all">
                         <X className="w-4 h-4" />
@@ -46,18 +51,18 @@ export function OrderPanel({
                 <div className="px-5 pb-6 flex flex-col gap-5">
                     {/* Size */}
                     <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">ไซส์</p>
+                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{s.size}</p>
                         <div className="flex gap-2 flex-wrap">
-                            {availableSizes.map(s => (
+                            {availableSizes.map(size => (
                                 <button
-                                    key={s}
-                                    onClick={() => onSizeChange(s)}
+                                    key={size}
+                                    onClick={() => onSizeChange(size)}
                                     className={`px-4 py-1.5 rounded-xl text-sm font-bold border transition-all ${
-                                        selectedSize === s
+                                        selectedSize === size
                                             ? 'bg-primary text-white border-primary shadow-sm'
                                             : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
                                     }`}>
-                                    {s}
+                                    {size}
                                 </button>
                             ))}
                         </div>
@@ -65,7 +70,7 @@ export function OrderPanel({
 
                     {/* Quantity */}
                     <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">จำนวน</p>
+                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{s.quantity}</p>
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
@@ -85,30 +90,30 @@ export function OrderPanel({
                     {/* Price summary */}
                     {priceBreakdown && (
                         <div className="bg-gray-50 rounded-2xl p-4">
-                            {priceBreakdown.sides.map(s => (
-                                <div key={s.side} className="flex justify-between text-xs text-gray-500 mb-1">
-                                    <span>พิมพ์ ({s.side} · {s.tier})</span>
-                                    <span>฿{s.print_per_unit.toLocaleString()}</span>
+                            {priceBreakdown.sides.map(side => (
+                                <div key={side.side} className="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>{c.print} ({side.side} · {side.tier})</span>
+                                    <span>฿{side.print_per_unit.toLocaleString()}</span>
                                 </div>
                             ))}
                             <div className="flex justify-between text-xs text-gray-500 mb-2">
-                                <span>เสื้อ</span>
+                                <span>{c.shirt}</span>
                                 <span>฿{priceBreakdown.shirt_per_unit.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between font-bold text-sm text-gray-900 border-t pt-2">
-                                <span>รวม × {quantity}</span>
+                                <span>{s.totalTimesQty} {quantity}</span>
                                 <span>฿{totalPrice?.toLocaleString() ?? '—'}</span>
                             </div>
                         </div>
                     )}
                     {!priceBreakdown && (
-                        <p className="text-xs text-gray-400 text-center">บันทึกดีไซน์เพื่อดูราคา</p>
+                        <p className="text-xs text-gray-400 text-center">{s.saveDesignToSeePrice}</p>
                     )}
 
                     {isDtfLegacy && (
                         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
                             <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                                {DTF_DISCONTINUED_MESSAGE}
+                                {dtfDiscontinuedMessage(lang)}
                             </p>
                         </div>
                     )}
@@ -120,19 +125,19 @@ export function OrderPanel({
                             disabled={checkoutDisabled}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-sm hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all">
                             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                            สั่งซื้อทันที
+                            {s.orderNow}
                         </button>
                         <button
                             onClick={onAddToCart}
                             disabled={checkoutDisabled}
                             className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all">
                             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-                            เพิ่มลงตะกร้า
+                            {s.addToCart}
                         </button>
                     </div>
 
                     <p className="text-[10px] text-gray-400 text-center -mt-2">
-                        ดีไซน์จะถูกบันทึกอัตโนมัติก่อนสั่งซื้อ
+                        {s.autoSaveBeforeOrder}
                     </p>
                 </div>
             </div>

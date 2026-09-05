@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getDesignById, getProductById, createCheckoutSession, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee, fetchAddons } from "@/services/api";
 import CouponInput, { type AppliedCoupon, type CouponItem, computeDiscount } from "@/components/CouponInput";
-import { DTF_DISCONTINUED_MESSAGE, isLegacyDtfPrintingType } from "@/constants/printing";
+import { isLegacyDtfPrintingType } from "@/constants/printing";
+import { dtfDiscontinuedMessage } from "@/translations/app/checkout";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -22,6 +24,7 @@ import {
   firstAddressError,
 } from "@/lib/addressValidation";
 import { parsePreviewUrls, resolvePreviewDisplayUrl, getPreviewDisplayUrl } from "@/lib/previews";
+import { getProductName } from "@/lib/productName";
 
 // Interfaces
 interface SidePriceBreakdown { side: string; tier: string; print_per_unit: number; }
@@ -40,6 +43,7 @@ interface CartItem {
   previewUrls?: Record<string, string>; // color_id → preview URL
   productId: string;
   productName: string;
+  productNameEn?: string | null;
   size: string;
   color: string;     // display name
   color_id: string;  // used for pricing lookup
@@ -133,6 +137,9 @@ async function repriceAll(items: CartItem[]): Promise<CartItem[]> {
 }
 
 export default function Order() {
+  const { lang, t } = useLanguage();
+  const c = t.checkout;
+  const common = t.common;
   // Router
   const [searchParams] = useSearchParams();
   const initialDesignId = searchParams.get('initialDesignId');
@@ -230,7 +237,7 @@ export default function Order() {
   useEffect(() => {
     if (nonGiftQty < 1) {
       setDeliveryFee(0);
-      setDeliveryLabel(nonGiftQty === 0 && giftLineCount > 0 ? 'รวมในบริการของขวัญ' : '');
+      setDeliveryLabel(nonGiftQty === 0 && giftLineCount > 0 ? c.includedInGift : '');
       return;
     }
     fetchDeliveryFee(nonGiftQty).then(({ fee, label }) => {
@@ -331,6 +338,7 @@ export default function Order() {
                 previewUrls,
                 productId: String(product.id),
                 productName: product.name,
+                productNameEn: product.name_en,
                 size: initialSize,
                 color: initialColor?.name || 'Default',
                 color_id: initialColorId,
@@ -407,6 +415,7 @@ export default function Order() {
                          previewUrls,
                          productId: String(product.id),
                          productName: product.name,
+                         productNameEn: product.name_en,
                          size: cItem.size,
                          color: availableColors.find((c: any) => c.id === cItem.color_id)?.name || cItem.color_id,
                          color_id: colorId,
@@ -507,6 +516,7 @@ export default function Order() {
                 previewUrls,
                 productId: String(product.id),
                 productName: product.name,
+                productNameEn: product.name_en,
                 size: initialSize,
                 color: initialColor?.name || 'Default',
                 color_id: initialColorId,
@@ -568,8 +578,8 @@ export default function Order() {
       if (hasDtfItems) {
           setNotification({
               type: 'error',
-              title: 'ไม่สามารถดำเนินการต่อได้',
-              message: DTF_DISCONTINUED_MESSAGE,
+              title: c.cannotProceed,
+              message: dtfDiscontinuedMessage(lang),
           });
           return;
       }
@@ -577,8 +587,8 @@ export default function Order() {
           if (giftLineCount > 0 && !giftAddon) {
               setNotification({
                   type: 'error',
-                  title: 'บริการของขวัญไม่พร้อม',
-                  message: 'บริการของขวัญไม่พร้อมให้บริการในขณะนี้ กรุณาปิดตัวเลือกของขวัญหรือลองใหม่ภายหลัง',
+                  title: c.giftUnavailable,
+                  message: c.giftUnavailableDesc,
               });
               return;
           }
@@ -590,7 +600,7 @@ export default function Order() {
                       ...prev,
                       [item.id]: (prev[item.id] ?? 0) + 1,
                   }));
-                  setNotification({ type: 'error', title: 'ข้อมูลของขวัญไม่ครบ', message: `${item.designName}: ${err}` });
+                  setNotification({ type: 'error', title: c.giftIncomplete, message: `${item.designName}: ${err}` });
                   return;
               }
           }
@@ -688,8 +698,8 @@ export default function Order() {
       if (hasDtfItems) {
           setNotification({
               type: 'error',
-              title: 'ไม่สามารถสั่งซื้อได้',
-              message: DTF_DISCONTINUED_MESSAGE,
+              title: c.cannotOrder,
+              message: dtfDiscontinuedMessage(lang),
           });
           return;
       }
@@ -712,10 +722,10 @@ export default function Order() {
       } catch (error: unknown) {
           console.error("Checkout session failed:", error);
           const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error
-              || 'เกิดข้อผิดพลาดในการชำระเงิน กรุณาลองใหม่อีกครั้ง';
+              || c.paymentError;
           setNotification({
              type: 'error',
-             title: 'เกิดข้อผิดพลาด',
+             title: common.error,
              message,
           });
           setLoading(false);
@@ -743,36 +753,36 @@ export default function Order() {
       <div className="flex items-center justify-center mb-8">
           <div className={`flex items-center gap-1.5 ${step >= 1 ? 'text-primary' : 'text-gray-400'}`}>
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">1</div>
-              <span className="hidden sm:inline text-sm">ตะกร้าสินค้า</span>
+              <span className="hidden sm:inline text-sm">{c.cart}</span>
           </div>
           <div className="w-8 sm:w-12 h-0.5 bg-gray-200 mx-2 sm:mx-4 shrink-0" />
           <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-primary' : 'text-gray-400'}`}>
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">2</div>
-              <span className="hidden sm:inline text-sm">ที่อยู่จัดส่ง</span>
+              <span className="hidden sm:inline text-sm">{c.shipping}</span>
           </div>
           <div className="w-8 sm:w-12 h-0.5 bg-gray-200 mx-2 sm:mx-4 shrink-0" />
            <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-primary' : 'text-gray-400'}`}>
               <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold border-current shrink-0">3</div>
-              <span className="hidden sm:inline text-sm">สรุป & จ่ายเงิน</span>
+              <span className="hidden sm:inline text-sm">{c.summary}</span>
           </div>
       </div>
 
       {step === 1 && (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold flex items-center"><ShoppingCart className="mr-2" /> ตะกร้าสินค้า</h2>
+            <h2 className="text-2xl font-bold flex items-center"><ShoppingCart className="mr-2" /> {c.cartTitle}</h2>
 
             {hasDtfItems && (
                 <Alert variant="destructive" className="bg-amber-50 border-amber-200 text-amber-800">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle className="font-semibold">ไม่สามารถสั่งซื้องาน DTF ได้</AlertTitle>
-                    <AlertDescription>{DTF_DISCONTINUED_MESSAGE}</AlertDescription>
+                    <AlertTitle className="font-semibold">{c.dtfBlocked}</AlertTitle>
+                    <AlertDescription>{dtfDiscontinuedMessage(lang)}</AlertDescription>
                 </Alert>
             )}
             
              {cartItems.length === 0 ? (
                 <div className="text-center py-12 border-2 border-dashed rounded-xl">
-                    <p className="text-gray-500 mb-4">ยังไม่มีสินค้าในตะกร้า</p>
-                    <Button onClick={() => navigate('/my-products')}>เลือกผลงานออกแบบ</Button>
+                    <p className="text-gray-500 mb-4">{c.cartEmpty}</p>
+                    <Button onClick={() => navigate('/my-products')}>{c.pickDesign}</Button>
                 </div>
              ) : (
                  <div className="space-y-4">
@@ -783,7 +793,12 @@ export default function Order() {
                              <img src={item.designImage} alt={item.designName} className="w-20 h-20 md:w-24 md:h-24 object-contain bg-gray-50 rounded-md border shrink-0" />
                              <div className="flex-1 min-w-0">
                                      <h3 className="font-semibold">{item.designName}</h3>
-                                     <p className="text-sm text-gray-500">{item.productName}</p>
+                                     <p className="text-sm text-gray-500">
+                                         {getProductName(
+                                             { name: item.productName, name_en: item.productNameEn },
+                                             lang,
+                                         )}
+                                     </p>
                                  </div>
                              </div>
                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
@@ -824,19 +839,19 @@ export default function Order() {
                                  {item.priceBreakdown ? (
                                      <div className="text-left md:text-right space-y-0.5">
                                          <div className="flex justify-between gap-4 text-xs text-gray-400">
-                                             <span>เสื้อ</span>
+                                             <span>{c.shirt}</span>
                                              <span>฿{item.priceBreakdown.shirt_per_unit.toLocaleString()}</span>
                                          </div>
                                          {item.priceBreakdown.sides.map(s => (
                                              <div key={s.side} className="flex justify-between gap-4 text-xs text-gray-400">
-                                                 <span>พิมพ์ {s.side} ({s.tier})</span>
+                                                 <span>{c.print} {s.side} ({s.tier})</span>
                                                  <span>฿{s.print_per_unit.toLocaleString()}</span>
                                              </div>
                                          ))}
-                                         <div className="text-xs text-gray-500 font-medium border-t pt-0.5">฿{item.price.toLocaleString()} / ชิ้น</div>
+                                         <div className="text-xs text-gray-500 font-medium border-t pt-0.5">฿{item.price.toLocaleString()} {common.perPiece}</div>
                                      </div>
                                  ) : (
-                                     <span className="text-xs text-gray-400">฿{item.price.toLocaleString()} / ชิ้น</span>
+                                     <span className="text-xs text-gray-400">฿{item.price.toLocaleString()} {common.perPiece}</span>
                                  )}
                                  </div>
                                  <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50 h-11 w-11 shrink-0" onClick={() => removeItem(item.id)}>
@@ -870,14 +885,14 @@ export default function Order() {
                  <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
                      <SheetTrigger asChild>
                          <Button variant="outline" className="h-12 px-6 rounded-2xl border-gray-200 text-gray-700 font-bold hover:bg-gray-50 hover:border-gray-300 shadow-sm transition-all duration-300">
-                             <Plus className="w-5 h-5 mr-2"/> ซื้อสินค้าเพิ่ม
+                             <Plus className="w-5 h-5 mr-2"/> {c.addMore}
                          </Button>
                      </SheetTrigger>
                      <SheetContent side="right" className="w-[85vw] sm:w-100 md:w-135 bg-gray-50 border-l border-gray-100 pt-12 shadow-2xl">
                          <SheetHeader className="mb-6 px-2">
                              <SheetTitle className="font-bold text-2xl text-gray-900 flex items-center gap-3">
                                 <span className="bg-primary/10 p-2 rounded-xl text-primary"><Plus className="w-5 h-5" /></span>
-                                เลือกผลงานออกแบบ
+                                {c.pickDesign}
                              </SheetTitle>
                          </SheetHeader>
                          <ScrollArea className="h-[calc(100vh-120px)] px-2 pb-6">
@@ -885,7 +900,7 @@ export default function Order() {
                                  <div className="flex justify-center py-20 px-4"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>
                              ) : myDesigns.length === 0 ? (
                                  <div className="text-center p-12 bg-white border border-dashed border-gray-200 rounded-3xl mt-4">
-                                     <p className="text-gray-500 font-medium">ยังไม่มีผลงานออกแบบ</p>
+                                     <p className="text-gray-500 font-medium">{c.noDesigns}</p>
                                  </div>
                              ) : (
                                  <div className="grid grid-cols-2 gap-4 pb-8">
@@ -917,7 +932,7 @@ export default function Order() {
                                              <div className="px-1 text-center">
                                                 <p className="font-bold text-sm text-gray-900 truncate">{design.design_name}</p>
                                                 <div className="inline-flex items-center text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-1">
-                                                    <Plus className="w-3 h-3 mr-1" /> เพิ่มลงตะกร้า
+                                                    <Plus className="w-3 h-3 mr-1" /> {c.addToCartDesign}
                                                 </div>
                                              </div>
                                          </div>
@@ -929,10 +944,10 @@ export default function Order() {
                  </Sheet>
 
                  <div className="text-right">
-                     <p className="text-gray-500">รวมทั้งหมด ({totalItems} ชิ้น)</p>
+                     <p className="text-gray-500">{c.totalAll} ({totalItems} {common.pieces})</p>
                      <p className="text-3xl font-bold text-primary">฿{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
                      {addonFeesTotal > 0 && (
-                         <p className="text-xs text-gray-400">รวมบริการของขวัญ +฿{addonFeesTotal.toLocaleString()}</p>
+                         <p className="text-xs text-gray-400">{c.giftServiceTotal} +฿{addonFeesTotal.toLocaleString()}</p>
                      )}
                  </div>
              </div>
@@ -941,11 +956,11 @@ export default function Order() {
 
       {step === 2 && (
           <div className="space-y-6 max-w-xl mx-auto">
-              <h2 className="text-2xl font-bold flex items-center"><Truck className="mr-2" /> ที่อยู่ติดต่อ / จัดส่ง (ผู้สั่ง)</h2>
-              <p className="text-sm text-muted-foreground">ใช้สำหรับติดต่อและจัดส่งรายการที่ไม่ใช่ของขวัญ รายการของขวัญใช้ที่อยู่ผู้รับที่ระบุในแต่ละชิ้น</p>
+              <h2 className="text-2xl font-bold flex items-center"><Truck className="mr-2" /> {c.shippingStepTitle}</h2>
+              <p className="text-sm text-muted-foreground">{c.shippingStepDesc}</p>
               <div className="grid grid-cols-1 gap-4">
                   <div>
-                      <Label>ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
+                      <Label>{c.recipientName} <span className="text-red-500">*</span></Label>
                       <Input
                           value={shippingInfo.fullName}
                           onChange={(e) => handleShippingChange('fullName', e.target.value)}
@@ -955,7 +970,7 @@ export default function Order() {
                       {shippingErrors.fullName && <p className="text-red-500 text-xs mt-1">{shippingErrors.fullName}</p>}
                   </div>
                   <div>
-                      <Label>เบอร์โทรศัพท์ <span className="text-red-500">*</span></Label>
+                      <Label>{c.recipientPhone} <span className="text-red-500">*</span></Label>
                       <Input
                           value={shippingInfo.phone}
                           onChange={(e) => handleShippingChange('phone', e.target.value)}
@@ -967,7 +982,7 @@ export default function Order() {
                   </div>
                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                             <Label>จังหวัด <span className="text-red-500">*</span></Label>
+                             <Label>{c.recipientProvince} <span className="text-red-500">*</span></Label>
                              <Input
                                  value={shippingInfo.province}
                                  onChange={(e) => handleShippingChange('province', e.target.value)}
@@ -977,7 +992,7 @@ export default function Order() {
                              {shippingErrors.province && <p className="text-red-500 text-xs mt-1">{shippingErrors.province}</p>}
                         </div>
                         <div>
-                             <Label>เขต/อำเภอ <span className="text-red-500">*</span></Label>
+                             <Label>{c.recipientDistrict} <span className="text-red-500">*</span></Label>
                              <Input
                                  value={shippingInfo.district}
                                  onChange={(e) => handleShippingChange('district', e.target.value)}
@@ -988,7 +1003,7 @@ export default function Order() {
                         </div>
                    </div>
                    <div>
-                         <Label>รหัสไปรษณีย์ <span className="text-red-500">*</span></Label>
+                         <Label>{c.recipientPostal} <span className="text-red-500">*</span></Label>
                          <Input
                              value={shippingInfo.postalCode}
                              onChange={(e) => handleShippingChange('postalCode', e.target.value)}
@@ -999,7 +1014,7 @@ export default function Order() {
                          {shippingErrors.postalCode && <p className="text-red-500 text-xs mt-1">{shippingErrors.postalCode}</p>}
                    </div>
                    <div>
-                       <Label>ที่อยู่ (บ้านเลขที่, ซอย, ถนน) <span className="text-red-500">*</span></Label>
+                       <Label>{c.recipientAddress} <span className="text-red-500">*</span></Label>
                        <Input
                            value={shippingInfo.addressLine1}
                            onChange={(e) => handleShippingChange('addressLine1', e.target.value)}
@@ -1014,15 +1029,15 @@ export default function Order() {
 
       {step === 3 && (
           <div className="space-y-6">
-               <h2 className="text-2xl font-bold flex items-center"><Check className="mr-2" /> ตรวจสอบรายการ</h2>
+               <h2 className="text-2xl font-bold flex items-center"><Check className="mr-2" /> {c.reviewOrder}</h2>
                <div className="bg-gray-50 p-6 rounded-xl border space-y-4">
-                   <h3 className="font-semibold border-b pb-2">สรุปคำสั่งซื้อ</h3>
+                   <h3 className="font-semibold border-b pb-2">{c.orderSummary}</h3>
                    {cartItems.map(item => (
                        <div key={item.id} className="space-y-0.5">
                            <div className="flex justify-between text-sm font-medium">
                                <span>
                                    {item.designName} ({item.size}, {item.color}) x {item.quantity}
-                                   {item.is_gift && <span className="ml-1 text-primary text-xs font-bold">🎁 ของขวัญ</span>}
+                                   {item.is_gift && <span className="ml-1 text-primary text-xs font-bold">🎁 {c.giftBadge}</span>}
                                </span>
                                <span>฿{(item.price * item.quantity).toLocaleString()}</span>
                            </div>
@@ -1033,18 +1048,18 @@ export default function Order() {
                                </div>
                            )}
                            {item.is_gift && item.gift_recipient?.fullName && (
-                               <p className="text-xs text-gray-500 pl-2">ส่งถึง: {item.gift_recipient.fullName}</p>
+                               <p className="text-xs text-gray-500 pl-2">{c.sendTo}: {item.gift_recipient.fullName}</p>
                            )}
                            {item.priceBreakdown && (
                                <div className="pl-2 space-y-0.5">
                                    <div className="flex justify-between text-xs text-gray-400">
-                                       <span>เสื้อ</span>
-                                       <span>฿{item.priceBreakdown.shirt_per_unit.toLocaleString()} / ชิ้น</span>
+                                       <span>{c.shirt}</span>
+                                       <span>฿{item.priceBreakdown.shirt_per_unit.toLocaleString()} {common.perPiece}</span>
                                    </div>
-                                   {item.priceBreakdown.sides.map(s => (
-                                       <div key={s.side} className="flex justify-between text-xs text-gray-400">
-                                           <span>พิมพ์ {s.side} ({s.tier})</span>
-                                           <span>฿{s.print_per_unit.toLocaleString()} / ชิ้น</span>
+                                   {item.priceBreakdown.sides.map(sideRow => (
+                                       <div key={sideRow.side} className="flex justify-between text-xs text-gray-400">
+                                           <span>{c.print} {sideRow.side} ({sideRow.tier})</span>
+                                           <span>฿{sideRow.print_per_unit.toLocaleString()} {common.perPiece}</span>
                                        </div>
                                    ))}
                                </div>
@@ -1060,41 +1075,41 @@ export default function Order() {
                        />
                    </div>
                    <div className="flex justify-between text-sm text-gray-600 pt-2 border-t">
-                       <span>ราคาสินค้า</span>
+                       <span>{c.productSubtotal}</span>
                        <span>฿{totalPrice.toLocaleString()}</span>
                    </div>
                    {addonFeesTotal > 0 && (
                        <div className="flex justify-between text-sm text-gray-600">
-                           <span>บริการของขวัญ ({giftLineCount} รายการ)</span>
+                           <span>{c.giftServiceLines} ({giftLineCount} {c.itemsCount})</span>
                            <span>+฿{addonFeesTotal.toLocaleString()}</span>
                        </div>
                    )}
                    {discountAmount > 0 && (
                        <div className="flex justify-between text-sm text-green-600">
-                           <span>ส่วนลด ({appliedCoupon?.code})</span>
+                           <span>{c.discountLabel} ({appliedCoupon?.code})</span>
                            <span>-฿{discountAmount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                        </div>
                    )}
                    <div className="flex justify-between text-sm text-gray-600">
-                       <span>ค่าจัดส่ง{deliveryLabel ? ` (${deliveryLabel})` : ''}</span>
-                       <span>{deliveryFee === 0 ? 'ฟรี' : `฿${deliveryFee.toLocaleString()}`}</span>
+                       <span>{c.shippingFee}{deliveryLabel ? ` (${deliveryLabel})` : ''}</span>
+                       <span>{deliveryFee === 0 ? c.free : `฿${deliveryFee.toLocaleString()}`}</span>
                    </div>
                    <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                       <span>ยอดรวมสุทธิ</span>
+                       <span>{c.netTotal}</span>
                        <span>฿{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                    </div>
                </div>
                
                <div className="bg-gray-50 p-6 rounded-xl border">
-                    <h3 className="font-semibold border-b pb-2 mb-2">ที่อยู่ติดต่อ / จัดส่ง (สำหรับรายการที่ไม่ใช่ของขวัญ)</h3>
+                    <h3 className="font-semibold border-b pb-2 mb-2">{c.shippingAddressTitle}</h3>
                     <p>{shippingInfo.fullName} ({shippingInfo.phone})</p>
                     <p>{shippingInfo.addressLine1} {shippingInfo.province} {shippingInfo.postalCode}</p>
                </div>
 
                <div className="bg-gray-50 p-6 rounded-xl border space-y-4">
-                    <h3 className="font-semibold border-b pb-2">ภาพตัวอย่างที่จะพิมพ์</h3>
+                    <h3 className="font-semibold border-b pb-2">{c.previewSectionTitle}</h3>
                     <p className="text-sm text-muted-foreground font-light">
-                      ตรวจสอบลายและตำแหน่งพิมพ์ให้ถูกต้องก่อนยืนยันคำสั่งซื้อ
+                      {c.previewSectionDesc}
                     </p>
                     <div className="flex flex-wrap gap-3">
                       {cartItems.map(item => (
@@ -1108,24 +1123,24 @@ export default function Order() {
                         </div>
                       ))}
                     </div>
-                    <CheckoutReprintGuarantee onPolicyClick={openReprintPolicy} />
+                    <CheckoutReprintGuarantee onPolicyClick={openReprintPolicy} locale={lang} />
                </div>
           </div>
       )}
 
       <div className="sticky bottom-0 z-20 -mx-4 px-4 py-4 mt-8 flex justify-between gap-3 bg-slate-50/95 backdrop-blur-sm border-t border-gray-200 pb-safe">
             {step > 1 ? (
-                <Button variant="outline" onClick={handleBack} className="min-h-11">ย้อนกลับ</Button>
+                <Button variant="outline" onClick={handleBack} className="min-h-11">{common.back}</Button>
             ) : <div />}
 
             {step < 3 ? (
                 <Button onClick={handleNext} disabled={cartItems.length === 0 || hasDtfItems} className="min-h-11">
-                    ดำเนินการต่อ <ChevronRight className="w-4 h-4 ml-2" />
+                    {common.continue} <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
             ) : (
                 <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700 min-h-11" disabled={loading || hasDtfItems}>
                     {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    ชำระเงิน
+                    {c.pay}
                 </Button>
             )}
         </div>
@@ -1134,6 +1149,7 @@ export default function Order() {
         open={termsOpen}
         onClose={closeTerms}
         initialExpandedSection={termsSection}
+        lang={lang}
       />
     </div>
   );

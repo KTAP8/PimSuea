@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PageSEO } from "@/components/PageSEO";
 import { buildGeoJsonLd, JsonLdScript } from "@/lib/geoSchema";
 import { GEO_URLS } from "@/content/geoFacts";
@@ -18,7 +18,6 @@ import {
   Zap,
   Truck,
   Loader2,
-  Globe,
   ShieldCheck,
   Clock,
   Activity,
@@ -34,23 +33,10 @@ import {
 import { SiteFooter } from "@/components/SiteFooter";
 import { InspirationShowcaseSection } from "@/components/marketing/InspirationShowcase";
 import { NationwideDeliverySection } from "@/components/marketing/NationwideDeliverySection";
-import { type Language, translations } from "@/translations/landing";
+import { useLandingLang } from "@/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 import { appUrl } from "@/lib/site";
 import { getProductName } from "@/lib/productName";
-
-const LandingLangContext = createContext<{
-  lang: Language;
-  t: (typeof translations)["en"];
-  setLang: (l: Language) => void;
-}>({
-  lang: "th",
-  t: translations.th,
-  setLang: () => {},
-});
-
-function useLandingLang() {
-  return useContext(LandingLangContext);
-}
 
 const TRUST_LOGOS = [
   { src: "/logos/Horizontal_Black.webp", alt: "Partner logo", scale: 2.4 },
@@ -863,8 +849,7 @@ function GiftSpotlightSection() {
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function NewLanding() {
-  const [lang, setLang] = useState<Language>("th");
-  const t = translations[lang];
+  const { lang, t } = useLandingLang();
   const [scrolled, setScrolled] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -916,7 +901,7 @@ export default function NewLanding() {
   });
 
   return (
-    <LandingLangContext.Provider value={{ lang, t, setLang }}>
+    <>
       <PageSEO
         title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
         description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG printing. Fast delivery across Thailand."
@@ -937,13 +922,7 @@ export default function NewLanding() {
               <img src="/logo.svg" alt="PimSuea" className="h-8" />
             </Link>
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setLang(lang === "en" ? "th" : "en")}
-                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2"
-              >
-                <Globe className="w-4 h-4" />
-                {lang === "en" ? "ไทย" : "English"}
-              </button>
+              <LanguageSwitcher />
               <a href={appUrl("/catalog")}>
                 <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
                   {t.navStartDesigning} <ArrowRight className="w-4 h-4 ml-2" />
@@ -1215,6 +1194,6 @@ export default function NewLanding() {
           lang={lang}
         />
       </div>
-    </LandingLangContext.Provider>
+    </>
   );
 }

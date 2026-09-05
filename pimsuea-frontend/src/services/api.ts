@@ -55,7 +55,7 @@ export const getCategories = async (): Promise<Category[]> => {
 };
 
 export interface GetProductsParams {
-    category_id?: number | null;
+    category_id?: string | number | null;
     is_beginner_friendly?: boolean;
 }
 

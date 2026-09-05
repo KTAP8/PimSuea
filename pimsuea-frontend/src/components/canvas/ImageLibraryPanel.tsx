@@ -1,5 +1,6 @@
 import { X, Upload, ImageIcon, Loader2, Trash2 } from 'lucide-react';
 import { r2ProxyUrl } from '../../services/api';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
     userUploads: { name: string; url: string }[];
@@ -13,10 +14,13 @@ interface Props {
 }
 
 export function ImageLibraryPanel({ userUploads, loadingUploads, uploadsError, isUploading, onClose, onAddImage, onUpload, onDeleteRequest }: Props) {
+    const { t } = useLanguage();
+    const s = t.studio;
+
     return (
         <div className="fixed md:absolute bottom-toolbar-offset md:bottom-4 left-0 right-0 md:left-24 top-auto md:top-4 max-h-[50dvh] md:max-h-none md:h-auto md:w-80 bg-white shadow-[0_-8px_30px_rgb(0,0,0,0.12)] md:shadow-2xl rounded-t-3xl md:rounded-2xl border flex flex-col z-40 overflow-hidden">
             <div className="p-4 md:p-5 border-b flex items-center justify-between bg-gray-50/50">
-                <h3 className="font-bold text-lg">คลังรูปภาพ</h3>
+                <h3 className="font-bold text-lg">{s.imageLibrary}</h3>
                 <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-200">
                     <X className="w-4 h-4" />
                 </button>
@@ -25,10 +29,10 @@ export function ImageLibraryPanel({ userUploads, loadingUploads, uploadsError, i
             <div className="p-4 border-b space-y-2">
                 <label className={`w-full h-11 text-white rounded-xl flex items-center justify-center cursor-pointer gap-2 transition-all shadow-sm ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}>
                     {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    <span className="text-sm font-semibold">{isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูปใหม่'}</span>
+                    <span className="text-sm font-semibold">{isUploading ? s.uploading : s.uploadNew}</span>
                     <input type="file" className="hidden" accept="image/*" onChange={onUpload} disabled={isUploading} />
                 </label>
-                <p className="text-xs text-gray-400 text-center">รองรับ PNG, JPG · แนะนำ 300 DPI ขึ้นไป</p>
+                <p className="text-xs text-gray-400 text-center">{s.uploadHint}</p>
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -44,7 +48,7 @@ export function ImageLibraryPanel({ userUploads, loadingUploads, uploadsError, i
                     ) : userUploads.length === 0 ? (
                         <div className="col-span-2 flex flex-col items-center justify-center text-center text-gray-400 py-10 gap-2">
                             <ImageIcon className="w-10 h-10 opacity-20" />
-                            <span className="text-sm">ไม่มีรูปภาพ</span>
+                            <span className="text-sm">{s.noImages}</span>
                         </div>
                     ) : (
                         userUploads.map((file, i) => (

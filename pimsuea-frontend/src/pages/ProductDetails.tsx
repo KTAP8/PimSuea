@@ -9,8 +9,13 @@ import type { Product } from "@/types/api";
 import type { PriceEstimate } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { getProductName } from "@/lib/productName";
 
 export default function ProductDetails() {
+  const { lang, t } = useLanguage();
+  const cat = t.catalog;
+  const common = t.common;
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState<Product | null>(null);
@@ -33,10 +38,10 @@ export default function ProductDetails() {
   const [estError, setEstError] = useState<string | null>(null);
 
   const TIER_LABELS: Record<string, string> = {
-    '3x4in': '3×4" (เล็ก)',
-    'A5':    'A5 (กลาง)',
-    'A4':    'A4 (ใหญ่)',
-    'A3':    'A3 (ใหญ่มาก)',
+    '3x4in': cat.tierSmall,
+    'A5':    cat.tierA5,
+    'A4':    cat.tierA4,
+    'A3':    cat.tierA3,
   };
 
   const handleEstimate = async () => {
@@ -44,7 +49,7 @@ export default function ProductDetails() {
     const ft = frontTier === 'none' ? undefined : frontTier;
     const bt = backTier === 'none' ? undefined : backTier;
     if (!ft && !bt) {
-      setEstError('กรุณาเลือกขนาดพิมพ์อย่างน้อย 1 ด้าน');
+      setEstError(cat.selectPrintSize);
       return;
     }
     const size = estSize || product.available_sizes?.[0] || 'M';
@@ -64,7 +69,7 @@ export default function ProductDetails() {
       setEstResult(result);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setEstError(msg || 'คำนวณราคาไม่สำเร็จ');
+      setEstError(msg || cat.estimateFailed);
     } finally {
       setEstLoading(false);
     }
@@ -84,7 +89,7 @@ export default function ProductDetails() {
         }
       } catch (err) {
         console.error("Failed to load product:", err);
-        setError("ไม่พบข้อมูลสินค้าหรือเกิดข้อผิดพลาด");
+        setError(cat.loadProductError);
       } finally {
         setLoading(false);
       }
@@ -117,18 +122,20 @@ export default function ProductDetails() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-red-500 space-y-4">
         <AlertCircle className="w-12 h-12" />
-        <p className="text-xl font-semibold">{error || "ไม่พบสินค้า"}</p>
+        <p className="text-xl font-semibold">{error || cat.notFound}</p>
         <Link to="/catalog">
-            <Button variant="outline">กลับไปแคตตาล็อก</Button>
+            <Button variant="outline">{cat.backToCatalog}</Button>
         </Link>
       </div>
     );
   }
 
+  const productName = getProductName(product, lang);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Link to="/catalog" className="inline-flex items-center text-gray-500 hover:text-primary mb-6">
-        <ArrowLeft className="w-4 h-4 mr-1" /> กลับไปแคตตาล็อก
+        <ArrowLeft className="w-4 h-4 mr-1" /> {cat.backToCatalog}
       </Link>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -143,24 +150,24 @@ export default function ProductDetails() {
                     <>
                         <img
                             src={product.images[activeImageIdx]}
-                            alt={`${product.name} ${activeImageIdx + 1}`}
+                            alt={`${productName} ${activeImageIdx + 1}`}
                             className="w-full h-full object-cover"
                         />
                         {product.hover_image_url && (
                             <img
                                 src={product.hover_image_url}
-                                alt={`${product.name} hover`}
+                                alt={`${productName} hover`}
                                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mainImageHovered && activeImageIdx === 0 ? 'opacity-100' : 'opacity-0'}`}
                             />
                         )}
                     </>
                 ) : product.image_url ? (
                     <>
-                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={product.image_url} alt={productName} className="w-full h-full object-cover" />
                         {product.hover_image_url && (
                             <img
                                 src={product.hover_image_url}
-                                alt={`${product.name} hover`}
+                                alt={`${productName} hover`}
                                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${mainImageHovered && activeImageIdx === 0 ? 'opacity-100' : 'opacity-0'}`}
                             />
                         )}
@@ -178,7 +185,7 @@ export default function ProductDetails() {
                             onMouseEnter={() => setActiveImageIdx(i)}
                             className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${i === activeImageIdx ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100'}`}
                         >
-                            <img src={url} alt={`${product.name} ${i + 1}`} className="w-full h-full object-cover" />
+                            <img src={url} alt={`${productName} ${i + 1}`} className="w-full h-full object-cover" />
                         </button>
                     ))}
                 </div>
@@ -188,15 +195,15 @@ export default function ProductDetails() {
         {/* Right: Info */}
         <div className="space-y-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-gray-900 tracking-tight">{product.name}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-gray-900 tracking-tight">{productName}</h1>
             <div className="flex items-baseline gap-2 mt-3">
                 {product.starting_price ? (
                     <>
                         <p className="text-4xl font-black text-primary">฿{product.starting_price.toLocaleString()}</p>
-                        <span className="text-gray-500 font-medium">ราคาเริ่มต้น / ชิ้น</span>
+                        <span className="text-gray-500 font-medium">{cat.perPieceStarting}</span>
                     </>
                 ) : (
-                    <p className="text-2xl font-bold text-gray-400">ติดต่อสอบถาม</p>
+                    <p className="text-2xl font-bold text-gray-400">{cat.contactForPrice}</p>
                 )}
             </div>
           </div>
@@ -206,7 +213,7 @@ export default function ProductDetails() {
             {(product.print_methods?.length ?? 0) > 1 && (
             <div className="space-y-4">
                 <Label className="flex items-center text-lg font-bold text-gray-900 border-l-4 border-primary pl-3">
-                   เลือกรูปแบบการพิมพ์
+                   {cat.selectPrintMethod}
                 </Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
                     {product.print_methods?.map((method) => (
@@ -251,12 +258,12 @@ export default function ProductDetails() {
                         onClick={handleStartDesign}
                         disabled={!selectedMethodId}
                     >
-                      ✨ เริ่มออกแบบสินค้า
+                      ✨ {cat.startDesignCta}
                     </Button>
                     {!selectedMethodId && (
                         <div className="flex items-center justify-center gap-2 text-sm text-amber-600 bg-amber-50 py-2 rounded-xl border border-amber-100">
                             <AlertCircle className="w-4 h-4" /> 
-                            <span>กรุณาเลือกรูปแบบการพิมพ์ (ข้อ 1) ก่อนเริ่มออกแบบ</span>
+                            <span>{cat.selectPrintMethodFirst}</span>
                         </div>
                     )}
                 </div>
@@ -268,16 +275,16 @@ export default function ProductDetails() {
           {/* Secondary Elements: Details, Size, Care, Estimator */}
           <Tabs defaultValue="details" className="w-full">
             <TabsList className="w-full bg-gray-50/80 p-1.5 rounded-2xl h-12 sm:h-14 flex overflow-x-auto no-scrollbar">
-              <TabsTrigger value="details" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">รายละเอียด</TabsTrigger>
-              <TabsTrigger value="size" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">ตารางไซส์</TabsTrigger>
-              <TabsTrigger value="care" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">การดูแล</TabsTrigger>
+              <TabsTrigger value="details" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">{cat.tabDetails}</TabsTrigger>
+              <TabsTrigger value="size" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">{cat.tabSize}</TabsTrigger>
+              <TabsTrigger value="care" className="flex-1 min-w-[72px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:shadow-sm">{cat.tabCare}</TabsTrigger>
               <TabsTrigger value="estimator" className="flex-1 min-w-[80px] rounded-xl font-medium text-xs sm:text-base h-full data-[state=active]:bg-primary/5 data-[state=active]:text-primary data-[state=active]:shadow-sm">
-                  <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> คำนวณราคา
+                  <Calculator className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" /> {cat.tabEstimator}
               </TabsTrigger>
             </TabsList>
             
             <TabsContent value="details" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm">
-              <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-wrap">{product.description || "ไม่มีรายละเอียดสินค้า"}</p>
+              <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-wrap">{product.description || cat.noDescription}</p>
             </TabsContent>
             
             <TabsContent value="size" className="p-6 border border-gray-100 rounded-3xl mt-4 bg-white shadow-sm overflow-hidden">
@@ -291,7 +298,7 @@ export default function ProductDetails() {
                     if (bi === -1) return -1;
                     return ai - bi;
                   });
-                if (entries.length === 0) return <p className="text-sm text-gray-400">ไม่มีข้อมูลตารางไซส์</p>;
+                if (entries.length === 0) return <p className="text-sm text-gray-400">{cat.noSizeGuide}</p>;
                 const measureKeys = Object.keys(entries[0][1] || {});
                 return (
                   <div className="overflow-x-auto">
@@ -299,7 +306,7 @@ export default function ProductDetails() {
                       <thead>
                         <tr className="bg-gray-50 border-b-2 border-gray-200">
                           <th className="p-4 font-bold text-gray-700 uppercase">Size</th>
-                          {measureKeys.map(k => <th key={k} className="p-4 font-bold text-gray-700">{k} (นิ้ว)</th>)}
+                          {measureKeys.map(k => <th key={k} className="p-4 font-bold text-gray-700">{k} ({cat.inches})</th>)}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -319,8 +326,8 @@ export default function ProductDetails() {
                     <thead>
                         <tr className="bg-gray-50 border-b-2 border-gray-200">
                             <th className="p-4 font-bold text-gray-700 uppercase">Size</th>
-                            <th className="p-4 font-bold text-gray-700">อก (นิ้ว)</th>
-                            <th className="p-4 font-bold text-gray-700">ยาว (นิ้ว)</th>
+                            <th className="p-4 font-bold text-gray-700">{cat.chest} ({cat.inches})</th>
+                            <th className="p-4 font-bold text-gray-700">{cat.length} ({cat.inches})</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -338,7 +345,7 @@ export default function ProductDetails() {
               {product.care_instructions ? (
                 <p className="text-gray-600 leading-relaxed whitespace-pre-line">{product.care_instructions}</p>
               ) : (
-                <p className="text-sm text-gray-400">ไม่มีข้อมูลการดูแลรักษา</p>
+                <p className="text-sm text-gray-400">{cat.noCareInstructions}</p>
               )}
             </TabsContent>
 
@@ -348,14 +355,14 @@ export default function ProductDetails() {
                         <Calculator className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900">เครื่องมือประเมินราคาเบื้องต้น</h3>
-                        <p className="text-sm text-gray-500">ช่วยคุณวางแผนงบประมาณ</p>
+                        <h3 className="font-bold text-gray-900">{cat.estimatorTitle}</h3>
+                        <p className="text-sm text-gray-500">{cat.estimatorSubtitle}</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div className="space-y-2 col-span-1 md:col-span-2">
-                    <Label className="text-sm font-semibold text-gray-700">จำนวนที่ต้องการ (ชิ้น)</Label>
+                    <Label className="text-sm font-semibold text-gray-700">{cat.quantityLabel}</Label>
                     <Input
                        type="number"
                        min={1}
@@ -365,20 +372,20 @@ export default function ProductDetails() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-gray-700">สีเสื้อ</Label>
+                    <Label className="text-sm font-semibold text-gray-700">{cat.shirtColor}</Label>
                     <Select value={estColor} onValueChange={(v) => setEstColor(v as 'White' | 'Black')}>
                       <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="White">ขาว (White)</SelectItem>
-                        <SelectItem value="Black">ดำ (Black)</SelectItem>
+                        <SelectItem value="White">{cat.whiteColor}</SelectItem>
+                        <SelectItem value="Black">{cat.blackColor}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-gray-700">ไซส์ประเมินราคา</Label>
+                    <Label className="text-sm font-semibold text-gray-700">{cat.estimateSize}</Label>
                     <Select value={estSize || product.available_sizes?.[0] || ''} onValueChange={setEstSize}>
-                      <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue placeholder="เลือกไซส์" /></SelectTrigger>
+                      <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue placeholder={cat.selectSize} /></SelectTrigger>
                       <SelectContent className="rounded-xl">
                         {(product.available_sizes ?? []).map(s => (
                           <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -388,11 +395,11 @@ export default function ProductDetails() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-gray-700">พิมพ์ด้านหน้า</Label>
+                    <Label className="text-sm font-semibold text-gray-700">{cat.printFront}</Label>
                     <Select value={frontTier} onValueChange={setFrontTier}>
                       <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="none">ไม่พิมพ์</SelectItem>
+                        <SelectItem value="none">{cat.noPrint}</SelectItem>
                         {Object.entries(TIER_LABELS).map(([k, label]) => (
                           <SelectItem key={k} value={k}>{label}</SelectItem>
                         ))}
@@ -401,11 +408,11 @@ export default function ProductDetails() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-gray-700">พิมพ์ด้านหลัง</Label>
+                    <Label className="text-sm font-semibold text-gray-700">{cat.printBack}</Label>
                     <Select value={backTier} onValueChange={setBackTier}>
                       <SelectTrigger className="bg-gray-50 border-gray-200 rounded-xl h-12"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="none">ไม่พิมพ์</SelectItem>
+                        <SelectItem value="none">{cat.noPrint}</SelectItem>
                         {Object.entries(TIER_LABELS).map(([k, label]) => (
                           <SelectItem key={k} value={k}>{label}</SelectItem>
                         ))}
@@ -428,33 +435,33 @@ export default function ProductDetails() {
                   disabled={estLoading || !selectedMethodId}
                 >
                   {estLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Calculator className="w-5 h-5 mr-2" />}
-                  ประเมินราคาสำหรับ {quantity} ชิ้น
+                  {cat.estimateFor} {quantity} {common.pieces}
                 </Button>
 
                 {estResult && (
                   <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100 space-y-3 mt-4">
                     <div className="flex justify-between text-gray-600">
-                      <span>ราคาเสื้อ</span>
-                      <span className="font-medium">฿{estResult.shirt_per_unit.toLocaleString()} / ชิ้น</span>
+                      <span>{cat.shirtPrice}</span>
+                      <span className="font-medium">฿{estResult.shirt_per_unit.toLocaleString()} {common.perPiece}</span>
                     </div>
                     {estResult.front_print_per_unit > 0 && (
                       <div className="flex justify-between text-gray-600">
-                        <span>สกรีนด้านหน้า</span>
-                        <span className="font-medium">฿{estResult.front_print_per_unit.toLocaleString()} / ชิ้น</span>
+                        <span>{cat.frontPrint}</span>
+                        <span className="font-medium">฿{estResult.front_print_per_unit.toLocaleString()} {common.perPiece}</span>
                       </div>
                     )}
                     {estResult.back_print_per_unit > 0 && (
                       <div className="flex justify-between text-gray-600">
-                        <span>สกรีนด้านหลัง</span>
-                        <span className="font-medium">฿{estResult.back_print_per_unit.toLocaleString()} / ชิ้น</span>
+                        <span>{cat.backPrint}</span>
+                        <span className="font-medium">฿{estResult.back_print_per_unit.toLocaleString()} {common.perPiece}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-3 mt-1">
-                      <span>รวมต่อชิ้น</span>
+                      <span>{cat.totalPerUnit}</span>
                       <span className="text-primary text-xl">฿{estResult.total_per_unit.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between font-black text-gray-900 bg-white p-4 rounded-xl shadow-sm border border-gray-100 mt-2 items-center">
-                      <span>ยอดรวมทั้งสิ้น ({quantity} ชิ้น)</span>
+                      <span>{cat.grandTotal} ({quantity} {common.pieces})</span>
                       <span className="text-primary text-2xl">฿{estResult.total.toLocaleString()}</span>
                     </div>
                   </div>

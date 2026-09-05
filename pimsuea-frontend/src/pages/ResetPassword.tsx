@@ -6,20 +6,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Check } from "lucide-react";
-
-const PASSWORD_RULES = [
-  { label: "อย่างน้อย 8 ตัวอักษร",        test: (p: string) => p.length >= 8 },
-  { label: "ตัวอักษรพิมพ์ใหญ่ (A–Z)",      test: (p: string) => /[A-Z]/.test(p) },
-  { label: "ตัวอักษรพิมพ์เล็ก (a–z)",      test: (p: string) => /[a-z]/.test(p) },
-  { label: "ตัวเลข (0–9)",                 test: (p: string) => /[0-9]/.test(p) },
-  { label: "อักขระพิเศษ (!@#$%^&*…)",      test: (p: string) => /[^A-Za-z0-9]/.test(p) },
-];
+import { useLanguage } from "@/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
 function passwordValid(p: string) {
-  return PASSWORD_RULES.every((r) => r.test(p));
+  return [
+    (x: string) => x.length >= 8,
+    (x: string) => /[A-Z]/.test(x),
+    (x: string) => /[a-z]/.test(x),
+    (x: string) => /[0-9]/.test(x),
+    (x: string) => /[^A-Za-z0-9]/.test(x),
+  ].every((test) => test(p));
 }
 
 export default function ResetPassword() {
+  const { t } = useLanguage();
+  const a = t.auth;
+  const passwordRules = a.passwordRules.map((label, i) => ({
+    label,
+    test: [
+      (p: string) => p.length >= 8,
+      (p: string) => /[A-Z]/.test(p),
+      (p: string) => /[a-z]/.test(p),
+      (p: string) => /[0-9]/.test(p),
+      (p: string) => /[^A-Za-z0-9]/.test(p),
+    ][i],
+  }));
+
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -31,7 +44,7 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [ready, setReady] = useState(false);
 
-  const confirmError = touched.confirm && password !== confirm ? "รหัสผ่านไม่ตรงกัน" : null;
+  const confirmError = touched.confirm && password !== confirm ? a.passwordMismatch : null;
   const formValid = passwordValid(password) && password === confirm;
 
   useEffect(() => {
@@ -61,26 +74,29 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl relative">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher compact />
+        </div>
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-primary mb-2">ตั้งรหัสผ่านใหม่</h1>
-          <p className="text-gray-500 text-sm">กรอกรหัสผ่านใหม่ของคุณด้านล่าง</p>
+          <h1 className="text-2xl font-bold text-primary mb-2">{a.resetTitle}</h1>
+          <p className="text-gray-500 text-sm">{a.resetSubtitle}</p>
         </div>
 
         {success ? (
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertTitle className="text-green-800">เปลี่ยนรหัสผ่านสำเร็จ</AlertTitle>
+            <AlertTitle className="text-green-800">{a.resetSuccess}</AlertTitle>
             <AlertDescription className="text-green-700">
-              กำลังพาคุณไปหน้าเข้าสู่ระบบ...
+              {a.resetSuccessDesc}
             </AlertDescription>
           </Alert>
         ) : !ready ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว</AlertTitle>
+            <AlertTitle>{a.resetInvalidLink}</AlertTitle>
             <AlertDescription>
-              กรุณาขอลิงก์รีเซ็ตรหัสผ่านใหม่อีกครั้ง
+              {a.resetInvalidLinkDesc}
             </AlertDescription>
           </Alert>
         ) : (
@@ -92,9 +108,8 @@ export default function ResetPassword() {
               </Alert>
             )}
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-              {/* New password */}
               <div className="space-y-2">
-                <Label htmlFor="new-password">รหัสผ่านใหม่</Label>
+                <Label htmlFor="new-password">{a.newPassword}</Label>
                 <div className="relative">
                   <Input
                     id="new-password"
@@ -114,9 +129,8 @@ export default function ResetPassword() {
                   </button>
                 </div>
 
-                {/* Live password rules — always visible */}
                 <ul className="space-y-1 pt-1">
-                    {PASSWORD_RULES.map((rule) => {
+                    {passwordRules.map((rule) => {
                       const ok = rule.test(password);
                       return (
                         <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-green-600" : "text-gray-400"}`}>
@@ -128,9 +142,8 @@ export default function ResetPassword() {
                   </ul>
               </div>
 
-              {/* Confirm password */}
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">ยืนยันรหัสผ่านใหม่</Label>
+                <Label htmlFor="confirm-password">{a.confirmNewPassword}</Label>
                 <div className="relative">
                   <Input
                     id="confirm-password"
@@ -153,7 +166,7 @@ export default function ResetPassword() {
               </div>
 
               <Button type="submit" className="w-full py-6 text-lg" disabled={loading}>
-                {loading ? "กำลังบันทึก..." : "บันทึกรหัสผ่านใหม่"}
+                {loading ? a.saving : a.saveNewPassword}
               </Button>
             </form>
           </>

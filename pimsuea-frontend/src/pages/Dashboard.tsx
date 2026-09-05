@@ -18,6 +18,9 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { ContinueDesigning } from "@/components/dashboard/ContinueDesigning";
 import { OngoingOrders } from "@/components/dashboard/OngoingOrders";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { dateLocale } from "@/i18n/localeFormat";
+import { getProductName } from "@/lib/productName";
 
 import {
   Carousel,
@@ -39,6 +42,8 @@ function newsExcerpt(description?: string, content?: string): string {
 }
 
 export default function Dashboard() {
+  const { t, lang } = useLanguage();
+  const d = t.dashboard;
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +57,7 @@ export default function Dashboard() {
         setData(result);
       } catch (err) {
         console.error("Failed to load dashboard data:", err);
-        setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+        setError(d.loadError);
       } finally {
         setLoading(false);
       }
@@ -75,7 +80,7 @@ export default function Dashboard() {
         <AlertCircle className="w-12 h-12" />
         <p className="text-xl font-semibold">{error}</p>
         <Button onClick={() => window.location.reload()}>
-          ลองใหม่อีกครั้ง
+          {d.retry}
         </Button>
       </div>
     );
@@ -98,8 +103,8 @@ export default function Dashboard() {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-heavy mb-4 md:mb-6 text-slate-900 tracking-tight leading-[1.1]"
           >
-            บริการ Print On Demand <br className="hidden md:block" />
-            <span className="text-primary">เพื่อคุณ โดยคุณ เราจัดการให้</span>
+            {d.heroTitle1} <br className="hidden md:block" />
+            <span className="text-primary">{d.heroTitle2}</span>
           </motion.h1>
 
           <motion.p
@@ -108,9 +113,7 @@ export default function Dashboard() {
             transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
             className="text-base md:text-xl text-slate-600 mb-6 md:mb-10 max-w-2xl mx-auto leading-relaxed font-medium"
           >
-            ศูนย์รวมงานสกรีนคุณภาพสูง ออกแบบเองได้ง่ายๆ{" "}
-            <br className="hidden md:block" /> เริ่มต้นเพียง 1 ชิ้น
-            ส่งตรงถึงบ้านคุณ
+            {d.heroSubtitle}
           </motion.p>
 
           <motion.div
@@ -123,7 +126,7 @@ export default function Dashboard() {
                 size="lg"
                 className="bg-primary hover:bg-primary/90 text-white rounded-full text-base md:text-lg px-6 md:px-8 py-5 md:py-7 shadow-xl shadow-primary/20 transition-all duration-300 hover:scale-105 hover:shadow-primary/30 group"
               >
-                เริ่มสั่งทำเลย
+                {d.heroCta}
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
@@ -149,7 +152,7 @@ export default function Dashboard() {
               <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
                 <Newspaper className="w-6 h-6" />
               </div>
-              ข่าวสารและโปรโมชั่น
+              {d.newsTitle}
             </h2>
             <Carousel
               opts={{
@@ -203,9 +206,7 @@ export default function Dashboard() {
                           </p>
                           {item.published_at && (
                             <div className="text-xs text-gray-400 mt-auto">
-                              {new Date(item.published_at).toLocaleDateString(
-                                "th-TH",
-                              )}
+                              {new Date(item.published_at).toLocaleDateString(dateLocale(lang))}
                             </div>
                           )}
                         </div>
@@ -228,13 +229,13 @@ export default function Dashboard() {
                 <div className="p-2 bg-orange-50 text-orange-500 rounded-xl">
                   <Flame className="w-6 h-6" />
                 </div>
-                สินค้าขายดี
+                {d.bestSellers}
               </h2>
               <Link
                 to="/catalog"
                 className="text-primary hover:underline text-sm font-normal"
               >
-                ดูทั้งหมด
+                {t.common.viewAll}
               </Link>
             </div>
 
@@ -249,7 +250,7 @@ export default function Dashboard() {
                     {product.image_url ? (
                       <img
                         src={product.image_url}
-                        alt={product.name}
+                        alt={getProductName(product, lang)}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -258,11 +259,10 @@ export default function Dashboard() {
                   </div>
                   <div className="p-4">
                     <h3 className="font-medium text-lg mb-1 text-slate-800 truncate">
-                      {product.name}
+                      {getProductName(product, lang)}
                     </h3>
                     <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
-                      {/* Fallback sold count if missing */}
-                      <span>ขายแล้ว {product.sold_count || "100+"}</span>
+                      <span>{d.soldCount} {product.sold_count || "100+"}</span>
                       <div className="flex items-center text-yellow-500">
                         <Star className="w-3 h-3 fill-current" />{" "}
                         {product.rating || "4.8"}
@@ -270,7 +270,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-semibold text-primary">
-                        ฿{product.price.toLocaleString()}
+                        ฿{product.price.toLocaleString(dateLocale(lang))}
                       </span>
                       <Link to={`/product/${product.id}`}>
                         <Button
@@ -278,7 +278,7 @@ export default function Dashboard() {
                           variant="secondary"
                           className="rounded-full"
                         >
-                          เลือก
+                          {d.choose}
                         </Button>
                       </Link>
                     </div>

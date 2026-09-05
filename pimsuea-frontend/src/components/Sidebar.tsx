@@ -5,14 +5,15 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
 import logo from "@/assets/logo.svg";
 
-// Separating the content component to avoid "component defined inside render" lint error
-// Adding 'collapsed' prop for desktop view
 const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolean, onItemClick?: () => void }) => {
   const location = useLocation();
   const { signOut } = useAuth();
+  const { t } = useLanguage();
 
   const handleLogout = async () => {
     onItemClick?.();
@@ -20,12 +21,12 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
   };
 
   const navItems = [
-    { label: "หน้าหลัก", path: "/dashboard", icon: <Home className="w-5 h-5" /> },
-    { label: "แคตตาล็อก", path: "/catalog", icon: <ShoppingBag className="w-5 h-5" /> },
-    { label: "งานของฉัน", path: "/my-products", icon: <Palette className="w-5 h-5" /> },
-    { label: "ตะกร้าสินค้า", path: "/checkout", icon: <ShoppingCart className="w-5 h-5" /> },
-    { label: "คำสั่งซื้อ", path: "/orders", icon: <Package className="w-5 h-5" /> },
-    { label: "กระเป๋าเงิน", path: "/wallet", icon: <Wallet className="w-5 h-5" /> },
+    { label: t.nav.home, path: "/dashboard", icon: <Home className="w-5 h-5" /> },
+    { label: t.nav.catalog, path: "/catalog", icon: <ShoppingBag className="w-5 h-5" /> },
+    { label: t.nav.myDesigns, path: "/my-products", icon: <Palette className="w-5 h-5" /> },
+    { label: t.nav.cart, path: "/checkout", icon: <ShoppingCart className="w-5 h-5" /> },
+    { label: t.nav.orders, path: "/orders", icon: <Package className="w-5 h-5" /> },
+    { label: t.nav.wallet, path: "/wallet", icon: <Wallet className="w-5 h-5" /> },
   ];
 
   return (
@@ -51,7 +52,6 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
               <span>{item.icon}</span>
               {!collapsed && <span className="ml-3 animate-in fade-in duration-300 whitespace-nowrap">{item.label}</span>}
 
-              {/* Tooltip for collapsed mode */}
               {collapsed && (
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
                       {item.label}
@@ -63,6 +63,11 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
       </div>
 
       <div className="px-3 mt-auto space-y-2 border-t pt-4">
+        {!collapsed && (
+          <div className="px-1 pb-1">
+            <LanguageSwitcher className="w-full justify-center" />
+          </div>
+        )}
         <Link to="/settings" onClick={onItemClick}>
             <Button 
                 variant="ghost" 
@@ -72,7 +77,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
                 )}
             >
                 <Settings className="w-5 h-5" />
-                {!collapsed && <span className="ml-3 animate-in fade-in duration-300">ตั้งค่า</span>}
+                {!collapsed && <span className="ml-3 animate-in fade-in duration-300">{t.nav.settings}</span>}
             </Button>
         </Link>
         <Button 
@@ -84,7 +89,7 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
             onClick={() => handleLogout()}
         >
             <LogOut className="w-5 h-5" />
-            {!collapsed && <span className="ml-3 animate-in fade-in duration-300">ออกจากระบบ</span>}
+            {!collapsed && <span className="ml-3 animate-in fade-in duration-300">{t.nav.signOut}</span>}
         </Button>
       </div>
     </div>
@@ -92,11 +97,10 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
 };
 
 export function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false); // Mobile Sheet state
-  const [isCollapsed, setIsCollapsed] = useState(false); // Desktop Collapsed state
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
 
-  // Auto-collapse on Design Page
   useEffect(() => {
     if (location.pathname.startsWith('/design')) {
         setIsCollapsed(true);
@@ -105,7 +109,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <aside 
         className={cn(
             "hidden md:flex flex-col h-screen sticky top-0 border-r bg-white shrink-0 z-40 transition-all duration-300 ease-in-out",
@@ -114,7 +117,6 @@ export function Sidebar() {
       >
         <SidebarContent collapsed={isCollapsed} />
         
-        {/* Collapse Toggle Button */}
         <Button
             variant="ghost"
             size="icon"
@@ -125,7 +127,6 @@ export function Sidebar() {
         </Button>
       </aside>
 
-      {/* Mobile Trigger */}
       <div className="md:hidden fixed top-safe-offset left-safe-offset z-50">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>

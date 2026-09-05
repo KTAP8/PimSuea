@@ -10,24 +10,38 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TermsModal } from "@/components/TermsModal";
 import { APP_ORIGIN } from "@/lib/site";
 import { CURRENT_TERMS_VERSION, markPendingTermsAcceptance } from "@/lib/legal";
-
-const PASSWORD_RULES = [
-  { label: "อย่างน้อย 8 ตัวอักษร",          test: (p: string) => p.length >= 8 },
-  { label: "ตัวอักษรพิมพ์ใหญ่ (A–Z)",        test: (p: string) => /[A-Z]/.test(p) },
-  { label: "ตัวอักษรพิมพ์เล็ก (a–z)",        test: (p: string) => /[a-z]/.test(p) },
-  { label: "ตัวเลข (0–9)",                   test: (p: string) => /[0-9]/.test(p) },
-  { label: "อักขระพิเศษ (!@#$%^&*…)",        test: (p: string) => /[^A-Za-z0-9]/.test(p) },
-];
+import { useLanguage } from "@/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
 function passwordValid(password: string) {
-  return PASSWORD_RULES.every((r) => r.test(password));
+  const tests = [
+    (p: string) => p.length >= 8,
+    (p: string) => /[A-Z]/.test(p),
+    (p: string) => /[a-z]/.test(p),
+    (p: string) => /[0-9]/.test(p),
+    (p: string) => /[^A-Za-z0-9]/.test(p),
+  ];
+  return tests.every((test) => test(password));
 }
 
 export default function Register() {
+  const { t, lang } = useLanguage();
+  const a = t.auth;
+  const passwordRules = a.passwordRules.map((label, i) => ({
+    label,
+    test: [
+      (p: string) => p.length >= 8,
+      (p: string) => /[A-Z]/.test(p),
+      (p: string) => /[a-z]/.test(p),
+      (p: string) => /[0-9]/.test(p),
+      (p: string) => /[^A-Za-z0-9]/.test(p),
+    ][i],
+  }));
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,8 +55,8 @@ export default function Register() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
 
-  const emailError   = touched.email    && !isValidEmail(email)       ? "รูปแบบอีเมลไม่ถูกต้อง" : null;
-  const confirmError = touched.confirm  && password !== confirmPassword ? "รหัสผ่านไม่ตรงกัน" : null;
+  const emailError   = touched.email    && !isValidEmail(email)       ? a.invalidEmail : null;
+  const confirmError = touched.confirm  && password !== confirmPassword ? a.passwordMismatch : null;
   const formValid    = isValidEmail(email) && passwordValid(password) && password === confirmPassword && agreedToTerms;
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -89,16 +103,19 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-6">
-      <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl">
+      <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl relative">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher compact />
+        </div>
         <div className="text-center mb-4">
-          <h1 className="text-2xl font-bold text-primary mb-1">สร้างบัญชีใหม่</h1>
-          <p className="text-gray-500 text-sm">สมัครสมาชิกเพื่อเริ่มสั่งทำสินค้า</p>
+          <h1 className="text-2xl font-bold text-primary mb-1">{a.registerTitle}</h1>
+          <p className="text-gray-500 text-sm">{a.registerSubtitle}</p>
         </div>
 
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>เกิดข้อผิดพลาด</AlertTitle>
+            <AlertTitle>{a.registerError}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -108,17 +125,16 @@ export default function Register() {
             <div className="flex justify-center">
               <CheckCircle2 className="w-16 h-16 text-green-500" />
             </div>
-            <h2 className="text-xl font-bold text-gray-800">สมัครสมาชิกสำเร็จ!</h2>
-            <p className="text-gray-600">กรุณาตรวจสอบอีเมลของคุณเพื่อยืนยันการลงทะเบียน</p>
+            <h2 className="text-xl font-bold text-gray-800">{a.registerSuccess}</h2>
+            <p className="text-gray-600">{a.registerSuccessDesc}</p>
             <Link to="/login">
-              <Button className="w-full mt-4">กลับไปหน้าเข้าสู่ระบบ</Button>
+              <Button className="w-full mt-4">{a.backToLoginBtn}</Button>
             </Link>
           </div>
         ) : (
           <>
-            <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
+            <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} lang={lang} />
 
-            {/* Google OAuth */}
             <Button
               type="button"
               variant="outline"
@@ -132,7 +148,7 @@ export default function Register() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              {oauthLoading ? "กำลังเชื่อมต่อ..." : "สมัครด้วย Google"}
+              {oauthLoading ? a.connecting : a.registerWithGoogle}
             </Button>
 
             <div className="relative mb-4">
@@ -140,14 +156,13 @@ export default function Register() {
                 <div className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-xs text-gray-400">
-                <span className="bg-white px-3">หรือสมัครด้วยอีเมล</span>
+                <span className="bg-white px-3">{a.orRegisterEmail}</span>
               </div>
             </div>
 
             <form onSubmit={handleRegister} className="space-y-3" noValidate>
-              {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">อีเมล</Label>
+                <Label htmlFor="email">{t.common.email}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -160,9 +175,8 @@ export default function Register() {
                 {emailError && <p className="text-xs text-red-500">{emailError}</p>}
               </div>
 
-              {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">รหัสผ่าน</Label>
+                <Label htmlFor="password">{t.common.password}</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -182,10 +196,9 @@ export default function Register() {
                   </button>
                 </div>
 
-                {/* Live password rules */}
                 {(touched.password || password.length > 0) && (
                   <ul className="space-y-1 pt-1">
-                    {PASSWORD_RULES.map((rule) => {
+                    {passwordRules.map((rule) => {
                       const ok = rule.test(password);
                       return (
                         <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-green-600" : "text-gray-400"}`}>
@@ -198,9 +211,8 @@ export default function Register() {
                 )}
               </div>
 
-              {/* Confirm Password */}
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">ยืนยันรหัสผ่าน</Label>
+                <Label htmlFor="confirmPassword">{a.confirmPassword}</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -222,7 +234,6 @@ export default function Register() {
                 {confirmError && <p className="text-xs text-red-500">{confirmError}</p>}
               </div>
 
-              {/* T&C agreement */}
               <div className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 bg-gray-50">
                 <Checkbox
                   id="terms"
@@ -231,36 +242,36 @@ export default function Register() {
                   className="mt-0.5 shrink-0"
                 />
                 <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
-                  ฉันได้อ่านและยอมรับ{' '}
+                  {a.agreeTermsTh}{' '}
                   <button
                     type="button"
                     className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
                     onClick={() => setTermsOpen(true)}
                   >
-                    ข้อตกลงและเงื่อนไขการใช้บริการ
+                    {a.termsLinkTh}
                   </button>
-                  {' '}/ I agree to the{' '}
+                  {' '}/ {a.agreeTermsEn}{' '}
                   <button
                     type="button"
                     className="text-primary underline underline-offset-2 font-medium hover:text-primary/80"
                     onClick={() => setTermsOpen(true)}
                   >
-                    Terms of Service
+                    {a.termsLinkEn}
                   </button>
                 </label>
               </div>
 
               <Button type="submit" className="w-full py-3 text-base" disabled={loading || oauthLoading || !agreedToTerms}>
-                {loading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
+                {loading ? a.registering : a.registerBtn}
               </Button>
             </form>
           </>
         )}
 
         <div className="mt-4 text-center text-sm text-gray-500">
-          มีบัญชีอยู่แล้ว?{" "}
+          {a.haveAccount}{" "}
           <Link to="/login" className="text-primary hover:underline font-semibold">
-            เข้าสู่ระบบ
+            {a.login}
           </Link>
         </div>
       </div>

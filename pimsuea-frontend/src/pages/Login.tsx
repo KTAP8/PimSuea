@@ -8,8 +8,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 import { TermsModal } from "@/components/TermsModal";
 import { APP_ORIGIN } from "@/lib/site";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
 export default function Login() {
+  const { t, lang } = useLanguage();
+  const a = t.auth;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,7 +21,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Forgot password state
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -71,31 +74,33 @@ export default function Login() {
       setError(error.message);
       setOauthLoading(false);
     }
-    // On success, browser redirects to Google — no further action needed here
   };
 
   if (forgotMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl relative">
+          <div className="absolute top-4 right-4">
+            <LanguageSwitcher compact />
+          </div>
           <button
             onClick={() => { setForgotMode(false); setForgotSent(false); setForgotError(null); }}
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6"
           >
-            <ArrowLeft className="h-4 w-4" /> กลับไปหน้าเข้าสู่ระบบ
+            <ArrowLeft className="h-4 w-4" /> {a.backToLogin}
           </button>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-primary mb-2">ลืมรหัสผ่าน?</h1>
-            <p className="text-gray-500 text-sm">กรอกอีเมลของคุณ เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่</p>
+            <h1 className="text-2xl font-bold text-primary mb-2">{a.forgotTitle}</h1>
+            <p className="text-gray-500 text-sm">{a.forgotSubtitle}</p>
           </div>
 
           {forgotSent ? (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertTitle className="text-green-800">ส่งอีเมลแล้ว</AlertTitle>
+              <AlertTitle className="text-green-800">{a.emailSent}</AlertTitle>
               <AlertDescription className="text-green-700">
-                ตรวจสอบอีเมล <strong>{forgotEmail}</strong> แล้วคลิกลิงก์เพื่อตั้งรหัสผ่านใหม่
+                {a.emailSentDesc} <strong>{forgotEmail}</strong>
               </AlertDescription>
             </Alert>
           ) : (
@@ -108,7 +113,7 @@ export default function Login() {
               )}
               <form onSubmit={handleForgotPassword} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="forgot-email">อีเมล</Label>
+                  <Label htmlFor="forgot-email">{t.common.email}</Label>
                   <Input
                     id="forgot-email"
                     type="email"
@@ -119,7 +124,7 @@ export default function Login() {
                   />
                 </div>
                 <Button type="submit" className="w-full py-6 text-lg" disabled={forgotLoading}>
-                  {forgotLoading ? "กำลังส่ง..." : "ส่งลิงก์รีเซ็ตรหัสผ่าน"}
+                  {forgotLoading ? a.sending : a.sendResetLink}
                 </Button>
               </form>
             </>
@@ -131,22 +136,24 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} lang={lang} />
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl relative">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher compact />
+        </div>
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">ยินดีต้อนรับกลับมา</h1>
-          <p className="text-gray-500">เข้าสู่ระบบเพื่อจัดการคำสั่งซื้อของคุณ</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">{a.loginTitle}</h1>
+          <p className="text-gray-500">{a.loginSubtitle}</p>
         </div>
 
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>เข้าสู่ระบบไม่สำเร็จ</AlertTitle>
+            <AlertTitle>{a.loginFailed}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
-        {/* Google OAuth */}
         <Button
           type="button"
           variant="outline"
@@ -160,7 +167,7 @@ export default function Login() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          {oauthLoading ? "กำลังเชื่อมต่อ..." : "เข้าสู่ระบบด้วย Google"}
+          {oauthLoading ? a.connecting : a.loginWithGoogle}
         </Button>
 
         <div className="relative mb-6">
@@ -168,13 +175,13 @@ export default function Login() {
             <div className="w-full border-t border-gray-200" />
           </div>
           <div className="relative flex justify-center text-xs text-gray-400">
-            <span className="bg-white px-3">หรือเข้าสู่ระบบด้วยอีเมล</span>
+            <span className="bg-white px-3">{a.loginWithEmail}</span>
           </div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email">อีเมล</Label>
+            <Label htmlFor="email">{t.common.email}</Label>
             <Input
               id="email"
               type="email"
@@ -187,13 +194,13 @@ export default function Login() {
 
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <Label htmlFor="password">รหัสผ่าน</Label>
+              <Label htmlFor="password">{t.common.password}</Label>
               <button
                 type="button"
                 onClick={() => { setForgotMode(true); setForgotEmail(email); }}
                 className="text-xs text-primary hover:underline"
               >
-                ลืมรหัสผ่าน?
+                {a.forgotPassword}
               </button>
             </div>
             <Input
@@ -206,25 +213,25 @@ export default function Login() {
           </div>
 
           <Button type="submit" className="w-full py-6 text-lg" disabled={loading || oauthLoading}>
-            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            {loading ? a.loggingIn : a.login}
           </Button>
 
           <p className="text-center text-xs text-gray-400 mt-3">
-            การเข้าสู่ระบบถือว่าคุณยอมรับ{" "}
+            {a.loginTermsPrefix}{" "}
             <button type="button" onClick={() => setTermsOpen(true)} className="underline underline-offset-2 hover:text-gray-600">
-              ข้อตกลงและเงื่อนไขการใช้บริการ
+              {a.termsLinkTh}
             </button>
-            {" "}และ{" "}
+            {" "}{a.loginTermsAnd}{" "}
             <button type="button" onClick={() => setTermsOpen(true)} className="underline underline-offset-2 hover:text-gray-600">
-              Terms of Service
+              {a.termsLinkEn}
             </button>
           </p>
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-500">
-          ยังไม่มีบัญชี?{" "}
+          {a.noAccount}{" "}
           <Link to="/register" className="text-primary hover:underline font-semibold">
-            สมัครสมาชิก
+            {a.register}
           </Link>
         </div>
       </div>

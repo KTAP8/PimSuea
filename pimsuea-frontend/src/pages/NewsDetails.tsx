@@ -5,9 +5,13 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from 'react-markdown';
 import { getNewsById } from "@/services/api";
 import type { News } from "@/types/api";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { formatDate } from "@/i18n/localeFormat";
 
 export default function NewsDetails() {
   const { id } = useParams();
+  const { t, lang } = useLanguage();
+  const d = t.dashboard;
   const [news, setNews] = useState<News | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,14 +25,14 @@ export default function NewsDetails() {
         setNews(data);
       } catch (err) {
         console.error("Failed to load news details:", err);
-        setError("ไม่สามารถโหลดเนื้อหาข่าวได้");
+        setError(d.newsLoadError);
       } finally {
         setLoading(false);
       }
     };
 
     fetchNews();
-  }, [id]);
+  }, [id, d.newsLoadError]);
 
   if (loading) {
     return (
@@ -42,9 +46,9 @@ export default function NewsDetails() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-red-500 space-y-4">
         <AlertCircle className="w-12 h-12" />
-        <p className="text-xl font-semibold">{error || "ไม่พบเนื้อหา"}</p>
+        <p className="text-xl font-semibold">{error || d.newsNotFound}</p>
         <Link to="/dashboard">
-            <Button variant="outline">กลับไปหน้าหลัก</Button>
+            <Button variant="outline">{d.backToDashboard}</Button>
         </Link>
       </div>
     );
@@ -53,11 +57,10 @@ export default function NewsDetails() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Link to="/dashboard" className="inline-flex items-center text-gray-500 hover:text-primary mb-6">
-        <ArrowLeft className="w-4 h-4 mr-1" /> กลับไปหน้าหลัก
+        <ArrowLeft className="w-4 h-4 mr-1" /> {d.backToDashboard}
       </Link>
 
       <article className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-        {/* Hero Image */}
         <div className="w-full h-64 md:h-96 bg-gray-100 relative">
             {news.image_url ? (
                 <img 
@@ -71,7 +74,6 @@ export default function NewsDetails() {
                 </div>
             )}
             
-            {/* Overlay for Type/Category */}
             {news.type && (
                 <div className="absolute top-4 left-4">
                     <span className="bg-primary text-white px-3 py-1 rounded-full text-sm font-medium flex items-center shadow-md">
@@ -90,10 +92,10 @@ export default function NewsDetails() {
                 {news.published_at && (
                     <div className="flex items-center text-gray-500 text-sm">
                         <Calendar className="w-4 h-4 mr-2" />
-                        เผยแพร่เมื่อ: {new Date(news.published_at).toLocaleDateString('th-TH', {
+                        {d.publishedAt} {formatDate(lang, news.published_at, {
                             year: 'numeric',
                             month: 'long',
-                            day: 'numeric'
+                            day: 'numeric',
                         })}
                     </div>
                 )}
@@ -101,7 +103,6 @@ export default function NewsDetails() {
 
             <hr className="border-gray-100" />
 
-            {/* YouTube embed */}
             {news.youtube_video_id && (
                 <div className="aspect-video w-full rounded-xl overflow-hidden bg-black">
                     <iframe

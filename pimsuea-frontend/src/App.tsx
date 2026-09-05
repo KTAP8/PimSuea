@@ -27,6 +27,7 @@ import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { LanguageProvider } from './i18n/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RedirectToApp } from './components/RedirectToApp';
 import { AppRootRedirect } from './components/AppRootRedirect';
@@ -35,6 +36,7 @@ import PricingPage from './pages/marketing/PricingPage';
 import VsPrintfulPage from './pages/marketing/VsPrintfulPage';
 import { MarketingPageTracker } from './components/MarketingPageTracker';
 import { isAppHost } from './lib/site';
+import { useLanguage } from './i18n/LanguageContext';
 
 function shouldShowAppFooter(pathname: string): boolean {
   if (pathname.startsWith('/studio/')) return false;
@@ -75,6 +77,7 @@ function MarketingLayout() {
 
 function AppLayout() {
   const location = useLocation();
+  const { lang } = useLanguage();
   const [termsOpen, setTermsOpen] = useState(false);
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/home', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
@@ -133,7 +136,7 @@ function AppLayout() {
         )}
       </div>
 
-      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
+      <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} lang={lang} />
     </div>
   );
 }
@@ -145,13 +148,15 @@ function Layout() {
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-       <Router>
-         <AnalyticsProvider />
-         <Layout />
-         <Analytics />
-       </Router>
-      </CartProvider>
+      <LanguageProvider>
+        <CartProvider>
+          <Router>
+            <AnalyticsProvider />
+            <Layout />
+            <Analytics />
+          </Router>
+        </CartProvider>
+      </LanguageProvider>
     </AuthProvider>
   );
 }

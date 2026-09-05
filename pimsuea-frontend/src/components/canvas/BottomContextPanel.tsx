@@ -1,6 +1,7 @@
 import { X, Plus, Check } from 'lucide-react';
 import type { ProductTemplate, Color } from '../../types/api';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
     currentSides: ProductTemplate[];
@@ -24,6 +25,8 @@ export function BottomContextPanel({
     colorPickerRef, onSideChange, onColorSelect, onToggleColorPicker, onColorAdd, onColorRemove,
     layout = 'floating',
 }: Props) {
+    const { t } = useLanguage();
+    const s = t.studio;
     const isBar = layout === 'bar';
 
     const sideControl = (
@@ -67,7 +70,7 @@ export function BottomContextPanel({
                         />
                         {activeColorIds.size > 1 && (
                             <button
-                                title="Remove color"
+                                title={s.removeColor}
                                 onClick={e => { e.stopPropagation(); onColorRemove(color.id); }}
                                 className="absolute -top-1 -right-1 w-5 h-5 bg-gray-700 rounded-full flex md:hidden md:group-hover:flex items-center justify-center z-10 hover:bg-red-500 transition-colors"
                             >
@@ -80,7 +83,7 @@ export function BottomContextPanel({
 
             <div className="relative" ref={colorPickerRef}>
                 <button
-                    title="Add color"
+                    title={s.addColor}
                     onClick={onToggleColorPicker}
                     className={cn(
                         'rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-all',
@@ -95,7 +98,7 @@ export function BottomContextPanel({
                         'absolute bg-white rounded-2xl shadow-xl border border-gray-100 p-2 min-w-[160px] z-50 max-h-48 overflow-y-auto',
                         isBar ? 'bottom-full mb-2 right-0' : 'bottom-full mb-3 left-1/2 -translate-x-1/2',
                     )}>
-                        <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase px-2 py-1.5">สีที่มี</p>
+                        <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase px-2 py-1.5">{s.availableColors}</p>
                         {uniqueColors.map(color => {
                             const isActive = activeColorIds.has(color.id);
                             return (
@@ -135,14 +138,14 @@ export function BottomContextPanel({
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-full px-8 py-3.5 hidden md:flex items-center gap-8 border border-gray-100 z-10 transition-all">
 
             <div className="flex items-center gap-4">
-                <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">Side</span>
+                <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">{s.side}</span>
                 {sideControl}
             </div>
 
             <div className="w-px h-8 bg-gray-200" />
 
             <div className="flex items-center gap-4">
-                <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">Color</span>
+                <span className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">{s.color}</span>
                 {colorControl}
             </div>
         </div>

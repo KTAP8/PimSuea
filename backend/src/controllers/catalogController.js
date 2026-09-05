@@ -7,7 +7,7 @@ exports.getCategories = async (req, res) => {
   try {
     const { data: categories, error } = await supabase
       .from('categories')
-      .select('*')
+      .select('id, name, name_en')
       .order('id');
 
     if (error) throw error;
@@ -105,7 +105,7 @@ exports.getProductById = async (req, res) => {
         is_beginner_friendly,
         category_id,
         product_images (image_url, is_hover, display_order),
-        category:categories(name),
+        category:categories(name, name_en),
         product_print_methods (
           print_method:print_methods (
             id,

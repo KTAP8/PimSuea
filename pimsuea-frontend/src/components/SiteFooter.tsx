@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { translations, type Language } from '@/translations/landing';
 import { lineAddFriendUrl, lineDisplayId } from '@/lib/line';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface MarketingFooterProps {
   variant: 'marketing';
@@ -135,6 +136,7 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
 }
 
 function AppFooter({ onTermsClick, className }: Omit<AppFooterProps, 'variant'>) {
+  const { t } = useLanguage();
   const lineUrl = lineAddFriendUrl();
 
   return (
@@ -150,7 +152,7 @@ function AppFooter({ onTermsClick, className }: Omit<AppFooterProps, 'variant'>)
             onClick={onTermsClick}
             className="hover:text-primary transition-colors underline underline-offset-2"
           >
-            ข้อตกลงและเงื่อนไข
+            {t.nav.footerTerms}
           </button>
           <span className="text-border">·</span>
           <a
@@ -159,7 +161,7 @@ function AppFooter({ onTermsClick, className }: Omit<AppFooterProps, 'variant'>)
             rel="noopener noreferrer"
             className="hover:text-primary transition-colors"
           >
-            LINE ({lineDisplayId()})
+            {t.common.lineSupport} ({lineDisplayId()})
           </a>
         </div>
       </div>

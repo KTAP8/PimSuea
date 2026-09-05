@@ -3,6 +3,7 @@ import { validateCoupon, type CouponValidationResult } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Tag, X } from "lucide-react";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 export interface AppliedCoupon {
   code: string;
@@ -56,6 +57,8 @@ interface CouponInputProps {
 }
 
 export default function CouponInput({ items, onApply, onClear, appliedCoupon }: CouponInputProps) {
+  const { t } = useLanguage();
+  const c = t.checkout;
   const [inputCode, setInputCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +70,7 @@ export default function CouponInput({ items, onApply, onClear, appliedCoupon }: 
     try {
       const result: CouponValidationResult = await validateCoupon(inputCode.trim());
       if (!result.valid) {
-        setError(result.reason ?? 'รหัสโค้ดไม่ถูกต้อง');
+        setError(result.reason ?? c.couponInvalid);
         return;
       }
       const coupon: AppliedCoupon = {
@@ -83,7 +86,7 @@ export default function CouponInput({ items, onApply, onClear, appliedCoupon }: 
       onApply(coupon, discount);
       setInputCode('');
     } catch {
-      setError('เกิดข้อผิดพลาดในการตรวจสอบโค้ด');
+      setError(c.couponValidateError);
     } finally {
       setLoading(false);
     }
@@ -105,14 +108,14 @@ export default function CouponInput({ items, onApply, onClear, appliedCoupon }: 
           <span className="font-medium">{appliedCoupon.code}</span>
           <span className="text-green-600">
             {appliedCoupon.discount_type === 'percentage'
-              ? `(-${appliedCoupon.discount_value}%${appliedCoupon.max_discount_thb ? ` สูงสุด ฿${appliedCoupon.max_discount_thb.toLocaleString()}` : ''})`
+              ? `(-${appliedCoupon.discount_value}%${appliedCoupon.max_discount_thb ? ` ${c.maxDiscount} ฿${appliedCoupon.max_discount_thb.toLocaleString()}` : ''})`
               : `(-฿${appliedCoupon.discount_value.toLocaleString()})`
             }
           </span>
         </div>
         <div className="flex items-center gap-3">
           <span className="font-semibold text-green-700">-฿{discount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
-          <button onClick={handleClear} className="text-green-600 hover:text-green-800 transition-colors" aria-label="ลบโค้ด">
+          <button onClick={handleClear} className="text-green-600 hover:text-green-800 transition-colors" aria-label={c.removeCouponAria}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -124,7 +127,7 @@ export default function CouponInput({ items, onApply, onClear, appliedCoupon }: 
     <div className="space-y-1.5">
       <div className="flex gap-2">
         <Input
-          placeholder="รหัสโปรโมชัน"
+          placeholder={c.couponPromoPlaceholder}
           value={inputCode}
           onChange={(e) => { setInputCode(e.target.value.toUpperCase()); setError(null); }}
           onKeyDown={(e) => { if (e.key === 'Enter') handleApply(); }}
@@ -132,7 +135,7 @@ export default function CouponInput({ items, onApply, onClear, appliedCoupon }: 
           disabled={loading}
         />
         <Button variant="outline" onClick={handleApply} disabled={loading || !inputCode.trim()} className="shrink-0">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'ใช้โค้ด'}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : c.applyCode}
         </Button>
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}

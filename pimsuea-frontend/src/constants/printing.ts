@@ -27,8 +27,7 @@ export function filterActivePrintMethods<T extends { id?: string; name?: string 
   return (methods ?? []).filter(m => !isLegacyDtfPrintMethod(m));
 }
 
-export const DTF_DISCONTINUED_MESSAGE =
-  'เราไม่รับงานพิมพ์ DTF แล้ว กรุณาสร้างดีไซน์ใหม่ด้วย DTG';
+export { dtfDiscontinuedMessage } from '@/translations/app/checkout';
 
 /** Compact label for badges in narrow product cards */
 export function getPrintMethodShortLabel(name: string): string {

@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Package } from 'lucide-react';
 import type { Order } from '@/types/api';
+import { useLanguage } from '@/i18n/LanguageContext';
+import { orderStatusLabels } from '@/translations/app/dashboard';
+import { formatMoney } from '@/i18n/localeFormat';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-    pending_payment: { label: 'รอชำระเงิน',          color: 'bg-yellow-100 text-yellow-800' },
-    pending:         { label: 'รอดำเนินการ',           color: 'bg-blue-50 text-blue-800' },
-    paid_processing: { label: 'ชำระแล้ว & กำลังผลิต', color: 'bg-blue-100 text-blue-800' },
-    shipped:         { label: 'จัดส่งแล้ว',            color: 'bg-green-100 text-green-800' },
+const STATUS_COLORS: Record<string, string> = {
+    pending_payment: 'bg-yellow-100 text-yellow-800',
+    pending: 'bg-blue-50 text-blue-800',
+    paid_processing: 'bg-blue-100 text-blue-800',
+    shipped: 'bg-green-100 text-green-800',
 };
 
 interface Props {
@@ -15,6 +18,11 @@ interface Props {
 }
 
 export function OngoingOrders({ orders, loading }: Props) {
+    const { t, lang } = useLanguage();
+    const d = t.dashboard;
+    const c = t.common;
+    const statusLabels = orderStatusLabels(lang);
+
     if (!loading && orders.length === 0) return null;
 
     return (
@@ -24,10 +32,10 @@ export function OngoingOrders({ orders, loading }: Props) {
                     <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
                       <Package className="w-6 h-6" />
                     </div>
-                    คำสั่งซื้อที่กำลังดำเนินการ
+                    {d.ongoingOrders}
                 </h2>
                 <Link to="/orders" className="text-sm text-primary hover:underline font-normal flex items-center gap-1.5 transition-colors">
-                    ดูทั้งหมด <ArrowRight className="w-4 h-4" />
+                    {c.viewAll} <ArrowRight className="w-4 h-4" />
                 </Link>
             </div>
 
@@ -37,7 +45,8 @@ export function OngoingOrders({ orders, loading }: Props) {
                         <div key={i} className="bg-slate-100 rounded-3xl h-24 animate-pulse" />
                     ))
                     : orders.map(order => {
-                        const status = STATUS_MAP[order.status] ?? { label: order.status, color: 'bg-gray-100 text-gray-800' };
+                        const statusLabel = statusLabels[order.status] ?? order.status;
+                        const statusColor = STATUS_COLORS[order.status] ?? 'bg-gray-100 text-gray-800';
                         const itemCount = order.items?.reduce((s, it) => s + it.quantity, 0) ?? 0;
                         return (
                             <Link
@@ -47,17 +56,17 @@ export function OngoingOrders({ orders, loading }: Props) {
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                                     <div>
-                                        <p className="font-semibold text-slate-900 text-base">คำสั่งซื้อ #{order.id}</p>
+                                        <p className="font-semibold text-slate-900 text-base">{d.orderNumber}{order.id}</p>
                                         {itemCount > 0 && (
                                             <p className="text-sm text-slate-500 mt-0.5 flex gap-1.5 font-normal">
-                                              <span>{itemCount} ชิ้น</span> 
+                                              <span>{itemCount} {c.pieces}</span> 
                                               <span>·</span> 
-                                              <span className="font-medium text-slate-700">฿{order.total_amount.toLocaleString()}</span>
+                                              <span className="font-medium text-slate-700">{formatMoney(order.total_amount, lang)}</span>
                                             </p>
                                         )}
                                     </div>
-                                    <span className={`text-xs font-medium px-3 py-1.5 rounded-full w-fit ${status.color}`}>
-                                        {status.label}
+                                    <span className={`text-xs font-medium px-3 py-1.5 rounded-full w-fit ${statusColor}`}>
+                                        {statusLabel}
                                     </span>
                                 </div>
                                 <div className="w-10 h-10 rounded-full items-center justify-center bg-slate-50 opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-300 shrink-0 ml-4 hidden sm:flex">

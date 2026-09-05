@@ -1,4 +1,4 @@
-export type Language = 'en' | 'th';
+export type { Language } from '@/i18n/types';
 
 export const translations = {
   en: {

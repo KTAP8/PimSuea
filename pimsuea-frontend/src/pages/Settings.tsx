@@ -25,44 +25,35 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { getReferralLabel, getAiToolLabel } from "@/translations/app/studio";
 import {
   AI_ASSISTANT_TOOLS,
   isAiAssistantSource,
   REFERRAL_SOURCES,
 } from "@/lib/referralSources";
 
-// Modern purpose options with Lucide icons
-const DESIGN_PURPOSES = [
-  {
-    value: "university_club",
-    label: "มหาวิทยาลัย / ชมรม",
-    sub: "กิจกรรมนักศึกษา เสื้อรุ่น เสื้อคณะ",
-    icon: GraduationCap,
-  },
-  {
-    value: "own_brand",
-    label: "แบรนด์ของฉัน",
-    sub: "แบรนด์แฟชั่น เสื้อผ้าเมิร์ช หรือดรอปสินค้า",
-    icon: Tag,
-  },
-  {
-    value: "company_team",
-    label: "บริษัท / ทีมงาน",
-    sub: "ยูนิฟอร์มพนักงาน อีเวนต์ หรือทีมงาน",
-    icon: Building2,
-  },
-  {
-    value: "personal",
-    label: "สั่งทำส่วนตัว / ของขวัญ",
-    sub: "ออกแบบใส่เอง หรือสั่งเป็นของขวัญพิเศษ",
-    icon: Sparkles,
-  },
-];
+// Modern purpose options with Lucide icons — labels from i18n at render time
+const DESIGN_PURPOSE_KEYS = [
+  "university_club",
+  "own_brand",
+  "company_team",
+  "personal",
+] as const;
+
+const DESIGN_PURPOSE_ICONS = {
+  university_club: GraduationCap,
+  own_brand: Tag,
+  company_team: Building2,
+  personal: Sparkles,
+};
 
 type SettingsTab = "profile" | "preferences" | "security";
 
 export default function Settings() {
   const { user, profile, refreshProfile } = useAuth();
+  const { t, lang, setLang } = useLanguage();
+  const s = t.settings;
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
@@ -136,11 +127,11 @@ export default function Settings() {
     setPasswordSuccess(false);
 
     if (newPassword !== confirmPassword) {
-      setPasswordError("รหัสผ่านใหม่ไม่ตรงกัน");
+      setPasswordError(s.passwordMismatch);
       return;
     }
     if (newPassword.length < 8) {
-      setPasswordError("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+      setPasswordError(s.minPassword);
       return;
     }
 
@@ -153,7 +144,7 @@ export default function Settings() {
     });
 
     if (signInError) {
-      setPasswordError("รหัสผ่านปัจจุบันไม่ถูกต้อง");
+      setPasswordError(s.wrongCurrentPassword);
       setPasswordLoading(false);
       return;
     }
@@ -186,7 +177,7 @@ export default function Settings() {
       : "PS";
 
   const fullName =
-    firstName || lastName ? `${firstName} ${lastName}`.trim() : "ผู้ใช้งาน PimSuea";
+    firstName || lastName ? `${firstName} ${lastName}`.trim() : s.defaultUser;
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-50 via-white to-slate-50 text-foreground py-8 md:py-12 px-4 sm:px-6">
@@ -212,7 +203,7 @@ export default function Settings() {
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[11px] font-bold">
                     <CheckCircle2 className="w-3 h-3" />
-                    ยืนยันแล้ว
+                    {s.verified}
                   </span>
                 </div>
 
@@ -223,7 +214,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Save Quick Action in Header (Desktop) */}
             <div className="hidden sm:block">
               <Button
                 type="button"
@@ -236,25 +226,16 @@ export default function Settings() {
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                บันทึกการเปลี่ยนแปลง
+                {s.saveChanges}
               </Button>
             </div>
           </div>
 
-          {/* Tab Navigation */}
           <div className="mt-8 pt-6 border-t border-border/60 flex items-center gap-2 overflow-x-auto no-scrollbar">
             {[
-              { id: "profile" as SettingsTab, label: "โปรไฟล์ส่วนตัว", icon: User },
-              {
-                id: "preferences" as SettingsTab,
-                label: "ความสนใจและการใช้งาน",
-                icon: Tag,
-              },
-              {
-                id: "security" as SettingsTab,
-                label: "ความปลอดภัย & บัญชี",
-                icon: Lock,
-              },
+              { id: "profile" as SettingsTab, label: s.tabProfile, icon: User },
+              { id: "preferences" as SettingsTab, label: s.tabPreferences, icon: Tag },
+              { id: "security" as SettingsTab, label: s.tabSecurity, icon: Lock },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
@@ -295,7 +276,7 @@ export default function Settings() {
               className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 shadow-xs"
             >
               <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <div className="text-sm font-bold">บันทึกข้อมูลโปรไฟล์ของคุณเรียบร้อยแล้ว</div>
+              <div className="text-sm font-bold">{s.profileSaved}</div>
             </motion.div>
           )}
 
@@ -329,10 +310,10 @@ export default function Settings() {
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                    ข้อมูลผู้ติดต่อ
+                    {s.contactInfo}
                   </h2>
                   <p className="text-xs sm:text-sm text-muted-foreground">
-                    ข้อมูลที่ใช้สำหรับการจัดส่ง ใบเสร็จ และการประสานงาน
+                    {s.contactInfoDesc}
                   </p>
                 </div>
               </div>
@@ -345,13 +326,13 @@ export default function Settings() {
                       className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
                     >
                       <User className="w-3.5 h-3.5" />
-                      ชื่อ (First Name)
+                      {s.firstName}
                     </Label>
                     <Input
                       id="firstName"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="เช่น สมชาย"
+                      placeholder={lang === 'th' ? 'เช่น สมชาย' : 'e.g. John'}
                       className="h-12 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary font-medium rounded-2xl px-4 text-base transition-all"
                     />
                   </div>
@@ -362,13 +343,13 @@ export default function Settings() {
                       className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
                     >
                       <User className="w-3.5 h-3.5" />
-                      นามสกุล (Last Name)
+                      {s.lastName}
                     </Label>
                     <Input
                       id="lastName"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder="เช่น ใจดี"
+                      placeholder={lang === 'th' ? 'เช่น ใจดี' : 'e.g. Smith'}
                       className="h-12 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary font-medium rounded-2xl px-4 text-base transition-all"
                     />
                   </div>
@@ -381,7 +362,7 @@ export default function Settings() {
                       className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
                     >
                       <Calendar className="w-3.5 h-3.5" />
-                      อายุ (Age)
+                      {s.age}
                     </Label>
                     <Input
                       id="age"
@@ -390,7 +371,7 @@ export default function Settings() {
                       max={120}
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
-                      placeholder="เช่น 24"
+                      placeholder={lang === 'th' ? 'เช่น 24' : 'e.g. 24'}
                       className="h-12 bg-secondary/30 border-border focus-visible:ring-primary/20 focus-visible:border-primary font-medium rounded-2xl px-4 text-base transition-all"
                     />
                   </div>
@@ -398,12 +379,12 @@ export default function Settings() {
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <Mail className="w-3.5 h-3.5" />
-                      อีเมลล็อกอิน (Email)
+                      {s.loginEmail}
                     </Label>
                     <div className="h-12 bg-secondary/60 border border-border/80 rounded-2xl px-4 flex items-center justify-between text-muted-foreground text-sm font-medium">
                       <span className="truncate">{user?.email ?? "—"}</span>
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-secondary text-foreground/70 shrink-0">
-                        อ่านอย่างเดียว
+                        {s.readOnly}
                       </span>
                     </div>
                   </div>
@@ -421,7 +402,7 @@ export default function Settings() {
                     ) : (
                       <Save className="w-4 h-4 mr-2" />
                     )}
-                    บันทึกข้อมูล
+                    {s.saveProfile}
                   </Button>
                 </div>
               </form>
@@ -444,23 +425,60 @@ export default function Settings() {
                   </div>
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                      วัตถุประสงค์การใช้งานหลัก
+                      {t.common.language}
                     </h2>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      ช่วยให้เราแนะนำทรงเสื้อ เนื้อผ้า และเทคนิคการพิมพ์ที่เหมาะกับคุณที่สุด
+                      {t.common.languageDesc}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                  {(['th', 'en'] as const).map((code) => {
+                    const isSelected = lang === code;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setLang(code)}
+                        className={cn(
+                          'flex items-center justify-center gap-2 p-4 rounded-2xl border transition-all cursor-pointer font-bold text-sm',
+                          isSelected
+                            ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary/20'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/40',
+                        )}
+                      >
+                        {code === 'th' ? t.common.languageTh : t.common.languageEn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 pb-4 mb-5 border-b border-border/60">
+                  <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                    <Tag className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                      {s.purposeTitle}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {s.purposeDesc}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  {DESIGN_PURPOSES.map((opt) => {
-                    const isSelected = designPurpose === opt.value;
-                    const Icon = opt.icon;
+                  {DESIGN_PURPOSE_KEYS.map((key) => {
+                    const isSelected = designPurpose === key;
+                    const Icon = DESIGN_PURPOSE_ICONS[key];
+                    const purpose = s.purposes[key];
                     return (
                       <button
-                        key={opt.value}
+                        key={key}
                         type="button"
-                        onClick={() => setDesignPurpose(opt.value)}
+                        onClick={() => setDesignPurpose(key)}
                         className={cn(
                           "relative flex items-start gap-4 p-4 rounded-2xl text-left border transition-all duration-300 cursor-pointer group",
                           isSelected
@@ -481,10 +499,10 @@ export default function Settings() {
 
                         <div className="flex-1 pr-6">
                           <div className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
-                            {opt.label}
+                            {purpose.label}
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                            {opt.sub}
+                            {purpose.sub}
                           </div>
                         </div>
 
@@ -503,10 +521,10 @@ export default function Settings() {
               <div className="pt-6 border-t border-border/60">
                 <div className="mb-4">
                   <h3 className="text-base font-bold text-foreground">
-                    คุณรู้จัก PimSuea จากช่องทางใด?
+                    {s.referralTitle}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    บอกเราเพื่อช่วยพัฒนาช่องทางสื่อสารให้ดียิ่งขึ้น
+                    {s.referralDesc}
                   </p>
                 </div>
 
@@ -541,7 +559,7 @@ export default function Settings() {
                         >
                           <Icon className="w-5 h-5" />
                         </div>
-                        <span className="font-bold text-xs">{opt.label}</span>
+                        <span className="font-bold text-xs">{getReferralLabel(lang, opt.value)}</span>
                       </button>
                     );
                   })}
@@ -550,7 +568,7 @@ export default function Settings() {
                 {isAiAssistantSource(referralSource) && (
                   <div className="mt-4 space-y-2">
                     <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      ใช้ AI ตัวไหน?
+                      {s.whichAi}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {AI_ASSISTANT_TOOLS.map((tool) => {
@@ -567,7 +585,7 @@ export default function Settings() {
                                 : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
                             )}
                           >
-                            {tool.label}
+                            {getAiToolLabel(lang, tool.value)}
                           </button>
                         );
                       })}
@@ -589,8 +607,8 @@ export default function Settings() {
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  บันทึกความสนใจ
-                </Button>
+                  {s.savePreferences}
+                  </Button>
               </div>
             </motion.div>
           )}
@@ -611,10 +629,10 @@ export default function Settings() {
                   </div>
                   <div>
                     <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                      การรักษาความปลอดภัยของบัญชี
+                      {s.securityTitle}
                     </h2>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      สถานะและวิธีการเข้าสู่ระบบของบัญชีคุณ
+                      {s.securityDesc}
                     </p>
                   </div>
                 </div>
@@ -630,20 +648,16 @@ export default function Settings() {
                     </div>
                     <div>
                       <div className="font-bold text-sm text-foreground">
-                        {isOAuthUser
-                          ? "ลงชื่อเข้าใช้ด้วย Google Account"
-                          : "ลงชื่อเข้าใช้ด้วย อีเมลและรหัสผ่าน"}
+                        {isOAuthUser ? s.oauthLogin : s.emailLogin}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {isOAuthUser
-                          ? "บัญชีของคุณเชื่อมต่อและป้องกันด้วยระบบความปลอดภัยของ Google"
-                          : "คุณสามารถเปลี่ยนรหัสผ่านเพื่อความปลอดภัยของบัญชีได้ตลอดเวลา"}
+                        {isOAuthUser ? s.oauthDesc : s.emailLoginDesc}
                       </div>
                     </div>
                   </div>
 
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                    ปลอดภัย
+                    {s.secure}
                   </span>
                 </div>
               </div>
@@ -657,10 +671,10 @@ export default function Settings() {
                     </div>
                     <div>
                       <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                        เปลี่ยนรหัสผ่าน
+                        {s.changePassword}
                       </h2>
                       <p className="text-xs sm:text-sm text-muted-foreground">
-                        รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร
+                        {s.changePasswordDesc}
                       </p>
                     </div>
                   </div>
@@ -674,7 +688,7 @@ export default function Settings() {
                         className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 text-sm font-bold shadow-xs"
                       >
                         <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                        รหัสผ่านถูกปรับปรุงเรียบร้อยแล้ว
+                        {s.passwordUpdated}
                       </motion.div>
                     )}
 
@@ -697,7 +711,7 @@ export default function Settings() {
                         htmlFor="currentPassword"
                         className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                       >
-                        รหัสผ่านปัจจุบัน
+                        {s.currentPassword}
                       </Label>
                       <div className="relative">
                         <Input
@@ -729,7 +743,7 @@ export default function Settings() {
                           htmlFor="newPassword"
                           className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                         >
-                          รหัสผ่านใหม่
+                          {s.newPassword}
                         </Label>
                         <div className="relative">
                           <Input
@@ -761,7 +775,7 @@ export default function Settings() {
                           htmlFor="confirmPassword"
                           className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                         >
-                          ยืนยันรหัสผ่านใหม่
+                          {s.confirmNewPassword}
                         </Label>
                         <div className="relative">
                           <Input
@@ -792,7 +806,7 @@ export default function Settings() {
                         </div>
                         {confirmPassword && newPassword !== confirmPassword && (
                           <p className="text-xs text-destructive font-bold mt-1">
-                            รหัสผ่านใหม่ไม่ตรงกัน
+                            {s.passwordMismatch}
                           </p>
                         )}
                       </div>
@@ -809,7 +823,7 @@ export default function Settings() {
                         ) : (
                           <Lock className="w-4 h-4 mr-2" />
                         )}
-                        บันทึกรหัสผ่านใหม่
+                        {s.saveNewPassword}
                       </Button>
                     </div>
                   </form>
@@ -833,7 +847,7 @@ export default function Settings() {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            บันทึกข้อมูล
+            {s.saveProfile}
           </Button>
         </div>
 

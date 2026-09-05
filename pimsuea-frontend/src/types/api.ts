@@ -5,9 +5,10 @@ export interface User {
 }
 
 export interface Category {
-    id: number;
+    id: number | string;
     name: string;
-    icon: string;
+    name_en?: string | null;
+    icon?: string;
 }
 
 export interface Color {
@@ -87,7 +88,7 @@ export interface Product {
     image_url?: string;
     images?: string[];
     hover_image_url?: string | null;
-    category_id: number;
+    category_id: number | string;
     is_beginner_friendly: boolean;
     sold_count?: number; 
     rating?: number;    

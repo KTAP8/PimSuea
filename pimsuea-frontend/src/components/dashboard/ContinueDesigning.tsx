@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Pencil } from 'lucide-react';
 import type { DashboardDesign } from '@/hooks/useDashboardStats';
 import { getPreviewDisplayUrl } from '@/lib/previews';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
     designs: DashboardDesign[];
@@ -9,6 +10,10 @@ interface Props {
 }
 
 export function ContinueDesigning({ designs, loading }: Props) {
+    const { t } = useLanguage();
+    const d = t.dashboard;
+    const c = t.common;
+
     if (!loading && designs.length === 0) return null;
 
     return (
@@ -18,10 +23,10 @@ export function ContinueDesigning({ designs, loading }: Props) {
                     <div className="p-2 bg-pink-50 text-pink-500 rounded-xl">
                       <Pencil className="w-6 h-6" />
                     </div>
-                    ออกแบบต่อจากที่ค้างไว้
+                    {d.continueDesigning}
                 </h2>
                 <Link to="/my-products" className="text-sm text-primary hover:underline font-normal flex items-center gap-1.5 transition-colors">
-                    ดูทั้งหมด <ArrowRight className="w-4 h-4" />
+                    {c.viewAll} <ArrowRight className="w-4 h-4" />
                 </Link>
             </div>
 
@@ -53,7 +58,7 @@ export function ContinueDesigning({ designs, loading }: Props) {
                             <div className="p-5 flex items-center justify-between bg-white border-t border-slate-50">
                                 <p className="font-medium text-slate-800 truncate text-base">{design.design_name}</p>
                                 <span className="flex items-center gap-1.5 text-primary text-sm font-medium shrink-0 ml-3 bg-teal-50 px-3 py-1.5 rounded-full group-hover:bg-[#07636D] group-hover:text-white transition-colors duration-300">
-                                    <Pencil className="w-3.5 h-3.5" /> แก้ไขต่อ
+                                    <Pencil className="w-3.5 h-3.5" /> {d.editContinue}
                                 </span>
                             </div>
                         </Link>
