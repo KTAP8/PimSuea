@@ -1,46 +1,19 @@
 from __future__ import annotations
 
-import json
 import shutil
+import sys
 import tempfile
 import uuid
 from pathlib import Path
 
+_tools_dir = Path(__file__).resolve().parent.parent
+if str(_tools_dir) not in sys.path:
+    sys.path.insert(0, str(_tools_dir))
+
+import catalog_mockups as catalog_mockups
+
 from . import orders as orders_svc
-from . import products as products_svc
 from . import r2 as r2mod
-
-
-def _normalize_placement(raw: dict | None) -> dict | None:
-    if not raw:
-        return None
-    return {
-        "x": int(float(raw.get("x", 0))),
-        "y": int(float(raw.get("y", 0))),
-        "w": int(float(raw.get("w", raw.get("width", 716)))),
-        "h": int(float(raw.get("h", raw.get("height", 955)))),
-    }
-
-
-def _find_template(product_id: str, color: str, side: str) -> dict | None:
-    templates = products_svc.get_product_templates(product_id)
-    color_lower = (color or "").lower()
-
-    for tpl in templates:
-        if tpl.get("side") != side:
-            continue
-        cid = (tpl.get("color_id") or "").lower()
-        if cid == color_lower:
-            return tpl
-
-    for tpl in templates:
-        if tpl.get("side") == side and tpl.get("is_default"):
-            return tpl
-
-    for tpl in templates:
-        if tpl.get("side") == side:
-            return tpl
-    return None
 
 
 def prepare_order_item_print(
@@ -79,24 +52,18 @@ def prepare_order_item_print(
 
     try:
         for side, print_url in print_map.items():
-            tpl = _find_template(product_id, item.get("color", ""), side)
-            if not tpl:
-                raise ValueError(f"No product template for side={side} color={item.get('color')}")
-
-            mockup_cfg = tpl.get("mockup_config") or {}
-            mockup_url = mockup_cfg.get("image_url")
-            if not mockup_url:
-                raise ValueError(f"Template {side} has no mockup_config.image_url")
+            resolved = catalog_mockups.resolve_side_mockup(
+                product_id, item.get("color", ""), side,
+            )
+            mockup_url = resolved["mockup_url"]
+            placement = resolved["placement"]
 
             print_data = r2mod.download_url(print_url)
             print_path = work_dir / f"{side}_print.png"
             print_path.write_bytes(print_data)
 
-            mockup_data = r2mod.download_url(mockup_url)
             mockup_path = work_dir / f"{side}_mockup{Path(mockup_url).suffix or '.jpg'}"
-            mockup_path.write_bytes(mockup_data)
-
-            placement = _normalize_placement(mockup_cfg.get("placement"))
+            catalog_mockups.download_mockup_file(mockup_url, mockup_path)
 
             sides.append({
                 "input": str(print_path),

@@ -204,18 +204,39 @@
 <body>
   <header>
     <h1>Tip Annotate</h1>
-    <p>Upload print files · pick templates · same Pillow output as the CLI</p>
+    <p>Upload print files · studio mockups or local templates · same output as CLI</p>
   </header>
 
   <main>
     <form id="form">
+      <section class="card" id="catalog-card">
+        <h2>Product mockup <span class="badge">same as website</span></h2>
+        <p id="catalog-hint" style="margin:0 0 0.75rem;font-size:0.85rem;color:var(--muted)">
+          Uses <code>mockup_config</code> from the product catalog (not canvas templates).
+        </p>
+        <label for="product_id">Product</label>
+        <select id="product_id" name="product_id"></select>
+        <label for="color_id">Color</label>
+        <select id="color_id" name="color_id"></select>
+        <div class="metric" id="mockup-summary" style="margin-top:0.75rem;font-size:0.78rem;display:none"></div>
+        <div class="row" style="margin-top:0.5rem">
+          <label class="check">
+            <input type="checkbox" id="use_local_mockups" />
+            Use local files in <code>tools/templates/</code> instead
+          </label>
+        </div>
+        <p id="local-mode-note" class="hidden" style="margin:0.5rem 0 0;font-size:0.85rem;color:var(--err)">
+          Not using website mockups. Local templates do not include the oversized black catalog photos.
+        </p>
+      </section>
+
       <div class="grid">
         <section class="card" id="front-card">
           <h2>Front <span class="badge">optional</span></h2>
           <label for="front_print">Print PNG</label>
           <input type="file" id="front_print" name="front_print" accept="image/png,image/*,.png" />
-          <label for="front_mockup">Mockup template</label>
-          <select id="front_mockup" name="front_mockup"></select>
+          <label for="front_mockup">Local mockup (legacy)</label>
+          <select id="front_mockup" name="front_mockup" disabled></select>
           <div class="row">
             <label class="check">
               <input type="checkbox" id="front_show_tag" name="front_show_tag" />
@@ -233,8 +254,8 @@
           <h2>Back <span class="badge">optional</span></h2>
           <label for="back_print">Print PNG</label>
           <input type="file" id="back_print" name="back_print" accept="image/png,image/*,.png" />
-          <label for="back_mockup">Mockup template</label>
-          <select id="back_mockup" name="back_mockup"></select>
+          <label for="back_mockup">Local mockup (legacy)</label>
+          <select id="back_mockup" name="back_mockup" disabled></select>
           <div class="row">
             <label class="check">
               <input type="checkbox" id="back_show_tag" name="back_show_tag" />
@@ -277,8 +298,18 @@
     const metrics = document.getElementById("metrics");
     const previews = document.getElementById("previews");
 
-    const FRONT_HINTS = ["front", "merch_white_front", "merch_black_front"];
-    const BACK_HINTS = ["back", "merch_white_back"];
+    const productSelect = document.getElementById("product_id");
+    const colorSelect = document.getElementById("color_id");
+    const useLocalMockups = document.getElementById("use_local_mockups");
+    const mockupSummary = document.getElementById("mockup-summary");
+    const localModeNote = document.getElementById("local-mode-note");
+    const catalogCard = document.getElementById("catalog-card");
+    const catalogHint = document.getElementById("catalog-hint");
+
+    const FRONT_HINTS = ["merch_white_front", "merch_black_front", "merch_"];
+    const BACK_HINTS = ["merch_white_back", "merch_"];
+    let catalogAvailable = false;
+    let products = [];
 
     function pickDefault(names, hints) {
       for (const hint of hints) {
@@ -300,6 +331,12 @@
       }
     }
 
+    function setLocalMockupsEnabled(enabled) {
+      for (const sel of [frontMockup, backMockup]) {
+        sel.disabled = !enabled;
+      }
+    }
+
     async function loadTemplates() {
       const res = await fetch("/api/templates");
       const data = await res.json();
@@ -317,6 +354,101 @@
       backMockup.value = pickDefault(names, BACK_HINTS);
     }
 
+    async function loadCatalogConfig() {
+      const res = await fetch("/api/config");
+      const data = await res.json();
+      catalogAvailable = !!data.catalog_available;
+      if (!catalogAvailable) {
+        catalogHint.textContent =
+          "Catalog mockups unavailable (" + (data.config_errors || []).join(", ") +
+          "). Using local templates only.";
+        useLocalMockups.checked = true;
+        useLocalMockups.disabled = true;
+        setLocalMockupsEnabled(true);
+        productSelect.disabled = true;
+        colorSelect.disabled = true;
+        return;
+      }
+      await loadProducts();
+      setLocalMockupsEnabled(useLocalMockups.checked);
+    }
+
+    async function loadProducts() {
+      const res = await fetch("/api/products");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load products");
+      products = data.products || [];
+      productSelect.innerHTML = "";
+      for (const p of products) {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        const en = p.title_en ? ` / ${p.title_en}` : "";
+        opt.textContent = (p.title || p.id) + en;
+        productSelect.appendChild(opt);
+      }
+      const oversized = products.find(p =>
+        (p.title || "").includes("oversized") || (p.title_en || "").toLowerCase().includes("oversized")
+      );
+      if (oversized) productSelect.value = oversized.id;
+      await loadColorsForProduct(productSelect.value);
+    }
+
+    async function loadColorsForProduct(productId) {
+      if (!productId) return;
+      const res = await fetch(`/api/products/${encodeURIComponent(productId)}/mockups`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load mockups");
+      colorSelect.innerHTML = "";
+      for (const c of data.colors || []) {
+        const opt = document.createElement("option");
+        opt.value = c.id;
+        opt.textContent = c.name || c.id;
+        colorSelect.appendChild(opt);
+      }
+      await refreshMockupSummary();
+    }
+
+    async function refreshMockupSummary() {
+      if (useLocalMockups.checked || !catalogAvailable) {
+        mockupSummary.style.display = "none";
+        return;
+      }
+      const pid = productSelect.value;
+      const cid = colorSelect.value;
+      if (!pid || !cid) return;
+      mockupSummary.style.display = "block";
+      mockupSummary.textContent = "Loading mockup info…";
+      const res = await fetch(
+        `/api/products/${encodeURIComponent(pid)}/mockups?color=${encodeURIComponent(cid)}`
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        mockupSummary.textContent = data.error || "Failed to load mockup info";
+        return;
+      }
+      const lines = [];
+      for (const side of ["front", "back"]) {
+        const s = data.sides_preview?.[side];
+        if (s) {
+          const pl = s.placement;
+          lines.push(
+            `${side}: ${s.label}\n  placement x=${pl.x} y=${pl.y} w=${pl.w} h=${pl.h}`
+          );
+        } else {
+          lines.push(`${side}: (no mockup in catalog)`);
+        }
+      }
+      mockupSummary.textContent = lines.join("\n\n");
+    }
+
+    productSelect.addEventListener("change", () => loadColorsForProduct(productSelect.value));
+    colorSelect.addEventListener("change", refreshMockupSummary);
+    useLocalMockups.addEventListener("change", () => {
+      setLocalMockupsEnabled(useLocalMockups.checked);
+      localModeNote.classList.toggle("hidden", !useLocalMockups.checked);
+      refreshMockupSummary();
+    });
+
     function formatInches(n) {
       return (Math.round(n * 100) / 100).toFixed(2);
     }
@@ -325,6 +457,19 @@
       results.classList.remove("hidden");
       metrics.innerHTML = "";
       previews.innerHTML = "";
+
+      if (data.mockup_sources && data.mockup_sources.length) {
+        const src = document.createElement("div");
+        src.className = "metric";
+        const lines = data.mockup_sources.map(s => {
+          const pl = s.placement
+            ? `  placement x=${s.placement.x} y=${s.placement.y} w=${s.placement.w} h=${s.placement.h}`
+            : "  (default merch placement)";
+          return `[${s.side}] ${s.source}: ${s.label}\n${pl}`;
+        });
+        src.textContent = "Mockups used\n" + lines.join("\n\n");
+        metrics.appendChild(src);
+      }
 
       for (const m of data.measurements || []) {
         const div = document.createElement("div");
@@ -366,7 +511,7 @@
       previews.innerHTML = "";
       statusEl.textContent = "Select at least one print file.";
       statusEl.className = "status";
-      loadTemplates().then(updateGenerateState);
+      Promise.all([loadTemplates(), loadCatalogConfig()]).then(updateGenerateState);
     });
 
     form.addEventListener("submit", async (e) => {
@@ -378,15 +523,21 @@
       }
 
       const fd = new FormData();
+      const useLocal = useLocalMockups.checked || !catalogAvailable;
+      fd.append("mock_source", useLocal ? "local" : "catalog");
+      if (!useLocal) {
+        fd.append("product_id", productSelect.value);
+        fd.append("color_id", colorSelect.value);
+      }
       if (frontPrint.files[0]) {
         fd.append("front_print", frontPrint.files[0]);
-        fd.append("front_mockup", frontMockup.value);
+        if (useLocal) fd.append("front_mockup", frontMockup.value);
         fd.append("front_show_tag", document.getElementById("front_show_tag").checked ? "true" : "false");
         fd.append("front_text_color", document.getElementById("front_text_color").value);
       }
       if (backPrint.files[0]) {
         fd.append("back_print", backPrint.files[0]);
-        fd.append("back_mockup", backMockup.value);
+        if (useLocal) fd.append("back_mockup", backMockup.value);
         fd.append("back_show_tag", document.getElementById("back_show_tag").checked ? "true" : "false");
         fd.append("back_text_color", document.getElementById("back_text_color").value);
       }
@@ -402,7 +553,10 @@
           throw new Error(data.error || "Processing failed");
         }
         renderResults(data);
-        statusEl.textContent = `Done — ${data.files.length} file(s).`;
+        const used = (data.mockup_sources || []).map(s => `${s.side}:${s.label}`).join(", ");
+        statusEl.textContent = used
+          ? `Done — ${data.files.length} file(s). Mockups: ${used}`
+          : `Done — ${data.files.length} file(s).`;
         statusEl.className = "status ok";
       } catch (err) {
         statusEl.textContent = err.message || String(err);
@@ -413,10 +567,10 @@
       }
     });
 
-    loadTemplates()
+    Promise.all([loadTemplates(), loadCatalogConfig()])
       .then(updateGenerateState)
       .catch(err => {
-        statusEl.textContent = "Failed to load templates: " + err.message;
+        statusEl.textContent = "Failed to load: " + err.message;
         statusEl.className = "status error";
       });
   </script>

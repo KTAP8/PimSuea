@@ -53,7 +53,9 @@ Open **http://127.0.0.1:5050**
 | **Back** (optional) | Same as front |
 | **Generate** | Enabled once at least one print file is selected |
 
-Mockup templates are loaded from `tools/templates/` (dropdown is populated automatically).
+**Product mockups (recommended):** Pick product + color at the top of the form. The server downloads the same `mockup_config.image_url` and `placement` as the design studio (requires `backend/.env` Supabase + R2 credentials).
+
+**Local templates (legacy):** Enable “Use local files” to pick from `tools/templates/` (`merch_*` only; `*_mock_template.png` canvas files are excluded).
 
 ### 4. Download results
 
@@ -159,7 +161,7 @@ Common pairings:
 | Back white | `merch_white_back.JPG` |
 | Front black | `merch_black_front.png` |
 
-Print-area placement is hardcoded in `Tip_annotate.py` (`_PLACEMENTS`) and must match the mockup image dimensions (2048 × 1742 px canvas).
+Local `merch_*` files use the hardcoded print area in `Tip_annotate.py` (`_PLACEMENTS`) for a 2048 × 1742 canvas. Catalog mockups use each photo's real width when front and back are combined, so the shirt is not cut at 2048.
 
 ---
 

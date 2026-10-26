@@ -219,14 +219,18 @@ def composite_on_mockup(
     side: str = "front",
     show_tag: bool = True,
     text_color: str | None = None,
-) -> bool:
-    """Paste the print file onto the shirt mockup and draw annotations at mockup resolution."""
+) -> int | None:
+    """Paste the print file onto the shirt mockup and draw annotations.
+
+    Returns the mockup photo width in pixels (the split between shirt and the
+    measurement panel), or None if the mockup file is missing.
+    """
     label_fill = _TEXT_COLORS.get(
         text_color or TEXT_COLOR, _TEXT_COLORS["black"])
     mp = Path(mockup_path)
     if not mp.exists():
         print(f"  [mockup] Not found: {mockup_path} — skipping mockup output.")
-        return False
+        return None
 
     px_off, py_off = placement["x"], placement["y"]
     pw, ph = placement["w"], placement["h"]
@@ -435,7 +439,7 @@ def composite_on_mockup(
 
     expanded.convert("RGB").save(output_path)
     print(f"  Mockup  → {output_path}\n")
-    return True
+    return mw
 
 
 def annotate(input_path: str, output_path: str | None = None, *,
@@ -449,6 +453,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
     Returns a dict with:
       annotated     — Path to the annotated preview PNG
       mockup        — Path to the mockup PNG, or None if skipped
+      mockup_width  — Shirt-photo width used to split the combined sheet
       side          — 'front' or 'back'
       measurements  — summary metrics (size, tier, offsets, labels)
     """
@@ -630,7 +635,7 @@ def annotate(input_path: str, output_path: str | None = None, *,
         "x_dir": x_dir,
         "x_offset_in": x_offset_in,
     }
-    mockup_ok = composite_on_mockup(
+    mockup_width = composite_on_mockup(
         img_full, mockup_path, resolved_placement, mockup_out,
         measurements, side=_side, show_tag=_show_tag,
         text_color=_text_color)
@@ -659,24 +664,34 @@ def annotate(input_path: str, output_path: str | None = None, *,
     }
     return {
         "annotated": out,
-        "mockup": mockup_out if mockup_ok else None,
+        "mockup": mockup_out if mockup_width else None,
+        "mockup_width": mockup_width,
         "cmyk": cmyk_out,
         "side": _side,
         "measurements": summary,
     }
 
 
-def combine_mockups(paths, output_path=None, gap=COMBINE_GAP):
-    """Combine multiple mockup images into a two-column grid."""
+def combine_mockups(paths, output_path=None, gap=COMBINE_GAP, split_widths=None):
+    """Combine multiple mockup images into a two-column grid.
+
+    split_widths: photo width of each mockup (shirt | measurement panel).
+    Defaults to the legacy 2048px merch canvas when unknown.
+    """
     if not paths:
         raise ValueError("combine_mockups: paths list is empty.")
     images = [Image.open(p).convert("RGB") for p in paths]
+    if split_widths is None:
+        split_widths = [_MOCKUP_W] * len(images)
+    if len(split_widths) != len(images):
+        raise ValueError("combine_mockups: split_widths length must match paths.")
 
-    split_x = _MOCKUP_W
-    shirts = [img.crop((0, 0, min(split_x, img.width), img.height))
-              for img in images]
-    panels = [img.crop((min(split_x, img.width), 0, img.width, img.height))
-              for img in images]
+    shirts = []
+    panels = []
+    for img, split_x in zip(images, split_widths):
+        sx = max(0, min(int(split_x), img.width))
+        shirts.append(img.crop((0, 0, sx, img.height)))
+        panels.append(img.crop((sx, 0, img.width, img.height)))
 
     shirt_col_w = max(s.width for s in shirts)
     panel_col_w = max(p.width for p in panels)
@@ -713,6 +728,7 @@ def run_batch_entries(sides, output_path=None) -> dict:
 
     side_results = []
     mockup_paths = []
+    split_widths = []
     for entry in sides:
         result = annotate(
             entry["input"],
@@ -725,13 +741,16 @@ def run_batch_entries(sides, output_path=None) -> dict:
         side_results.append(result)
         if result.get("mockup"):
             mockup_paths.append(result["mockup"])
+            split_widths.append(result.get("mockup_width") or _MOCKUP_W)
 
     combined = None
     if len(mockup_paths) >= 2:
         if output_path is None:
             first = Path(sides[0]["input"])
             output_path = first.with_stem(first.stem + "_combined")
-        combined = combine_mockups([str(p) for p in mockup_paths], output_path)
+        combined = combine_mockups(
+            [str(p) for p in mockup_paths], output_path, split_widths=split_widths,
+        )
     elif len(mockup_paths) == 1 and output_path is not None:
         # Explicit combined path requested with a single side — skip combine
         pass
