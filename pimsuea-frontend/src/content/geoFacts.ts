@@ -65,7 +65,7 @@ export const GARMENT_PRICING = [
   {
     nameTh: 'เสื้อ oversized boxy heavyweight tee สกรีนลงเนื้อผ้า',
     nameEn: 'Oversized boxy heavyweight tee',
-    sizeNote: 'Free Size',
+    sizeNote: 'S–XL',
     qtyLabel: '1–11 ชิ้น',
     colors: [
       { key: 'White', labelTh: 'สีขาว', labelEn: 'White', thb: 390 },
