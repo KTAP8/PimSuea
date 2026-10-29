@@ -6,16 +6,16 @@ Custom print-on-demand platform for Thailand. Customers browse a product catalog
 
 ## Tech stack
 
-| Layer | Stack |
-|-------|--------|
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, Konva |
-| Backend | Node.js, Express 5 |
-| Database & auth | Supabase (PostgreSQL + Auth) |
-| File storage | Cloudflare R2 |
-| Email | Resend (waitlist / notifications) |
-| Frontend hosting | Vercel |
-| Backend hosting | Render (or any Node host) |
-| DNS | Cloudflare |
+| Layer            | Stack                                                      |
+| ---------------- | ---------------------------------------------------------- |
+| Frontend         | React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui, Konva |
+| Backend          | Node.js, Express 5                                         |
+| Database & auth  | Supabase (PostgreSQL + Auth)                               |
+| File storage     | Cloudflare R2                                              |
+| Email            | Resend (waitlist / notifications)                          |
+| Frontend hosting | Vercel                                                     |
+| Backend hosting  | Render (or any Node host)                                  |
+| DNS              | Cloudflare                                                 |
 
 ## Repository structure
 
@@ -59,20 +59,20 @@ cp pimsuea-frontend/.env.example pimsuea-frontend/.env
 
 See [`backend/.env.example`](backend/.env.example) and [`pimsuea-frontend/.env.example`](pimsuea-frontend/.env.example) for the full list. Minimum for local dev:
 
-| Variable | Where | Required? |
-|----------|-------|-----------|
-| `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY` | backend | Yes — without both, API uses a mock Supabase client |
-| `SUPABASE_SECRET_KEY` | backend | Yes — admin routes (orders, waitlist, etc.) |
-| `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | frontend | Yes — auth and direct Supabase reads |
-| R2 `CLOUDFLARE_*` / `R2_*` vars | backend | Yes — design uploads and print files |
-| `RESEND_API_KEY` | backend | No — server starts without it; waitlist emails are skipped |
-| `VITE_API_URL` | frontend | No — defaults to `http://localhost:3000/api` |
-| `VITE_APP_URL` | frontend | No — defaults to `https://app.pimsuea.com`; set to `http://localhost:5173` locally |
-| `VITE_MARKETING_URL` | frontend | No — defaults to `https://pimsuea.com` |
-| `FRONTEND_URL` | backend | Production: `https://app.pimsuea.com` |
-| `STRIPE_SECRET_KEY` | backend | Yes — Stripe Checkout + webhooks |
-| `STRIPE_WEBHOOK_SECRET` | backend | Yes in prod; local: from `stripe listen` (see below) |
-| `STRIPE_PENDING_ORDER_TTL_HOURS` | backend | No — defaults to `24` (abandoned checkout expiry) |
+| Variable                                                      | Where    | Required?                                                                          |
+| ------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------- |
+| `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`                   | backend  | Yes — without both, API uses a mock Supabase client                                |
+| `SUPABASE_SECRET_KEY`                                         | backend  | Yes — admin routes (orders, waitlist, etc.)                                        |
+| `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY` | frontend | Yes — auth and direct Supabase reads                                               |
+| R2 `CLOUDFLARE_*` / `R2_*` vars                               | backend  | Yes — design uploads and print files                                               |
+| `RESEND_API_KEY`                                              | backend  | No — server starts without it; waitlist emails are skipped                         |
+| `VITE_API_URL`                                                | frontend | No — defaults to `http://localhost:3000/api`                                       |
+| `VITE_APP_URL`                                                | frontend | No — defaults to `https://app.pimsuea.com`; set to `http://localhost:5173` locally |
+| `VITE_MARKETING_URL`                                          | frontend | No — defaults to `https://pimsuea.com`                                             |
+| `FRONTEND_URL`                                                | backend  | Production: `https://app.pimsuea.com`                                              |
+| `STRIPE_SECRET_KEY`                                           | backend  | Yes — Stripe Checkout + webhooks                                                   |
+| `STRIPE_WEBHOOK_SECRET`                                       | backend  | Yes in prod; local: from `stripe listen` (see below)                               |
+| `STRIPE_PENDING_ORDER_TTL_HOURS`                              | backend  | No — defaults to `24` (abandoned checkout expiry)                                  |
 
 **Where to find Supabase keys:** Supabase dashboard → Project Settings → API → Project URL, `anon` (publishable), and `service_role` (secret).
 
@@ -106,7 +106,7 @@ Use two terminals:
 ```bash
 # Terminal 1 — API (default http://localhost:3000)
 cd backend
-npm run dev
+npm start
 ```
 
 ```bash
@@ -134,10 +134,10 @@ npm run build
 
 ### Domain split
 
-| Host | Purpose |
-|------|---------|
-| `pimsuea.com` | Marketing landing (`NewLanding`), SEO, waitlist |
-| `app.pimsuea.com` | Auth, catalog, design studio, checkout |
+| Host              | Purpose                                         |
+| ----------------- | ----------------------------------------------- |
+| `pimsuea.com`     | Marketing landing (`NewLanding`), SEO, waitlist |
+| `app.pimsuea.com` | Auth, catalog, design studio, checkout          |
 
 One Vercel project serves both domains from the same build; [`pimsuea-frontend/src/lib/site.ts`](pimsuea-frontend/src/lib/site.ts) picks routes by hostname. Login and OAuth run only on the app subdomain.
 
@@ -200,14 +200,14 @@ Set the public URLs in backend `R2_PUBLIC_URL_*` variables. Upload credentials g
 
 ## Common scripts
 
-| Location | Command | Purpose |
-|----------|---------|---------|
-| `pimsuea-frontend/` | `npm run dev` | Dev server with HMR |
-| `pimsuea-frontend/` | `npm run build` | Typecheck + production build |
-| `pimsuea-frontend/` | `npm run lint` | ESLint |
+| Location            | Command           | Purpose                          |
+| ------------------- | ----------------- | -------------------------------- |
+| `pimsuea-frontend/` | `npm run dev`     | Dev server with HMR              |
+| `pimsuea-frontend/` | `npm run build`   | Typecheck + production build     |
+| `pimsuea-frontend/` | `npm run lint`    | ESLint                           |
 | `pimsuea-frontend/` | `npm run preview` | Preview production build locally |
-| `backend/` | `npm run dev` | API with nodemon |
-| `backend/` | `npm start` | API (production) |
+| `backend/`          | `npm run dev`     | API with nodemon                 |
+| `backend/`          | `npm start`       | API (production)                 |
 
 ## Print production tools
 

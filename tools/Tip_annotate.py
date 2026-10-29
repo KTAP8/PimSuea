@@ -160,6 +160,45 @@ def find_content_bbox(img: Image.Image):
     return x_min, y_min, x_max, y_max
 
 
+def _sample_backdrop_rgb(img: Image.Image, sample: int = 24) -> tuple[int, int, int]:
+    """Median RGB from mockup corners — studio/backdrop fill, not the garment."""
+    rgb = img.convert("RGB")
+    w, h = rgb.size
+    s = max(8, min(sample, w // 5, h // 5))
+    patches = [
+        rgb.crop((0, 0, s, s)),
+        rgb.crop((w - s, 0, w, s)),
+        rgb.crop((0, h - s, s, h)),
+        rgb.crop((w - s, h - s, w, h)),
+    ]
+    vals = np.concatenate([np.array(p).reshape(-1, 3) for p in patches], axis=0)
+    return tuple(int(v) for v in np.median(vals, axis=0))
+
+
+def _flatten_dark_studio_to_white(mockup: Image.Image, placement: dict) -> Image.Image:
+    """Replace a dark studio backdrop with white. Skip when the garment itself is dark."""
+    rgb = mockup.convert("RGB")
+    backdrop = _sample_backdrop_rgb(rgb)
+    if sum(backdrop) / 3 > 70:
+        return mockup
+
+    cx = min(rgb.width - 1, max(0, placement["x"] + placement["w"] // 2))
+    cy = min(rgb.height - 1, max(0, placement["y"] + placement["h"] // 2))
+    garment = rgb.getpixel((cx, cy))
+    if sum(garment) / 3 < 110:
+        return mockup
+
+    flat = rgb.copy()
+    for seed in (
+        (0, 0),
+        (flat.width - 1, 0),
+        (0, flat.height - 1),
+        (flat.width - 1, flat.height - 1),
+    ):
+        ImageDraw.floodfill(flat, seed, (255, 255, 255), thresh=32)
+    return flat.convert("RGBA")
+
+
 def draw_dashed_line(draw, x1, y1, x2, y2, dash=DASH_LEN, gap=GAP_LEN,
                      color=ORANGE, width=LINE_W):
     """Draw a dashed line between two points."""
@@ -232,14 +271,16 @@ def composite_on_mockup(
         print(f"  [mockup] Not found: {mockup_path} — skipping mockup output.")
         return None
 
-    px_off, py_off = placement["x"], placement["y"]
     pw, ph = placement["w"], placement["h"]
 
     sx = pw / print_img.width
     sy = ph / print_img.height
 
-    # 1. Paste print design onto mockup
-    mockup = Image.open(mp).convert("RGBA")
+    # 1. Paste print design onto mockup. Dark studio backdrops become white;
+    #    a dark garment is left as photographed.
+    mockup = _flatten_dark_studio_to_white(Image.open(mp).convert("RGBA"), placement)
+    px_off, py_off = placement["x"], placement["y"]
+
     design = print_img.convert("RGBA").resize((pw, ph), Image.LANCZOS)
     mockup.paste(design, (px_off, py_off), mask=design)
 

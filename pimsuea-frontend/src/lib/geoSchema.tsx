@@ -15,6 +15,13 @@ export function buildGeoJsonLd(options?: {
 }): Record<string, unknown> {
   const pageUrl = options?.pageUrl ?? GEO_URLS.home;
   const sameAs = geoSameAs();
+  const brandImage = {
+    '@type': 'ImageObject',
+    url: `${GEO.website}/og-image.png`,
+    width: 1200,
+    height: 630,
+    caption: 'PimSuea — custom shirts, made simple',
+  };
 
   const graph: Record<string, unknown>[] = [
     {
@@ -23,6 +30,7 @@ export function buildGeoJsonLd(options?: {
       name: GEO.brand,
       url: GEO.website,
       logo: `${GEO.website}/logo.svg`,
+      image: brandImage,
       description: GEO.oneLiner,
       sameAs,
     },
@@ -31,7 +39,7 @@ export function buildGeoJsonLd(options?: {
       '@id': `${GEO.website}/#localbusiness`,
       name: GEO.brand,
       url: GEO.website,
-      image: `${GEO.website}/og-image.png`,
+      image: brandImage,
       description: GEO.oneLiner,
       address: {
         '@type': 'PostalAddress',
@@ -62,6 +70,7 @@ export function buildGeoJsonLd(options?: {
       '@id': `${pageUrl}#webpage`,
       url: pageUrl,
       name: options.pageName,
+      primaryImageOfPage: brandImage,
       isPartOf: { '@id': `${GEO.website}/#website` },
       about: { '@id': `${GEO.website}/#organization` },
       inLanguage: ['th', 'en'],

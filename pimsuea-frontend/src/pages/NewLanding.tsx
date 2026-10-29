@@ -576,11 +576,10 @@ function WhoWeAreSection() {
           >
             <div className="grid grid-cols-3 gap-3 sm:gap-4 relative z-10">
               {/* Photo 1 (shifted down - Haka) */}
-              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
-                <img
-                  src="/photos/Founder_Haka.jpg"
-                  alt="Founder Haka"
-                  className="absolute inset-0 w-full h-full object-cover object-[center_top] group-hover:scale-105 transition-transform duration-700"
+              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group" role="img" aria-label="Haka, COO">
+                <div
+                  className="absolute inset-0 bg-cover bg-[center_top] group-hover:scale-105 transition-transform duration-700"
+                  style={{ backgroundImage: "url(/photos/Founder_Haka.jpg)" }}
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
@@ -594,11 +593,10 @@ function WhoWeAreSection() {
               </div>
 
               {/* Photo 2 (center, no offset - Touch) */}
-              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl group">
-                <img
-                  src="/photos/Founder_Touch.jpg"
-                  alt="Founder Touch"
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl group" role="img" aria-label="Touch, CEO">
+                <div
+                  className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-700"
+                  style={{ backgroundImage: "url(/photos/Founder_Touch.jpg)" }}
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">
@@ -612,11 +610,10 @@ function WhoWeAreSection() {
               </div>
 
               {/* Photo 3 (shifted down - Khaopan) */}
-              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group">
-                <img
-                  src="/photos/Founder_Khaopan.jpg"
-                  alt="Founder Khaopan"
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              <div className="relative aspect-3/4 overflow-hidden rounded-2xl bg-foreground shadow-xl mt-8 md:mt-12 group" role="img" aria-label="Khaopan, CMO">
+                <div
+                  className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-700"
+                  style={{ backgroundImage: "url(/photos/Founder_Khaopan.jpg)" }}
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/0 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
                 <div className="absolute bottom-3 left-3 right-3 z-10 translate-y-1 group-hover:translate-y-0 transition-transform duration-500">

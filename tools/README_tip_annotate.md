@@ -163,6 +163,8 @@ Common pairings:
 
 Local `merch_*` files use the hardcoded print area in `Tip_annotate.py` (`_PLACEMENTS`) for a 2048 × 1742 canvas. Catalog mockups use each photo's real width when front and back are combined, so the shirt is not cut at 2048.
 
+Catalog mockups with a dark studio backdrop are flattened to white before the design is pasted, unless the garment itself is dark. The measurement panel is white.
+
 ---
 
 ## Options reference
