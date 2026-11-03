@@ -9,6 +9,8 @@ chmod +x scripts/verify-geo-public.sh
 MARKETING_ORIGIN=https://pimsuea.com ./scripts/verify-geo-public.sh
 ```
 
+Marketing URLs are a **client-rendered SPA**: `curl` only sees `<div id="root">`, not Thai body copy. The script checks HTTP 200 and that the deployed JS bundle includes each route path. For visible copy, use a browser or GSC “View crawled page”.
+
 Local marketing preview:
 
 ```bash
