@@ -12,7 +12,11 @@ import api, {
     composePrintFiles,
     type PrintComposeSide,
 } from '../services/api';
-import { compositeSingleSide, OUTPUT_SCALE } from '../utils/mockupCompositor';
+import {
+    compositeSingleSide,
+    loadMockupBackground,
+    mockupOutputScale,
+} from '../utils/mockupCompositor';
 import { useAuth } from '../contexts/AuthContext';
 import { isLegacyDtfPrintingType } from '../constants/printing';
 import type { ProductTemplate, Color } from '../types/api';
@@ -1007,9 +1011,12 @@ export function useCanvasDesign() {
     };
 
     // ── Mockup ────────────────────────────────────────────────────────────────
-    const captureDesignDataUrl = (placement: { w: number; h: number }): string | null => {
+    const captureDesignDataUrl = (
+        placement: { w: number; h: number },
+        mockupScale: number,
+    ): string | null => {
         if (!stageRef.current || !printZone) return null;
-        const pixelRatio = (placement.w * OUTPUT_SCALE) / printZone.width;
+        const pixelRatio = (placement.w * mockupScale) / printZone.width;
         const tr = transformerRef.current;
         const prevNodes = tr?.nodes() ?? [];
         tr?.nodes([]);
@@ -1032,6 +1039,7 @@ export function useCanvasDesign() {
         tmpl: ProductTemplate,
         images: CanvasImage[],
         placement: { w: number; h: number },
+        mockupScale: number,
     ): Promise<string | null> => {
         if (!images.length) return null;
         const bgImg = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -1046,7 +1054,7 @@ export function useCanvasDesign() {
         const sf = Math.min(containerW / bgImg.width, containerH / bgImg.height, 1) * 0.95;
         const pz = tmpl.print_area_config;
         const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
-        const pixelRatio = (placement.w * OUTPUT_SCALE) / pzScaled.width;
+        const pixelRatio = (placement.w * mockupScale) / pzScaled.width;
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(pzScaled.width * pixelRatio);
         canvas.height = Math.round(pzScaled.height * pixelRatio);
@@ -1065,18 +1073,22 @@ export function useCanvasDesign() {
             const colorTemplates = templates.filter(t => t.color?.id === selectedColorId && t.mockup_config);
             for (const tmpl of colorTemplates) {
                 const placement = tmpl.mockup_config!.placement;
+                const mockupImageUrl = r2ProxyUrl(tmpl.mockup_config!.image_url);
+                const mockupBg = await loadMockupBackground(mockupImageUrl);
+                const mockupScale = mockupOutputScale(mockupBg.naturalWidth, mockupBg.naturalHeight);
                 const images = tmpl.side === currentTemplate?.side
                     ? canvasImages
                     : (sideCanvasImages.current[tmpl.side] ?? []);
                 if (!images.length) continue;
                 const designDataUrl = tmpl.side === currentTemplate?.side
-                    ? captureDesignDataUrl(placement)
-                    : await captureOffScreenDataUrl(tmpl, images, placement);
+                    ? captureDesignDataUrl(placement, mockupScale)
+                    : await captureOffScreenDataUrl(tmpl, images, placement, mockupScale);
                 if (!designDataUrl) continue;
                 const composited = await compositeSingleSide(
-                    r2ProxyUrl(tmpl.mockup_config!.image_url),
+                    mockupImageUrl,
                     placement,
                     designDataUrl,
+                    mockupBg,
                 );
                 results.push({ side: tmpl.side, url: composited });
             }

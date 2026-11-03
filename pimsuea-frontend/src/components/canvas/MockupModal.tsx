@@ -38,7 +38,7 @@ export function MockupModal({ results, onClose }: Props) {
                             <div className="relative overflow-hidden rounded-xl bg-white w-full aspect-4/5 border border-slate-100">
                                 <img src={url} alt={`mockup-${side}`} className="w-full h-full object-cover" />
                             </div>
-                            <a href={url} download={`mockup-${side}.png`} className="w-full">
+                            <a href={url} download={`mockup-${side}.jpg`} className="w-full">
                                 <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all">
                                     <Download className="w-3.5 h-3.5" />
                                     {s.download}
