@@ -27,6 +27,8 @@ interface Props {
     onDragEnd: (id: string, x: number, y: number) => void;
     onTransform: (scaledW: number, scaledH: number) => void;
     onTransformEnd: (id: string, x: number, y: number, scaledW: number, scaledH: number, rotation: number) => void;
+    onUndo?: () => void;
+    onRedo?: () => void;
 }
 
 const SNAP_THRESHOLD = 8;
@@ -87,7 +89,7 @@ function computeSnap(
 export function CanvasStage({
     stageRef, bgNodeRef, printZoneNodeRef, transformerRef,
     bgImage, stageSize, printZone, canvasImages, isExporting, pxPerInch,
-    onSelect, onDragEnd, onTransform, onTransformEnd,
+    onSelect, onDragEnd, onTransform, onTransformEnd, onUndo, onRedo,
 }: Props) {
     // Guide lines layer — managed imperatively for perf
     const guidesLayerRef = useRef<Konva.Layer | null>(null);
@@ -203,6 +205,17 @@ export function CanvasStage({
                 } else if (e.key === '0') {
                     e.preventDefault();
                     resetZoom();
+                } else if (e.key === 'z' || e.key === 'Z') {
+                    if (e.shiftKey && onRedo) {
+                        e.preventDefault();
+                        onRedo();
+                    } else if (!e.shiftKey && onUndo) {
+                        e.preventDefault();
+                        onUndo();
+                    }
+                } else if (e.key === 'y' && onRedo) {
+                    e.preventDefault();
+                    onRedo();
                 }
             }
         };
@@ -217,7 +230,7 @@ export function CanvasStage({
             window.removeEventListener('keyup', onKeyUp);
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stageSize]);
+    }, [stageSize, onUndo, onRedo]);
 
     // ── Touch: pinch-to-zoom + pan (2 fingers) ────────────────────────────────
     useEffect(() => {

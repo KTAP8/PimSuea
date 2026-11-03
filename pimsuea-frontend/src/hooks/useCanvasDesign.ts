@@ -25,6 +25,11 @@ import {
     type CanvasDataMeta,
 } from '../utils/canvasCoords';
 import {
+    cloneSideLayers,
+    snapshotKey,
+    type CanvasHistorySnapshot,
+} from '../utils/canvasHistory';
+import {
     startStudioSession,
     endStudioSession,
     trackStudioCanvasReady,
@@ -136,6 +141,19 @@ export function useCanvasDesign() {
 
     // Per-side storage (keyed by side name e.g. "front"/"back" — shared across all colors)
     const sideCanvasImages = useRef<Record<string, CanvasImage[]>>({});
+    const HISTORY_MAX = 50;
+    const historyPastRef = useRef<CanvasHistorySnapshot[]>([]);
+    const historyFutureRef = useRef<CanvasHistorySnapshot[]>([]);
+    const [historyVersion, setHistoryVersion] = useState(0);
+    const shouldResetHistoryAfterRestore = useRef(false);
+    const pendingHistorySelection = useRef<string | null | undefined>(undefined);
+    const finishPendingHistorySelection = (template: ProductTemplate) => {
+        if (pendingHistorySelection.current === undefined) return;
+        const sel = pendingHistorySelection.current;
+        pendingHistorySelection.current = undefined;
+        const imgs = sideCanvasImages.current[template.side] ?? [];
+        setSelectedId(sel && imgs.some(ci => ci.id === sel) ? sel : null);
+    };
     const sideZones = useRef<Record<string, { left: number; top: number; width: number; height: number }>>({});
     const pendingSideData = useRef<Record<string, SerializableImage[]>>({});
     const loadedCanvasMeta = useRef<CanvasDataMeta>({});
@@ -273,6 +291,7 @@ export function useCanvasDesign() {
                     };
                     const firstColorId = design.available_colors?.[0] ?? null;
                     if (canvasData?.renderer === 'konva') {
+                        shouldResetHistoryAfterRestore.current = true;
                         if (canvasData.sides) {
                             if (canvasData.activeSide) {
                                 // New format: sides keyed by side name ("front"/"back")
@@ -376,6 +395,13 @@ export function useCanvasDesign() {
 
         if (!pending?.length) {
             setCanvasImages(sideCanvasImages.current[template.side] ?? []);
+            finishPendingHistorySelection(template);
+            if (shouldResetHistoryAfterRestore.current) {
+                shouldResetHistoryAfterRestore.current = false;
+                historyPastRef.current = [];
+                historyFutureRef.current = [];
+                setHistoryVersion(v => v + 1);
+            }
             return;
         }
         if (!zone || !sf || !imgW || !imgH) return;
@@ -418,6 +444,13 @@ export function useCanvasDesign() {
             }
             sideCanvasImages.current[template.side] = loaded;
             setCanvasImages(loaded);
+            finishPendingHistorySelection(template);
+            if (shouldResetHistoryAfterRestore.current) {
+                shouldResetHistoryAfterRestore.current = false;
+                historyPastRef.current = [];
+                historyFutureRef.current = [];
+                setHistoryVersion(v => v + 1);
+            }
         });
     }, []);
 
@@ -519,8 +552,87 @@ export function useCanvasDesign() {
         new Map(templates.map(t => [t.color?.id, t.color])).values()
     ).filter((c): c is Color => !!c);
 
+    const saveCurrentSide = () => {
+        if (currentTemplate) sideCanvasImages.current[currentTemplate.side] = canvasImages;
+    };
+
+    const bumpHistory = () => setHistoryVersion(v => v + 1);
+
+    const captureHistorySnapshot = (): CanvasHistorySnapshot | null => {
+        if (!currentTemplate) return null;
+        saveCurrentSide();
+        return {
+            sides: cloneSideLayers(sideCanvasImages.current),
+            activeSide: currentTemplate.side,
+            selectedId,
+        };
+    };
+
+    const resetHistoryStacks = useCallback(() => {
+        historyPastRef.current = [];
+        historyFutureRef.current = [];
+        bumpHistory();
+    }, []);
+
+    const pushHistoryBeforeEdit = useCallback(() => {
+        const snap = captureHistorySnapshot();
+        if (!snap) return;
+        const key = snapshotKey(snap);
+        const past = historyPastRef.current;
+        if (past.length > 0 && snapshotKey(past[past.length - 1]) === key) return;
+        past.push(snap);
+        if (past.length > HISTORY_MAX) past.shift();
+        historyFutureRef.current = [];
+        bumpHistory();
+    }, [currentTemplate, canvasImages, selectedId]);
+
+    const applyHistorySnapshot = useCallback((snap: CanvasHistorySnapshot) => {
+        sideCanvasImages.current = cloneSideLayers(snap.sides);
+        const forSide = sideCanvasImages.current[snap.activeSide] ?? [];
+        const tmpl = templates.find(t => t.side === snap.activeSide && t.color?.id === selectedColorId)
+            ?? templates.find(t => t.side === snap.activeSide);
+        const sideChanged = tmpl && currentTemplate?.side !== snap.activeSide;
+
+        if (sideChanged && tmpl) {
+            pendingHistorySelection.current = snap.selectedId;
+            setCurrentTemplate(tmpl);
+        } else {
+            setCanvasImages(forSide);
+            setSelectedId(
+                snap.selectedId && forSide.some(ci => ci.id === snap.selectedId) ? snap.selectedId : null,
+            );
+        }
+        markDirty();
+        bumpPriceRefresh();
+    }, [templates, selectedColorId, currentTemplate]);
+
+    const undo = useCallback(() => {
+        const past = historyPastRef.current;
+        if (past.length === 0) return;
+        const current = captureHistorySnapshot();
+        if (current) historyFutureRef.current.push(current);
+        const target = past.pop()!;
+        applyHistorySnapshot(target);
+        bumpHistory();
+    }, [applyHistorySnapshot, currentTemplate, canvasImages, selectedId]);
+
+    const redo = useCallback(() => {
+        const future = historyFutureRef.current;
+        if (future.length === 0) return;
+        const current = captureHistorySnapshot();
+        if (current) historyPastRef.current.push(current);
+        const target = future.pop()!;
+        applyHistorySnapshot(target);
+        bumpHistory();
+    }, [applyHistorySnapshot, currentTemplate, canvasImages, selectedId]);
+
+    const canUndo = historyPastRef.current.length > 0;
+    const canRedo = historyFutureRef.current.length > 0;
+    void historyVersion;
+
     // ── Layer helpers ─────────────────────────────────────────────────────────
     const moveLayer = (layerId: string, delta: 'forward' | 'backward') => {
+        pushHistoryBeforeEdit();
         markDirty();
         setCanvasImages(prev => {
             const idx = prev.findIndex(ci => ci.id === layerId);
@@ -542,10 +654,6 @@ export function useCanvasDesign() {
     };
 
     // ── Side / color helpers ──────────────────────────────────────────────────
-    const saveCurrentSide = () => {
-        if (currentTemplate) sideCanvasImages.current[currentTemplate.side] = canvasImages;
-    };
-
     const handleSideChange = (template: ProductTemplate) => {
         saveCurrentSide();
         setCurrentTemplate(template);
@@ -585,6 +693,7 @@ export function useCanvasDesign() {
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
+            pushHistoryBeforeEdit();
             const scale = Math.min(printZone.width / img.width, printZone.height / img.height, 1);
             const w = img.width * scale;
             const h = img.height * scale;
@@ -604,6 +713,7 @@ export function useCanvasDesign() {
     };
 
     const removeCanvasLayer = (layerId: string) => {
+        pushHistoryBeforeEdit();
         setCanvasImages((prev) => prev.filter((ci) => ci.id !== layerId));
         setSelectedId((prev) => (prev === layerId ? null : prev));
         markDirty();
@@ -657,6 +767,7 @@ export function useCanvasDesign() {
 
     // ── Stage event handlers (called from CanvasStage) ────────────────────────
     const handleStageDragEnd = (imgId: string, x: number, y: number) => {
+        pushHistoryBeforeEdit();
         setCanvasImages(prev => prev.map(item => item.id === imgId ? { ...item, x, y } : item));
         markDirty();
     };
@@ -667,6 +778,7 @@ export function useCanvasDesign() {
     };
 
     const handleStageTransformEnd = (imgId: string, x: number, y: number, scaledW: number, scaledH: number, rotation: number) => {
+        pushHistoryBeforeEdit();
         setCanvasImages(prev => prev.map(item =>
             item.id === imgId ? { ...item, x, y, width: Math.max(10, scaledW), height: Math.max(10, scaledH), rotation } : item
         ));
@@ -677,6 +789,7 @@ export function useCanvasDesign() {
 
     const applySizeIn = (w: number, h: number) => {
         if (!selectedId || !pxPerInch) return;
+        pushHistoryBeforeEdit();
         setCanvasImages(prev => prev.map(ci =>
             ci.id === selectedId
                 ? { ...ci, width: Math.max(10, w * pxPerInch), height: Math.max(10, h * pxPerInch) }
@@ -1084,6 +1197,7 @@ export function useCanvasDesign() {
 
             setSaveStatus('saved');
             setIsDirty(false);
+            resetHistoryStacks();
             setTimeout(() => setSaveStatus('idle'), 2500);
             trackStudioSaveSucceeded(isFirstSave);
 
@@ -1180,6 +1294,7 @@ export function useCanvasDesign() {
         shouldFocusDesignName, setShouldFocusDesignName,
         removeCanvasLayer,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
+        undo, redo, canUndo, canRedo,
         reportStudioExit, hasAnyArtwork,
     };
 }

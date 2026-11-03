@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { CanvasPriceBreakdown } from '../../types/canvas';
 import { useLanguage } from '@/i18n/LanguageContext';
@@ -12,7 +13,7 @@ export function PriceCard({ priceBreakdown, priceLoading }: Props) {
     const s = t.studio;
 
     return (
-        <div className="w-full max-w-xs bg-white p-3 rounded-xl shadow-xl border border-gray-100">
+        <div className="w-full min-w-[17rem] max-w-sm bg-white p-3.5 rounded-xl shadow-xl border border-gray-100">
             <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">{s.estimatedPrice}</span>
                 {priceLoading
@@ -46,19 +47,29 @@ export function PriceCard({ priceBreakdown, priceLoading }: Props) {
                 </div>
             ) : priceBreakdown ? (
                 <>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>{s.shirt}</span>
-                        <span>฿{priceBreakdown.shirt_per_unit.toLocaleString()}</span>
+                    <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 text-xs text-gray-500">
+                        <span className="min-w-0 leading-snug">{s.shirt}</span>
+                        <span className="tabular-nums text-right whitespace-nowrap">
+                            ฿{priceBreakdown.shirt_per_unit.toLocaleString()}
+                        </span>
+                        {priceBreakdown.sides.map(side => (
+                            <Fragment key={side.side}>
+                                <span className="min-w-0 leading-snug">
+                                    {s.printSide}{' '}
+                                    <span className="whitespace-nowrap">{side.side}</span>{' '}
+                                    <span className="text-gray-300 whitespace-nowrap">({side.tier})</span>
+                                </span>
+                                <span className="tabular-nums text-right whitespace-nowrap">
+                                    ฿{side.print_per_unit.toLocaleString()}
+                                </span>
+                            </Fragment>
+                        ))}
                     </div>
-                    {priceBreakdown.sides.map(side => (
-                        <div key={side.side} className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>{s.printSide} {side.side} <span className="text-gray-300">({side.tier})</span></span>
-                            <span>฿{side.print_per_unit.toLocaleString()}</span>
-                        </div>
-                    ))}
-                    <div className="flex justify-between text-sm font-bold border-t border-gray-100 pt-2 mt-1">
+                    <div className="grid grid-cols-[1fr_auto] gap-x-4 text-sm font-bold border-t border-gray-100 pt-2.5 mt-2">
                         <span>{s.totalPerPiece}</span>
-                        <span className="text-teal-700">฿{priceBreakdown.total_per_unit.toLocaleString()}</span>
+                        <span className="text-teal-700 tabular-nums text-right whitespace-nowrap">
+                            ฿{priceBreakdown.total_per_unit.toLocaleString()}
+                        </span>
                     </div>
                 </>
             ) : (

@@ -8,6 +8,8 @@ import {
   Save,
   ShoppingCart,
   Trash2,
+  Undo2,
+  Redo2,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -344,7 +346,33 @@ export default function DesignStudio() {
             ref={d.containerRef}
             className="flex-1 min-h-0 relative overflow-hidden bg-gray-50/30"
           >
-            {/* Top overlay: size editor (desktop) + remove button */}
+            {/* Undo / redo — top-left of canvas */}
+            <div className="absolute top-3 md:top-6 left-3 md:left-4 z-10 pointer-events-none">
+              <div className="pointer-events-auto flex items-center bg-white/95 backdrop-blur-sm border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  title={s.undoShortcut}
+                  disabled={!d.canUndo}
+                  onClick={d.undo}
+                  className="min-h-11 md:min-h-0 px-3 py-2.5 md:py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center border-r border-gray-200"
+                  aria-label={s.undo}
+                >
+                  <Undo2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  title={s.redoShortcut}
+                  disabled={!d.canRedo}
+                  onClick={d.redo}
+                  className="min-h-11 md:min-h-0 px-3 py-2.5 md:py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center"
+                  aria-label={s.redo}
+                >
+                  <Redo2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Top center: size editor (desktop) + remove */}
             <div className="absolute top-3 md:top-6 left-1/2 -translate-x-1/2 flex flex-row items-center gap-2 md:gap-3 z-10 pointer-events-none origin-top px-2">
               <div className="hidden md:block">
                 <SizeEditor
@@ -354,13 +382,8 @@ export default function DesignStudio() {
               </div>
               {d.selectedId && (
                 <button
-                  onClick={() => {
-                    d.setCanvasImages((prev) =>
-                      prev.filter((ci) => ci.id !== d.selectedId),
-                    );
-                    d.setSelectedId(null);
-                    d.markDirty();
-                  }}
+                  type="button"
+                  onClick={() => d.removeCanvasLayer(d.selectedId!)}
                   className="pointer-events-auto px-4 py-2.5 md:py-1.5 bg-white/95 backdrop-blur-sm border border-red-100 text-red-500 rounded-xl shadow-sm text-xs font-semibold hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-1.5 min-h-11"
                 >
                   <Trash2 className="w-3.5 h-3.5" />{" "}
@@ -404,6 +427,8 @@ export default function DesignStudio() {
               onDragEnd={d.handleStageDragEnd}
               onTransform={d.handleStageTransform}
               onTransformEnd={d.handleStageTransformEnd}
+              onUndo={d.undo}
+              onRedo={d.redo}
             />
           </div>
 
