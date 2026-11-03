@@ -428,6 +428,9 @@ export default function VsPrintfulPage() {
               ? 'Looking for a Print-on-Demand solution in Thailand? Skip expensive cross-border shipping, currency exchange markups, and long customs waits. PimSuea delivers local Bangkok DTG printing, live THB quotes, and PromptPay checkout.'
               : 'ถ้าคุณต้องการสั่งเสื้อพิมพ์ลายในประเทศไทย ไม่ต้องจ่าย USD ค่าขนส่งข้ามประเทศ และไม่ต้องรอ fulfillment นานจากต่างประเทศ PimSuea ให้คุณออกแบบออนไลน์ รู้ราคา THB จ่าย PromptPay ผลิต DTG ในกรุงเทพ และจัดส่งถึงบ้านทั่ว 77 จังหวัด'}
           </p>
+          <p className="text-xs text-muted-foreground">
+            {lang === 'en' ? 'Comparison updated November 2026.' : 'อัปเดตการเปรียบเทียบ พ.ย. 2026'}
+          </p>
 
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <a href={appUrl('/catalog')}>

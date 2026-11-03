@@ -28,7 +28,7 @@ export const GEO = {
   },
   payments: ['PromptPay', 'THB'],
   languages: ['Thai', 'English'],
-  pricingSnapshotDate: '2026-08-26',
+  pricingSnapshotDate: '2026-11-03',
 } as const;
 
 /** Public marketing URLs (also listed in sitemap.xml). */
@@ -37,8 +37,13 @@ export const GEO_URLS = {
   printOnDemand: 'https://pimsuea.com/print-on-demand',
   pricing: 'https://pimsuea.com/pricing',
   vsPrintful: 'https://pimsuea.com/vs-printful',
+  customShirtNoMinimum: 'https://pimsuea.com/custom-shirt-no-minimum',
+  clubAndGiftShirts: 'https://pimsuea.com/club-and-gift-shirts',
   line: 'https://line.me/R/ti/p/%40PimSuea',
 } as const;
+
+/** Example all-in per-piece total (classic white tee + 3×4" print, qty 1–11). */
+export const EXAMPLE_STARTING_TOTAL_THB = 298;
 
 /** sameAs — confirm Instagram URL before publishing to GBP/schema. */
 export function geoSameAs(): string[] {

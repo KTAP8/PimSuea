@@ -946,6 +946,15 @@ export default function NewLanding() {
               <p className="font-light text-lg md:text-xl text-muted-foreground leading-relaxed max-w-md">
                 {t.heroSubtitle}
               </p>
+              <p className="text-sm md:text-base text-foreground/90 leading-relaxed max-w-md">
+                {t.heroAeoAnswer}{" "}
+                <Link
+                  to="/pricing"
+                  className="font-semibold text-primary underline underline-offset-4 hover:text-primary/90"
+                >
+                  {t.heroPricingLink}
+                </Link>
+              </p>
               <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-1 md:pt-2">
                 <a href={appUrl("/catalog")}>
                   <Button

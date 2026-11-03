@@ -176,7 +176,7 @@ async function validateAndPriceCart({ items, shipping, coupon_code, userId }) {
         productId: design.base_product_id,
         color_name,
         size: item.size,
-      })));
+      }, { useCache: false })));
       const verifiedUnitPrice = sideResults[0].shirt_per_unit
         + sideResults.reduce((s, r) => s + r.print_per_unit, 0);
       return { ...item, verifiedUnitPrice, printingType };
@@ -445,6 +445,23 @@ async function fulfillOrder({ pricedPayload, userId, authHeader, stripeMeta = {}
   }
 
   await persistProfileConsentIfNeeded(userId, legalStamp);
+
+  const designIdsToMark = [
+    ...new Set(
+      itemsWithCopiedFiles
+        .map((item) => item.designId)
+        .filter((id) => id && id !== 'custom'),
+    ),
+  ];
+  if (designIdsToMark.length > 0) {
+    const { error: orderedErr } = await client
+      .from('user_designs')
+      .update({ is_ordered: true })
+      .in('id', designIdsToMark);
+    if (orderedErr) {
+      console.warn('[fulfillOrder] failed to set is_ordered on designs:', orderedErr.message);
+    }
+  }
 
   return { orderId: order.id };
 }

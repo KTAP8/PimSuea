@@ -2,13 +2,26 @@ const express = require('express');
 const router = express.Router();
 const requireAuth = require('../middleware/requireAuth');
 const { calculatePrice, lookupPrintPrice } = require('../utils/pricing');
+const { ensureCatalogFresh, resolveColorNameFromCache } = require('../utils/pricingCatalogCache');
 const { supabaseAdmin } = require('../config/supabaseClient');
 
 const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
 const VALID_TIERS = ['3x4in', 'A5', 'A4', 'A3'];
 
 router.post('/', requireAuth, async (req, res) => {
-  const { printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_id, size } = req.body;
+  const {
+    printingType,
+    aabb_w_cm,
+    aabb_h_cm,
+    quantity,
+    shirt_qty,
+    print_qty,
+    productId,
+    color_id,
+    size,
+    live,
+  } = req.body;
+  const useLiveDb = live === true;
 
   // Validate required fields
   if (!printingType || !ACTIVE_PRINTING_TYPES.includes(printingType)) {
@@ -37,20 +50,26 @@ router.post('/', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'size is required' });
   }
 
-  // Resolve color_id → color_name ('White' or 'Black')
-  const { data: colorRow, error: colorError } = await supabaseAdmin
-    .from('colors')
-    .select('name')
-    .eq('id', color_id)
-    .single();
-
-  if (colorError || !colorRow) {
-    return res.status(400).json({ error: `Unknown color_id: ${color_id}` });
-  }
-
-  const color_name = colorRow.name;
-
   try {
+    let color_name;
+    if (useLiveDb) {
+      const { data: colorRow, error: colorError } = await supabaseAdmin
+        .from('colors')
+        .select('name')
+        .eq('id', color_id)
+        .single();
+      if (colorError || !colorRow) {
+        return res.status(400).json({ error: `Unknown color_id: ${color_id}` });
+      }
+      color_name = colorRow.name;
+    } else {
+      await ensureCatalogFresh();
+      color_name = resolveColorNameFromCache(color_id);
+      if (!color_name) {
+        return res.status(400).json({ error: `Unknown color_id: ${color_id}` });
+      }
+    }
+
     const breakdown = await calculatePrice({
       printingType,
       aabb_w_cm,
@@ -61,7 +80,7 @@ router.post('/', requireAuth, async (req, res) => {
       productId,
       color_name,
       size,
-    });
+    }, { useCache: !useLiveDb });
     return res.json(breakdown);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Pricing lookup failed';

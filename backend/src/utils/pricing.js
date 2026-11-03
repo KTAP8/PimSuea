@@ -48,7 +48,27 @@ function getPrintTier(w_cm, h_cm) {
  *   quantity: number
  * }>}
  */
-async function calculatePrice({ printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_name, size }) {
+async function calculatePrice(
+  { printingType, aabb_w_cm, aabb_h_cm, quantity, shirt_qty, print_qty, productId, color_name, size },
+  options = {},
+) {
+  const { useCache = false } = options;
+  if (useCache) {
+    const { ensureCatalogFresh, calculatePriceFromCache } = require('./pricingCatalogCache');
+    await ensureCatalogFresh();
+    return calculatePriceFromCache({
+      printingType,
+      aabb_w_cm,
+      aabb_h_cm,
+      quantity,
+      shirt_qty,
+      print_qty,
+      productId,
+      color_name,
+      size,
+    });
+  }
+
   const db = supabaseAdmin;
 
   const tier = getPrintTier(aabb_w_cm, aabb_h_cm);

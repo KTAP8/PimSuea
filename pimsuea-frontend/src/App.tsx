@@ -34,6 +34,8 @@ import { AppRootRedirect } from './components/AppRootRedirect';
 import PrintOnDemandPage from './pages/marketing/PrintOnDemandPage';
 import PricingPage from './pages/marketing/PricingPage';
 import VsPrintfulPage from './pages/marketing/VsPrintfulPage';
+import CustomShirtNoMinimumPage from './pages/marketing/CustomShirtNoMinimumPage';
+import ClubAndGiftShirtsPage from './pages/marketing/ClubAndGiftShirtsPage';
 import { MarketingPageTracker } from './components/MarketingPageTracker';
 import { isAppHost } from './lib/site';
 import { useLanguage } from './i18n/LanguageContext';
@@ -63,6 +65,8 @@ function MarketingLayout() {
           <Route path="/print-on-demand" element={<PrintOnDemandPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/vs-printful" element={<VsPrintfulPage />} />
+          <Route path="/custom-shirt-no-minimum" element={<CustomShirtNoMinimumPage />} />
+          <Route path="/club-and-gift-shirts" element={<ClubAndGiftShirtsPage />} />
         </>
       )}
       {preLaunch ? (

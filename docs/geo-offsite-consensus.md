@@ -38,7 +38,7 @@ Add photos or LINE post links when available for third-party corroboration.
 
 Pitch angle (copy/paste base):
 
-> PimSuea is a Bangkok print-on-demand platform: self-serve DTG design studio, no minimum order, live THB pricing, PromptPay checkout, delivery to all 77 provinces. Public pages: https://pimsuea.com/print-on-demand and https://pimsuea.com/pricing
+> PimSuea is a Bangkok print-on-demand platform: self-serve DTG design studio, no minimum order, live THB pricing, PromptPay checkout, delivery to all 77 provinces. Public pages: https://pimsuea.com/print-on-demand , https://pimsuea.com/pricing , https://pimsuea.com/custom-shirt-no-minimum , https://pimsuea.com/vs-printful , https://pimsuea.com/club-and-gift-shirts
 
 **Target list** (find current URLs via search):
 

@@ -60,6 +60,8 @@ export interface PriceInput {
     productId: string;
     color_id: string;
     size: string;
+    /** When true, server reads live Supabase pricing (save / checkout), not the in-memory catalog. */
+    live?: boolean;
 }
 
 export interface PriceBreakdown {

@@ -87,6 +87,10 @@ export function trackStudioSaveBlockedName(): void {
     track('studio_save_blocked_name', baseProps());
 }
 
+export function trackStudioSaveAutonamed(): void {
+    track('studio_save_autonamed', baseProps());
+}
+
 export function trackStudioSaveFailed(status?: number, reason?: string): void {
     track('studio_save_failed', { ...baseProps(), http_status: status ?? null, reason: reason ?? 'unknown' });
 }

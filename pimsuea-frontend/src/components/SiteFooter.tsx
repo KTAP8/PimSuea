@@ -97,6 +97,8 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
               <FooterRouterLink to="/print-on-demand">{t.footerLinkPrintOnDemand}</FooterRouterLink>
               <FooterRouterLink to="/pricing">{t.footerLinkPricing}</FooterRouterLink>
               <FooterRouterLink to="/vs-printful">{t.footerLinkVsPrintful}</FooterRouterLink>
+              <FooterRouterLink to="/custom-shirt-no-minimum">{t.footerLinkNoMinimum}</FooterRouterLink>
+              <FooterRouterLink to="/club-and-gift-shirts">{t.footerLinkClubGift}</FooterRouterLink>
             </nav>
           </div>
 

@@ -31,7 +31,7 @@ import {
     trackStudioArtworkAdded,
     trackStudioPreviewOpened,
     trackStudioSaveSucceeded,
-    trackStudioSaveBlockedName,
+    trackStudioSaveAutonamed,
     trackStudioSaveFailed,
     trackStudioAddToCart,
     trackStudioAddToCartFailed,
@@ -45,6 +45,19 @@ import {
 } from '../lib/studioAnalytics';
 
 export const SIDE_ORDER = ['front', 'back'];
+
+function isUntitledDesignName(name: string): boolean {
+    const t = name.trim().toLowerCase();
+    return !t || t === 'untitled design';
+}
+
+function buildAutoDesignName(): string {
+    return `Design · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+
+export type CartActionResult =
+    | { ok: true }
+    | { ok: false; reason: 'auth' | 'save' | 'dtf' | 'cart' | 'template' };
 
 export function useCanvasDesign() {
     const { id } = useParams<{ id: string }>();
@@ -109,6 +122,12 @@ export function useCanvasDesign() {
     const [selectedSize, setSelectedSize] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [cartError, setCartError] = useState<string | null>(null);
+    const [priceRefreshSignal, setPriceRefreshSignal] = useState(0);
+    const [openOrderPanelAfterSave, setOpenOrderPanelAfterSave] = useState(0);
+    const [shouldFocusDesignName, setShouldFocusDesignName] = useState(false);
+    const lastPriceKeyRef = useRef('');
+    const bumpPriceRefresh = () => setPriceRefreshSignal((n) => n + 1);
 
     // Mockup state
     const [showMockup, setShowMockup] = useState(false);
@@ -527,6 +546,12 @@ export function useCanvasDesign() {
         if (currentTemplate) sideCanvasImages.current[currentTemplate.side] = canvasImages;
     };
 
+    const handleSideChange = (template: ProductTemplate) => {
+        saveCurrentSide();
+        setCurrentTemplate(template);
+        bumpPriceRefresh();
+    };
+
     const handleColorSelect = (colorId: string) => {
         saveCurrentSide();
         setSelectedColorId(colorId);
@@ -534,6 +559,12 @@ export function useCanvasDesign() {
         const sameSide = templates.find(t => t.color?.id === colorId && t.side === currentTemplate?.side);
         const first = sameSide ?? templates.find(t => t.color?.id === colorId);
         if (first) setCurrentTemplate(first);
+        bumpPriceRefresh();
+    };
+
+    const handleSizeSelect = (size: string) => {
+        setSelectedSize(size);
+        bumpPriceRefresh();
     };
 
     const handleColorAdd = (colorId: string) => {
@@ -567,8 +598,16 @@ export function useCanvasDesign() {
             });
             setSelectedId(newId);
             markDirty();
+            bumpPriceRefresh();
         };
         img.src = r2ProxyUrl(url);
+    };
+
+    const removeCanvasLayer = (layerId: string) => {
+        setCanvasImages((prev) => prev.filter((ci) => ci.id !== layerId));
+        setSelectedId((prev) => (prev === layerId ? null : prev));
+        markDirty();
+        bumpPriceRefresh();
     };
 
     const handleSidebarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -633,6 +672,7 @@ export function useCanvasDesign() {
         ));
         setLiveSizeIn(null);
         markDirty();
+        bumpPriceRefresh();
     };
 
     const applySizeIn = (w: number, h: number) => {
@@ -643,6 +683,7 @@ export function useCanvasDesign() {
                 : ci
         ));
         markDirty();
+        bumpPriceRefresh();
     };
 
     // ── Print helpers ─────────────────────────────────────────────────────────
@@ -706,6 +747,46 @@ export function useCanvasDesign() {
         return composeSides;
     };
 
+    const collectPrintDimensionsForPricing = useCallback((): Record<string, { w: number; h: number }> => {
+        if (!currentTemplate || !printZone) return {};
+        saveCurrentSide();
+        const sf = lastScaleFactor.current ?? 1;
+        const print_dimensions: Record<string, { w: number; h: number }> = {};
+        const pz = currentTemplate.print_area_config;
+        const aabb = computeSideAabb(
+            canvasImages,
+            printZone,
+            pz.physical_w_cm ?? 30.48,
+            pz.physical_h_cm ?? 40.64,
+            pz.width,
+            pz.height,
+        );
+        if (aabb) print_dimensions[currentTemplate.side.toLowerCase()] = { w: aabb.w, h: aabb.h };
+        for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
+            if (sideName === currentTemplate.side || !imgs.length) continue;
+            const zone = sideZones.current[sideName]
+                ?? (() => {
+                    const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                        ?? templates.find(t => t.side === sideName);
+                    return tmpl ? zoneFromTemplate(tmpl.print_area_config, sf) : null;
+                })();
+            const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                ?? templates.find(t => t.side === sideName);
+            if (!tmpl || !zone) continue;
+            const pzT = tmpl.print_area_config;
+            const a = computeSideAabb(
+                imgs,
+                zone,
+                pzT.physical_w_cm ?? 30.48,
+                pzT.physical_h_cm ?? 40.64,
+                pzT.width,
+                pzT.height,
+            );
+            if (a) print_dimensions[sideName.toLowerCase()] = { w: a.w, h: a.h };
+        }
+        return print_dimensions;
+    }, [canvasImages, currentTemplate, printZone, selectedColorId, templates]);
+
     // ── Price calculation ─────────────────────────────────────────────────────
     const computePriceBreakdown = async (
         printDimensions: Record<string, { w: number; h: number }>,
@@ -713,11 +794,15 @@ export function useCanvasDesign() {
         colorId: string,
         pType: string,
         size?: string,
+        livePricing = false,
     ) => {
         const sizeToUse = size ?? selectedSize;
         if (!sizeToUse) return;
         const entries = Object.entries(printDimensions).filter(([, d]) => d.w > 0 && d.h > 0);
-        if (!entries.length) return;
+        if (!entries.length) {
+            setPriceBreakdown(null);
+            return;
+        }
         setPriceLoading(true);
         try {
             const sideResults: CanvasPriceBreakdown['sides'] = [];
@@ -732,6 +817,7 @@ export function useCanvasDesign() {
                         productId,
                         color_id: colorId,
                         size: sizeToUse,
+                        ...(livePricing ? { live: true } : {}),
                     });
                     shirt_per_unit = bd.shirt_per_unit;
                     sideResults.push({ side, tier: bd.tier, print_per_unit: bd.print_per_unit });
@@ -748,6 +834,8 @@ export function useCanvasDesign() {
                     color_name: selectedColor?.name ?? null,
                     color_hex: selectedColor?.hex_code ?? null,
                 });
+            } else {
+                setPriceBreakdown(null);
             }
         } catch (err) {
             console.error('[CanvasDesign] computePriceBreakdown failed:', err);
@@ -755,6 +843,38 @@ export function useCanvasDesign() {
             setPriceLoading(false);
         }
     };
+
+    const refreshDisplayPrice = useCallback(async (opts?: { live?: boolean; force?: boolean }) => {
+        if (!currentTemplate || !selectedColorId || !selectedSize) {
+            setPriceBreakdown(null);
+            return;
+        }
+        const dims = collectPrintDimensionsForPricing();
+        const key = JSON.stringify({
+            live: Boolean(opts?.live),
+            size: selectedSize,
+            color: selectedColorId,
+            product: currentTemplate.product_id,
+            pType: printingType,
+            dims,
+        });
+        if (!opts?.force && key === lastPriceKeyRef.current) return;
+        lastPriceKeyRef.current = key;
+        await computePriceBreakdown(
+            dims,
+            currentTemplate.product_id,
+            selectedColorId,
+            printingType,
+            selectedSize,
+            Boolean(opts?.live),
+        );
+    }, [
+        collectPrintDimensionsForPricing,
+        currentTemplate,
+        printingType,
+        selectedColorId,
+        selectedSize,
+    ]);
 
     // ── Export ────────────────────────────────────────────────────────────────
     const handleExport = async () => {
@@ -868,12 +988,13 @@ export function useCanvasDesign() {
 
     const handleSave = async (): Promise<SaveResult | null> => {
         if (!currentTemplate || !printZone || !stageRef.current) return null;
-        const trimmedName = designName.trim();
-        if (!trimmedName || trimmedName.toLowerCase() === 'untitled design') {
-            setSaveStatus('error');
-            setNameError(true);
-            trackStudioSaveBlockedName();
-            return null;
+        let nameForSave = designName.trim();
+        if (isUntitledDesignName(designName)) {
+            nameForSave = buildAutoDesignName();
+            setDesignName(nameForSave);
+            setNameError(false);
+            trackStudioSaveAutonamed();
+            setShouldFocusDesignName(true);
         }
         setIsSaving(true);
         setSaveStatus('idle');
@@ -942,7 +1063,7 @@ export function useCanvasDesign() {
             }
 
             const payload = {
-                design_name: designName,
+                design_name: nameForSave,
                 canvas_data: canvasData,
                 preview_image_url: previewMap,
                 print_file_url: printFileUrl,
@@ -966,13 +1087,12 @@ export function useCanvasDesign() {
             setTimeout(() => setSaveStatus('idle'), 2500);
             trackStudioSaveSucceeded(isFirstSave);
 
-            // Compute price from the freshly saved print_dimensions
             if (currentTemplate && selectedColorId) {
-                const dims = Object.fromEntries(
-                    Object.entries(print_dimensions).filter((e): e is [string, NonNullable<typeof e[1]>] => e[1] != null)
-                        .map(([k, v]) => [k, { w: v.w, h: v.h }])
-                );
-                computePriceBreakdown(dims, currentTemplate.product_id, selectedColorId, printingType);
+                await refreshDisplayPrice({ live: true, force: true });
+            }
+
+            if (isFirstSave) {
+                setOpenOrderPanelAfterSave((n) => n + 1);
             }
 
             return { savedDesignId, printFileUrl: printFileUrl ?? '', previewUrl, canvasData };
@@ -988,13 +1108,26 @@ export function useCanvasDesign() {
     };
 
     // ── Add to cart ───────────────────────────────────────────────────────────
-    const handleAddToCart = async (navigateToOrder: boolean) => {
-        if (!currentTemplate || !user) return;
-        if (isLegacyDtfPrintingType(printingType)) return;
+    const handleAddToCart = async (navigateToOrder: boolean): Promise<CartActionResult> => {
+        if (!currentTemplate) {
+            return { ok: false, reason: 'template' };
+        }
+        if (!user) {
+            setCartError('auth');
+            return { ok: false, reason: 'auth' };
+        }
+        if (isLegacyDtfPrintingType(printingType)) {
+            setCartError('dtf');
+            return { ok: false, reason: 'dtf' };
+        }
+        setCartError(null);
         setIsAddingToCart(true);
         try {
             const result = await handleSave();
-            if (!result) throw new Error('Auto-save failed');
+            if (!result) {
+                setCartError('save');
+                return { ok: false, reason: 'save' };
+            }
             addToCart({
                 product_id: currentTemplate.product_id,
                 color_id: selectedColorId || '',
@@ -1004,13 +1137,16 @@ export function useCanvasDesign() {
                 print_file_url: result.printFileUrl,
                 design_json: result.canvasData,
                 preview_url: result.previewUrl,
-                design_name: designName,
+                design_name: designName.trim() || buildAutoDesignName(),
             });
             trackStudioAddToCart(navigateToOrder);
             if (navigateToOrder) navigate('/checkout');
+            return { ok: true };
         } catch (err) {
             console.error('[CanvasDesign] Add to cart failed:', err);
             trackStudioAddToCartFailed(err instanceof Error ? err.message : 'unknown');
+            setCartError('cart');
+            return { ok: false, reason: 'cart' };
         } finally {
             setIsAddingToCart(false);
         }
@@ -1034,12 +1170,15 @@ export function useCanvasDesign() {
         userUploads, loadingUploads, uploadsError, isUploading,
         deleteImageName, setDeleteImageName, dpiWarningFile, setDpiWarningFile,
         // Actions
-        saveCurrentSide, handleColorSelect, handleColorAdd, handleColorRemove,
+        saveCurrentSide, handleSideChange, handleColorSelect, handleColorAdd, handleColorRemove,
         addImageFromUrl, handleSidebarUpload, proceedWithUpload, confirmDeleteImage,
         moveLayer, handleExport, handleSave, handleMockup,
         showMockup, setShowMockup, mockupUrl, generatingMockup,
-        selectedSize, setSelectedSize, availableSizes, quantity, setQuantity,
-        isAddingToCart, handleAddToCart,
+        selectedSize, setSelectedSize, handleSizeSelect, availableSizes, quantity, setQuantity,
+        isAddingToCart, handleAddToCart, cartError, setCartError,
+        refreshDisplayPrice, priceRefreshSignal, openOrderPanelAfterSave,
+        shouldFocusDesignName, setShouldFocusDesignName,
+        removeCanvasLayer,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
         reportStudioExit, hasAnyArtwork,
     };

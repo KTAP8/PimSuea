@@ -59,6 +59,9 @@ Update `geoFacts.ts` → `pricingSnapshotDate` and redeploy when blank or print 
 
 ## Related
 
+- Log results: [marketing/geo-scorecard-log.md](./marketing/geo-scorecard-log.md)
+- Supabase queries: [marketing/aeo-metrics-sql.md](./marketing/aeo-metrics-sql.md)
+- Week 1 setup: [marketing/week1-aeo-ops-checklist.md](./marketing/week1-aeo-ops-checklist.md)
 - In-app source tracking: onboarding step 3 → AI assistant + tool detail
 - PostHog: marketing `$pageview` on pimsuea.com only
 - Playbook canvas: `canvases/ai-suggestion-geo-playbook.canvas.tsx`

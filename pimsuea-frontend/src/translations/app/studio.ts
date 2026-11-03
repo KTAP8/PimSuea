@@ -63,6 +63,11 @@ const th = {
   removeColor: 'ลบสี',
   addColor: 'เพิ่มสี',
   saveDesignToSeePrice: 'บันทึกดีไซน์เพื่อดูราคา',
+  addArtworkToSeePrice: 'เพิ่มลายบนเสื้อเพื่อดูราคา',
+  cartErrorAuth: 'เข้าสู่ระบบก่อนสั่งซื้อ',
+  cartErrorSave: 'บันทึกดีไซน์ไม่สำเร็จ ลองอีกครั้ง',
+  cartErrorCart: 'ใส่ตะกร้าไม่สำเร็จ ลองอีกครั้ง',
+  cartErrorDtf: 'ดีไซน์ DTF เก่าไม่รองรับการสั่งซื้อใหม่',
   mockupPreviewTitle: 'Mockup Preview',
   resetViewLabel: 'Reset view',
 };
@@ -130,6 +135,11 @@ const en: typeof th = {
   removeColor: 'Remove color',
   addColor: 'Add color',
   saveDesignToSeePrice: 'Save design to see pricing',
+  addArtworkToSeePrice: 'Add artwork on the shirt to see pricing',
+  cartErrorAuth: 'Sign in to place an order',
+  cartErrorSave: 'Could not save your design. Try again.',
+  cartErrorCart: 'Could not add to cart. Try again.',
+  cartErrorDtf: 'Legacy DTF designs cannot be ordered',
   mockupPreviewTitle: 'Mockup Preview',
   resetViewLabel: 'Reset view',
 };

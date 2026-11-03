@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Upload,
@@ -35,6 +35,7 @@ export default function DesignStudio() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showOrderPanel, setShowOrderPanel] = useState(false);
   const [showMobileTools, setShowMobileTools] = useState(false);
+  const designNameInputRef = useRef<HTMLInputElement | null>(null);
   const [isDesktop, setIsDesktop] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -56,9 +57,8 @@ export default function DesignStudio() {
     showColorPicker: d.showColorPicker,
     uniqueColors: d.uniqueColors,
     colorPickerRef: d.colorPickerRef,
-    onSideChange: (t: Parameters<typeof d.setCurrentTemplate>[0]) => {
-      d.saveCurrentSide();
-      d.setCurrentTemplate(t);
+    onSideChange: (t: Parameters<typeof d.handleSideChange>[0]) => {
+      d.handleSideChange(t);
     },
     onColorSelect: d.handleColorSelect,
     onToggleColorPicker: () => d.setShowColorPicker((p) => !p),
@@ -103,8 +103,50 @@ export default function DesignStudio() {
 
   const openOrderPanel = () => {
     trackStudioOrderOpened();
+    d.setCartError(null);
     setShowOrderPanel(true);
   };
+
+  const cartErrorMessage = (() => {
+    switch (d.cartError) {
+      case "auth":
+        return s.cartErrorAuth;
+      case "save":
+        return s.cartErrorSave;
+      case "cart":
+        return s.cartErrorCart;
+      case "dtf":
+        return s.cartErrorDtf;
+      default:
+        return null;
+    }
+  })();
+
+  useEffect(() => {
+    if (d.openOrderPanelAfterSave > 0) {
+      trackStudioOrderOpened();
+      setShowOrderPanel(true);
+    }
+  }, [d.openOrderPanelAfterSave]);
+
+  useEffect(() => {
+    if (!d.shouldFocusDesignName || !designNameInputRef.current) return;
+    designNameInputRef.current.focus();
+    designNameInputRef.current.select();
+    d.setShouldFocusDesignName(false);
+  }, [d.shouldFocusDesignName, d.setShouldFocusDesignName, d.designName]);
+
+  useEffect(() => {
+    if (!showOrderPanel) return;
+    void d.refreshDisplayPrice();
+  }, [
+    showOrderPanel,
+    d.priceRefreshSignal,
+    d.selectedSize,
+    d.selectedColorId,
+    d.printingType,
+    d.refreshDisplayPrice,
+  ]);
 
   // Track abandon on tab close / refresh
   useEffect(() => {
@@ -137,6 +179,7 @@ export default function DesignStudio() {
               value={d.designName}
               onChange={(e) => d.handleDesignNameChange(e.target.value)}
               ref={(el) => {
+                designNameInputRef.current = el;
                 if (el && d.nameError) el.focus();
               }}
               className={`relative z-10 bg-transparent hover:bg-gray-100/60 focus:bg-white border text-center rounded-xl px-2 md:px-4 py-2 md:py-1.5 text-xs md:text-sm font-bold text-gray-800 w-full md:w-64 focus:outline-none transition-all placeholder-gray-400 cursor-pointer focus:cursor-text truncate min-h-11 md:min-h-0 ${
@@ -222,12 +265,18 @@ export default function DesignStudio() {
                 : d.saveStatus === "saved"
                   ? s.saved
                   : d.saveStatus === "error"
-                    ? s.nameFirst
+                    ? s.cartErrorSave
                     : c.save}
             </span>
           </button>
         </div>
       </div>
+
+      {cartErrorMessage && (
+        <p className="md:hidden shrink-0 px-4 py-1.5 text-xs text-red-600 font-semibold text-center bg-red-50 border-b border-red-100">
+          {cartErrorMessage}
+        </p>
+      )}
 
       {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-hidden grid grid-rows-[minmax(0,1fr)_auto] md:grid-rows-none md:flex md:flex-row">
@@ -460,11 +509,7 @@ export default function DesignStudio() {
             selectedId={d.selectedId}
             onSelect={d.setSelectedId}
             onMove={d.moveLayer}
-            onDelete={(id) => {
-              d.setCanvasImages((prev) => prev.filter((ci) => ci.id !== id));
-              if (d.selectedId === id) d.setSelectedId(null);
-              d.markDirty();
-            }}
+            onDelete={d.removeCanvasLayer}
             onClose={() => d.setShowLayerPanel(false)}
           />
         )}
@@ -511,22 +556,27 @@ export default function DesignStudio() {
       {showOrderPanel && (
         <OrderPanel
           selectedSize={d.selectedSize}
-          onSizeChange={d.setSelectedSize}
+          onSizeChange={d.handleSizeSelect}
           availableSizes={d.availableSizes}
           quantity={d.quantity}
           onQuantityChange={d.setQuantity}
           priceBreakdown={d.priceBreakdown}
+          priceLoading={d.priceLoading}
+          cartErrorMessage={cartErrorMessage}
           isAddingToCart={d.isAddingToCart}
           isSaving={d.isSaving}
-          onAddToCart={() => {
-            setShowOrderPanel(false);
-            d.handleAddToCart(false);
+          onAddToCart={async () => {
+            const result = await d.handleAddToCart(false);
+            if (result.ok) setShowOrderPanel(false);
           }}
-          onOrderNow={() => {
-            setShowOrderPanel(false);
-            d.handleAddToCart(true);
+          onOrderNow={async () => {
+            const result = await d.handleAddToCart(true);
+            if (result.ok) setShowOrderPanel(false);
           }}
-          onClose={() => setShowOrderPanel(false)}
+          onClose={() => {
+            d.setCartError(null);
+            setShowOrderPanel(false);
+          }}
           printingType={d.printingType}
         />
       )}

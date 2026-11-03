@@ -13,8 +13,10 @@ interface Props {
     priceBreakdown: CanvasPriceBreakdown | null;
     isAddingToCart: boolean;
     isSaving: boolean;
-    onAddToCart: () => void;
-    onOrderNow: () => void;
+    priceLoading?: boolean;
+    cartErrorMessage?: string | null;
+    onAddToCart: () => void | Promise<void>;
+    onOrderNow: () => void | Promise<void>;
     onClose: () => void;
     printingType: string;
 }
@@ -23,7 +25,8 @@ export function OrderPanel({
     selectedSize, onSizeChange, availableSizes,
     quantity, onQuantityChange,
     priceBreakdown,
-    isAddingToCart, isSaving,
+    isAddingToCart, isSaving, priceLoading = false,
+    cartErrorMessage,
     onAddToCart, onOrderNow, onClose,
     printingType,
 }: Props) {
@@ -106,8 +109,20 @@ export function OrderPanel({
                             </div>
                         </div>
                     )}
-                    {!priceBreakdown && (
-                        <p className="text-xs text-gray-400 text-center">{s.saveDesignToSeePrice}</p>
+                    {!priceBreakdown && !priceLoading && (
+                        <p className="text-xs text-gray-400 text-center">{s.addArtworkToSeePrice}</p>
+                    )}
+                    {priceLoading && !priceBreakdown && (
+                        <div className="flex items-center justify-center gap-2 py-2 text-xs text-gray-500">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {s.estimatedPrice}
+                        </div>
+                    )}
+
+                    {cartErrorMessage && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                            <p className="text-xs text-red-700 font-medium leading-relaxed">{cartErrorMessage}</p>
+                        </div>
                     )}
 
                     {isDtfLegacy && (

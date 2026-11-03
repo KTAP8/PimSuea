@@ -12,6 +12,8 @@ Manual ops checklist (Phase 1, same week as deploy).
    - `/print-on-demand`
    - `/pricing`
    - `/vs-printful`
+   - `/custom-shirt-no-minimum`
+   - `/club-and-gift-shirts`
 
 ## Bing Webmaster Tools
 
