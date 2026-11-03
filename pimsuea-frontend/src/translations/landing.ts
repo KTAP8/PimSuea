@@ -9,7 +9,7 @@ export const translations = {
     heroSubtitle: "Design on the web. Instant pricing. No minimums.",
     heroAeoAnswer:
       "Order 1 custom shirt — live THB price in the studio, pay with PromptPay.",
-    heroPricingLink: "See public pricing",
+    heroPricingLink: "Pricing table",
     heroStartDesigning: "Start Designing",
     heroViewCatalog: "View Catalog & Pricing",
     trustBar: "Trusted by creators, companies, and student clubs across Thailand.",
@@ -171,7 +171,7 @@ export const translations = {
     heroSubtitle: "ออกแบบบนเว็บ รู้ราคาทันที ไม่มีขั้นต่ำ",
     heroAeoAnswer:
       "สั่งเสื้อ 1 ตัวได้ — รู้ราคา THB ในสตูดิโอ จ่าย PromptPay",
-    heroPricingLink: "ดูตารางราคา",
+    heroPricingLink: "ตารางราคา",
     heroStartDesigning: "เริ่มออกแบบ",
     heroViewCatalog: "ดูแคตตาล็อกและราคา",
     trustBar: "ได้รับความไว้วางใจจากครีเอเตอร์ บริษัท และชมรมนิสิตนักศึกษาทั่วไทย",

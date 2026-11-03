@@ -404,7 +404,6 @@ export default function VsPrintfulPage() {
       jsonLd={jsonLd}
       ctaLabelTh="ลอง PimSuea"
       ctaLabelEn="Try PimSuea"
-      activeNav="vs-printful"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-16">
         {/* ── Hero Section ──────────────────────────────────────────────── */}

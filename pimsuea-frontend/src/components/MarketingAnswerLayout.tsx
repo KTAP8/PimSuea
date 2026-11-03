@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react';
 import { PageSEO } from '@/components/PageSEO';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -19,7 +19,6 @@ interface MarketingAnswerLayoutProps {
   jsonLd: Record<string, unknown> | Record<string, unknown>[];
   ctaLabelTh?: string;
   ctaLabelEn?: string;
-  activeNav?: 'print-on-demand' | 'pricing' | 'vs-printful';
   children: React.ReactNode;
 }
 
@@ -30,13 +29,11 @@ export function MarketingAnswerLayout({
   jsonLd,
   ctaLabelTh = 'เริ่มออกแบบ',
   ctaLabelEn = 'Start designing',
-  activeNav,
   children,
 }: MarketingAnswerLayoutProps) {
   const { lang } = useMarketingLang();
   const [termsOpen, setTermsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -62,59 +59,18 @@ export function MarketingAnswerLayout({
               : 'bg-background/80 backdrop-blur-xs border-b border-border/60'
           }`}
         >
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-            {/* Left: Logo & Nav Links */}
-            <div className="flex items-center gap-8">
-              <Link to="/" className="flex items-center gap-2 group">
-                <img src="/logo.svg" alt="PimSuea" className="h-8 transition-transform group-hover:scale-105" />
-              </Link>
+          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2 group">
+              <img src="/logo.svg" alt="PimSuea" className="h-8 transition-transform group-hover:scale-105" />
+            </Link>
 
-              {/* Desktop Nav */}
-              <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium">
-                <Link
-                  to="/print-on-demand"
-                  className={`px-3 py-1.5 rounded-full transition-all ${
-                    activeNav === 'print-on-demand' || location.pathname === '/print-on-demand'
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
-                  }`}
-                >
-                  {lang === 'en' ? 'Print on Demand' : 'Print on Demand'}
-                </Link>
-                <Link
-                  to="/pricing"
-                  className={`px-3 py-1.5 rounded-full transition-all ${
-                    activeNav === 'pricing' || location.pathname === '/pricing'
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
-                  }`}
-                >
-                  {lang === 'en' ? 'Pricing & Rates' : 'ตารางราคา'}
-                </Link>
-                <Link
-                  to="/vs-printful"
-                  className={`px-3 py-1.5 rounded-full transition-all ${
-                    activeNav === 'vs-printful' || location.pathname === '/vs-printful'
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/60'
-                  }`}
-                >
-                  {lang === 'en' ? 'vs Printful' : 'เทียบกับ Printful'}
-                </Link>
-              </nav>
-            </div>
-
-            {/* Right: Language switch & Studio CTA */}
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher compact />
+            <div className="flex items-center gap-4">
+              <LanguageSwitcher />
 
               <a href={appUrl('/catalog')}>
-                <Button
-                  size="sm"
-                  className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-xs px-4 shadow-sm hover:shadow-md hover:shadow-action/20 transition-all cursor-pointer"
-                >
+                <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
                   <span>{lang === 'en' ? ctaLabelEn : ctaLabelTh}</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </a>
             </div>

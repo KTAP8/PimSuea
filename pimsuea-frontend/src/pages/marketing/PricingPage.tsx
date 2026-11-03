@@ -530,7 +530,6 @@ export default function PricingPage() {
       jsonLd={jsonLd}
       ctaLabelTh="ดูราคาสด"
       ctaLabelEn="See live pricing"
-      activeNav="pricing"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-16">
         {/* ── Hero Section ──────────────────────────────────────────────── */}

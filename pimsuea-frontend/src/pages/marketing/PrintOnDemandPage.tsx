@@ -460,7 +460,6 @@ export default function PrintOnDemandPage() {
       jsonLd={jsonLd}
       ctaLabelTh="เริ่มออกแบบ"
       ctaLabelEn="Start designing"
-      activeNav="print-on-demand"
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-16">
         {/* ── Hero Section ──────────────────────────────────────────────── */}
