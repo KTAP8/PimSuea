@@ -653,28 +653,45 @@ export default function DesignStudio() {
 
       {/* DPI warning modal */}
       {d.dpiWarningFile && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
-            <h3 className="font-bold text-base mb-2">{s.lowResTitle}</h3>
-            <p className="text-sm text-gray-500 mb-5">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            role="dialog"
+            aria-labelledby="low-res-title"
+          >
+            <h3 id="low-res-title" className="font-bold text-base text-gray-900 mb-3">
+              {s.lowResTitle}
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed mb-6">
               {s.lowResDesc}{" "}
-              <span className="font-semibold text-orange-500">
+              <span className="font-semibold text-gray-900">
                 {d.dpiWarningFile.dpi} DPI
-              </span>{" "}
+              </span>
               {s.lowResHint}
             </p>
-            <div className="flex gap-2 justify-end">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
               <button
+                type="button"
+                disabled={d.isUploading}
                 onClick={() => d.setDpiWarningFile(null)}
-                className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50"
+                className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
-                {c.cancel}
+                {s.lowResDontAdd}
               </button>
               <button
+                type="button"
+                disabled={d.isUploading}
                 onClick={() => d.proceedWithUpload(d.dpiWarningFile!.file)}
-                className="px-4 py-2 text-sm rounded-lg bg-orange-500 text-white hover:bg-orange-600"
+                className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#08636D] text-white hover:bg-[#065a63] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 min-h-11"
               >
-                {s.uploadAnyway}
+                {d.isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {s.uploading}
+                  </>
+                ) : (
+                  s.lowResAddToShirt
+                )}
               </button>
             </div>
           </div>

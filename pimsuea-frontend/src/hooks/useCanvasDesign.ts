@@ -173,6 +173,7 @@ export function useCanvasDesign() {
     const [loadingUploads, setLoadingUploads] = useState(false);
     const [uploadsError, setUploadsError] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const uploadInFlightRef = useRef(false);
     const [deleteImageName, setDeleteImageName] = useState<string | null>(null);
     const [dpiWarningFile, setDpiWarningFile] = useState<{ file: File; dpi: number } | null>(null);
 
@@ -742,6 +743,9 @@ export function useCanvasDesign() {
     };
 
     const proceedWithUpload = async (file: File) => {
+        if (uploadInFlightRef.current || isUploading) return;
+        uploadInFlightRef.current = true;
+        setDpiWarningFile(null);
         setIsUploading(true);
         try {
             const url = await uploadFile(file, 'asset');
@@ -752,8 +756,8 @@ export function useCanvasDesign() {
             const status = (err as { response?: { status?: number } })?.response?.status;
             trackStudioUploadFailed(status ? `http_${status}` : 'unknown');
         } finally {
+            uploadInFlightRef.current = false;
             setIsUploading(false);
-            setDpiWarningFile(null);
         }
     };
 
