@@ -271,6 +271,7 @@ async function notifyPaidOrder(orderId) {
 
 module.exports = {
   notifyPaidOrder,
+  sendMessage,
   formatOrderMessage,
   formatPaymentMethod,
 };

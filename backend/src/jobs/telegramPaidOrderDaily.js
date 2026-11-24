@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const { supabaseAdmin } = require('../config/supabaseClient');
-const { notifyPaidOrder } = require('../services/telegramNotify');
+const { notifyPaidOrder, sendMessage } = require('../services/telegramNotify');
 
 const CRON_NOON_BANGKOK = '0 12 * * *';
 const BANGKOK = 'Asia/Bangkok';
@@ -58,18 +58,52 @@ async function runTelegramPaidOrderDaily() {
     }
   }
 
+  if (summary.found === 0) {
+    try {
+      const day = new Date().toLocaleDateString('en-GB', {
+        timeZone: BANGKOK,
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+      await sendMessage(`No orders today.\n${day}`);
+      summary.emptyDigest = true;
+    } catch (err) {
+      console.error('[telegramPaidOrderDaily] empty digest failed', err.message);
+      summary.failed += 1;
+    }
+  }
+
   console.log('[telegramPaidOrderDaily] done', summary);
   return summary;
 }
 
+function bangkokDate(date) {
+  return date.toLocaleDateString('en-CA', { timeZone: BANGKOK });
+}
+
+function runDailyQuiet(reason) {
+  console.log('[telegramPaidOrderDaily] running', reason);
+  runTelegramPaidOrderDaily().catch((err) => {
+    console.error('[telegramPaidOrderDaily] unhandled error:', err);
+  });
+}
+
 function startTelegramPaidOrderDailyJob() {
-  cron.schedule(CRON_NOON_BANGKOK, () => {
-    runTelegramPaidOrderDaily().catch((err) => {
-      console.error('[telegramPaidOrderDaily] unhandled error:', err);
-    });
+  const task = cron.schedule(CRON_NOON_BANGKOK, () => {
+    runDailyQuiet('scheduled noon');
   }, { timezone: BANGKOK });
 
-  console.log('[telegramPaidOrderDaily] scheduled 12:00 Asia/Bangkok');
+  const next = task.getNextRun();
+  console.log(
+    '[telegramPaidOrderDaily] scheduled 12:00 Asia/Bangkok, next',
+    next ? next.toISOString() : 'unknown',
+  );
+
+  // Deploy/wake after 12:00 would otherwise wait until tomorrow.
+  if (next && bangkokDate(next) !== bangkokDate(new Date())) {
+    runDailyQuiet('missed noon catch-up');
+  }
 }
 
 module.exports = {
