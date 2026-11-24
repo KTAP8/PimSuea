@@ -26,6 +26,7 @@ import {
     deserializeCanvasCoords,
     zoneFromTemplate,
     inferSaveScaleFactor,
+    sideAabbFromSerializedLayers,
     type CanvasDataMeta,
 } from '../utils/canvasCoords';
 import {
@@ -184,7 +185,8 @@ export function useCanvasDesign() {
 
     const hasAnyArtwork = useCallback(() => {
         if (canvasImages.length > 0) return true;
-        return Object.values(sideCanvasImages.current).some((imgs) => imgs.length > 0);
+        if (Object.values(sideCanvasImages.current).some((imgs) => imgs.length > 0)) return true;
+        return Object.values(pendingSideData.current).some((pending) => (pending?.length ?? 0) > 0);
     }, [canvasImages]);
 
     const reportStudioExit = useCallback((
@@ -836,6 +838,85 @@ export function useCanvasDesign() {
         };
     };
 
+    const collectSerializedSides = (): Record<string, SerializableImage[]> => {
+        saveCurrentSide();
+        const sf = lastScaleFactor.current ?? 1;
+        const result: Record<string, SerializableImage[]> = {};
+
+        for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
+            if (!imgs.length) continue;
+            const zone = sideZones.current[sideName]
+                ?? (() => {
+                    const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+                        ?? templates.find(t => t.side === sideName);
+                    return tmpl ? zoneFromTemplate(tmpl.print_area_config, sf) : null;
+                })();
+            if (!zone) {
+                result[sideName] = imgs.map((ci) => ({
+                    id: ci.id,
+                    src: ci.src,
+                    x: ci.x,
+                    y: ci.y,
+                    width: ci.width,
+                    height: ci.height,
+                    rotation: ci.rotation ?? 0,
+                }));
+            } else {
+                result[sideName] = imgs.map((ci) => serializeCanvasImage(ci, zone));
+            }
+        }
+
+        for (const [sideName, pending] of Object.entries(pendingSideData.current)) {
+            if (!pending?.length) continue;
+            if ((sideCanvasImages.current[sideName] ?? []).length > 0) continue;
+            result[sideName] = pending;
+        }
+
+        return result;
+    };
+
+    const sideAabbForSerializedSide = (
+        sideName: string,
+        layers: SerializableImage[],
+    ): ReturnType<typeof computeSideAabb> | null => {
+        const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
+            ?? templates.find(t => t.side === sideName);
+        if (!tmpl) return null;
+        const pzT = tmpl.print_area_config;
+        const physW = pzT.physical_w_cm ?? 30.48;
+        const physH = pzT.physical_h_cm ?? 40.64;
+        const imgZoneW = pzT.width;
+        const imgZoneH = pzT.height;
+        const sf = lastScaleFactor.current ?? 1;
+        const hydrated = sideCanvasImages.current[sideName] ?? [];
+        const isCurrent = currentTemplate?.side === sideName;
+
+        if (isCurrent && printZone && hydrated.length) {
+            return computeSideAabb(
+                canvasImages,
+                printZone,
+                physW,
+                physH,
+                imgZoneW,
+                imgZoneH,
+            );
+        }
+        if (hydrated.length) {
+            const zone = sideZones.current[sideName] ?? zoneFromTemplate(pzT, sf);
+            return computeSideAabb(hydrated, zone, physW, physH, imgZoneW, imgZoneH);
+        }
+        const sfSave = loadedCanvasMeta.current.stageScaleFactor ?? sf;
+        const legacyZone = zoneFromTemplate(pzT, sfSave);
+        return sideAabbFromSerializedLayers(
+            layers,
+            physW,
+            physH,
+            imgZoneW,
+            imgZoneH,
+            legacyZone,
+        );
+    };
+
     const buildComposeSides = (
         serializedSides: Record<string, SerializableImage[]>,
     ): Record<string, PrintComposeSide> => {
@@ -870,40 +951,12 @@ export function useCanvasDesign() {
 
     const collectPrintDimensionsForPricing = useCallback((): Record<string, { w: number; h: number }> => {
         if (!currentTemplate || !printZone) return {};
-        saveCurrentSide();
-        const sf = lastScaleFactor.current ?? 1;
+        const serialized = collectSerializedSides();
         const print_dimensions: Record<string, { w: number; h: number }> = {};
-        const pz = currentTemplate.print_area_config;
-        const aabb = computeSideAabb(
-            canvasImages,
-            printZone,
-            pz.physical_w_cm ?? 30.48,
-            pz.physical_h_cm ?? 40.64,
-            pz.width,
-            pz.height,
-        );
-        if (aabb) print_dimensions[currentTemplate.side.toLowerCase()] = { w: aabb.w, h: aabb.h };
-        for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
-            if (sideName === currentTemplate.side || !imgs.length) continue;
-            const zone = sideZones.current[sideName]
-                ?? (() => {
-                    const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
-                        ?? templates.find(t => t.side === sideName);
-                    return tmpl ? zoneFromTemplate(tmpl.print_area_config, sf) : null;
-                })();
-            const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
-                ?? templates.find(t => t.side === sideName);
-            if (!tmpl || !zone) continue;
-            const pzT = tmpl.print_area_config;
-            const a = computeSideAabb(
-                imgs,
-                zone,
-                pzT.physical_w_cm ?? 30.48,
-                pzT.physical_h_cm ?? 40.64,
-                pzT.width,
-                pzT.height,
-            );
-            if (a) print_dimensions[sideName.toLowerCase()] = { w: a.w, h: a.h };
+        for (const [sideName, layers] of Object.entries(serialized)) {
+            if (!layers.length) continue;
+            const aabb = sideAabbForSerializedSide(sideName, layers);
+            if (aabb) print_dimensions[sideName.toLowerCase()] = { w: aabb.w, h: aabb.h };
         }
         return print_dimensions;
     }, [canvasImages, currentTemplate, printZone, selectedColorId, templates]);
@@ -1129,27 +1182,8 @@ export function useCanvasDesign() {
         setSaveStatus('idle');
         const isFirstSave = !designId;
         try {
-            sideCanvasImages.current[currentTemplate.side] = canvasImages;
             const sf = lastScaleFactor.current ?? 1;
-            const sides = Object.fromEntries(
-                Object.entries(sideCanvasImages.current)
-                    .filter(([, imgs]) => imgs.length > 0)
-                    .map(([sideName, imgs]) => {
-                        const zone = sideZones.current[sideName]
-                            ?? (() => {
-                                const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
-                                    ?? templates.find(t => t.side === sideName);
-                                return tmpl ? zoneFromTemplate(tmpl.print_area_config, sf) : null;
-                            })();
-                        if (!zone) {
-                            return [sideName, imgs.map(ci => ({
-                                id: ci.id, src: ci.src, x: ci.x, y: ci.y,
-                                width: ci.width, height: ci.height, rotation: ci.rotation ?? 0,
-                            }))];
-                        }
-                        return [sideName, imgs.map(ci => serializeCanvasImage(ci, zone))];
-                    }),
-            );
+            const sides = collectSerializedSides();
             const canvasData = {
                 renderer: 'konva',
                 version: '3',
@@ -1175,20 +1209,11 @@ export function useCanvasDesign() {
                 printFileUrl = JSON.stringify(printFiles);
             }
 
-            // print_dimensions
             const print_dimensions: Record<string, ReturnType<typeof computeSideAabb>> = {};
-            const pz = currentTemplate.print_area_config;
-            const aabb = computeSideAabb(canvasImages, printZone, pz.physical_w_cm ?? 30.48, pz.physical_h_cm ?? 40.64, pz.width, pz.height);
-            if (aabb) print_dimensions[currentTemplate.side.toLowerCase()] = aabb;
-            for (const [sideName, imgs] of Object.entries(sideCanvasImages.current)) {
-                if (sideName === currentTemplate.side || !imgs.length) continue;
-                const zone = sideZones.current[sideName];
-                const tmpl = templates.find(t => t.side === sideName && t.color?.id === selectedColorId)
-                    ?? templates.find(t => t.side === sideName);
-                if (!tmpl || !zone) continue;
-                const pzT = tmpl.print_area_config;
-                const a = computeSideAabb(imgs, zone, pzT.physical_w_cm ?? 30.48, pzT.physical_h_cm ?? 40.64, pzT.width, pzT.height);
-                if (a) print_dimensions[sideName.toLowerCase()] = a;
+            for (const [sideName, layers] of Object.entries(sides)) {
+                if (!layers.length) continue;
+                const aabb = sideAabbForSerializedSide(sideName, layers);
+                if (aabb) print_dimensions[sideName.toLowerCase()] = aabb;
             }
 
             const payload = {

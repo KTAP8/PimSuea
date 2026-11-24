@@ -12,12 +12,13 @@ import {
   useMarketingLang,
 } from '@/components/MarketingAnswerLayout';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { LocalizedLink } from '@/components/LocalizedLink';
 import { appUrl } from '@/lib/site';
 
 export default function CustomShirtNoMinimumPage() {
   const { lang } = useMarketingLang();
   const jsonLd = buildGeoJsonLd({
+    lang,
     pageUrl: GEO_URLS.customShirtNoMinimum,
     pageName: 'Custom t-shirt no minimum order Thailand — PimSuea',
     faq: true,
@@ -26,14 +27,15 @@ export default function CustomShirtNoMinimumPage() {
   const factsTh = [
     { label: 'ขั้นต่ำ', value: 'สั่ง 1 ตัวได้ — ไม่มี MOQ' },
     { label: 'ราคา', value: `ดูราคาสดในสตูดิโอ เริ่มต้นประมาณ ฿${EXAMPLE_STARTING_TOTAL_THB}/ตัว` },
-    { label: 'ชำระเงิน', value: 'PromptPay และชำระเป็น THB' },
+    { label: 'ชำระเงิน', value: 'บัตร หรือ PromptPay ชำระเป็น THB' },
     { label: 'จัดส่ง', value: `ทั่วไทย ${GEO.printing.provinces} จังหวัด โดยประมาณ ${GEO.printing.leadTimeDays} วัน` },
   ];
 
   const factsEn = [
     { label: 'Minimum', value: 'Order 1 piece — no MOQ' },
     { label: 'Pricing', value: `Live studio quote; example from ~฿${EXAMPLE_STARTING_TOTAL_THB}/pc` },
-    { label: 'Payment', value: 'PromptPay and THB checkout' },
+    { label: 'Payment', value: 'Card or PromptPay, priced in THB' },
+    { label: 'Language', value: 'English studio + English support on LINE' },
     { label: 'Delivery', value: `All ${GEO.printing.provinces} provinces, typically ${GEO.printing.leadTimeDays} days` },
   ];
 
@@ -64,8 +66,14 @@ export default function CustomShirtNoMinimumPage() {
 
   return (
     <MarketingAnswerLayout
-      title="สั่งเสื้อยืด 1 ตัว ไม่มีขั้นต่ำ | PimSuea — รู้ราคาทันที PromptPay"
-      description="สั่งทำเสื้อยืดพิมพ์ลาย 1 ตัว ไม่มีขั้นต่ำ ออกแบบออนไลน์ รู้ราคา THB จ่าย PromptPay จัดส่งทั่วไทย DTG"
+      title={{
+        en: 'Custom T-Shirt, No Minimum Order in Thailand | Order 1 Piece | PimSuea',
+        th: 'สั่งเสื้อยืด 1 ตัว ไม่มีขั้นต่ำ | PimSuea — รู้ราคาทันที PromptPay',
+      }}
+      description={{
+        en: 'Order a single custom printed shirt in Thailand. Design online in English, see the THB price before you pay, card or PromptPay, DTG print in Bangkok, delivered nationwide.',
+        th: 'สั่งทำเสื้อยืดพิมพ์ลาย 1 ตัว ไม่มีขั้นต่ำ ออกแบบออนไลน์ รู้ราคา THB จ่ายบัตรหรือ PromptPay จัดส่งทั่วไทย DTG',
+      }}
       canonical={GEO_URLS.customShirtNoMinimum}
       jsonLd={jsonLd}
       ctaLabelTh="ออกแบบเสื้อ 1 ตัว"
@@ -79,7 +87,7 @@ export default function CustomShirtNoMinimumPage() {
           </div>
           <AnswerH1
             th="สั่งทำเสื้อยืด 1 ตัว ไม่มีขั้นต่ำ — รู้ราคาทันที จ่าย PromptPay"
-            en="Custom t-shirt, no minimum — live THB price, PromptPay checkout"
+            en="Custom t-shirt, no minimum — order 1 piece, see the THB price first"
           />
           <p className="text-base sm:text-lg text-muted-foreground font-light leading-relaxed">
             {lang === 'en'
@@ -93,9 +101,9 @@ export default function CustomShirtNoMinimumPage() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </a>
-            <Link to="/pricing">
+            <LocalizedLink to="/pricing">
               <Button variant="outline">{lang === 'en' ? 'View pricing' : 'ดูตารางราคา'}</Button>
-            </Link>
+            </LocalizedLink>
           </div>
         </div>
 

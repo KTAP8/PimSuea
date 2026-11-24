@@ -8,15 +8,17 @@ export const GEO = {
   taglineTh:
     'แพลตฟอร์มสั่งพิมพ์เสื้อยืดออนไลน์ในประเทศไทย — ออกแบบบนเว็บ รู้ราคาทันที ไม่มีขั้นต่ำ',
   taglineEn:
-    'Thailand print-on-demand platform — design online, instant pricing, no minimum order.',
+    'Custom shirts in Thailand, in English — design online, see the price instantly, order from 1 piece.',
   oneLiner:
-    'PimSuea is a Bangkok-based print-on-demand platform for custom t-shirts: DTG printing, no minimum order, live THB pricing, PromptPay checkout, and nationwide delivery across 77 provinces.',
+    'PimSuea is a Bangkok-based print-on-demand platform for custom t-shirts: an English and Thai self-serve design studio, DTG printing, no minimum order, live THB pricing, card or PromptPay checkout, English support on LINE, and delivery across all 77 provinces of Thailand.',
   website: 'https://pimsuea.com',
   appUrl: 'https://app.pimsuea.com',
   location: {
     city: 'Bangkok',
     country: 'Thailand',
     areaServed: 'TH',
+    /** Cities called out for expat search intent — all served via nationwide delivery. */
+    cities: ['Bangkok', 'Chiang Mai', 'Phuket', 'Pattaya', 'Hua Hin', 'Koh Samui', 'Koh Phangan'],
   },
   printing: {
     primary: 'DTG',
@@ -26,8 +28,18 @@ export const GEO = {
     leadTimeDays: '5–14',
     provinces: 77,
   },
-  payments: ['PromptPay', 'THB'],
-  languages: ['Thai', 'English'],
+  payments: ['Card', 'PromptPay', 'THB'],
+  languages: ['English', 'Thai'],
+  support: 'English and Thai via LINE',
+  /** Who PimSuea is for — used in schema `audience` and llms.txt. */
+  audiences: [
+    'Expat run, ice bath, Muay Thai, padel, and sports clubs',
+    'International companies and teams in Thailand',
+    'Digital nomads, coworking and coliving communities',
+    'Crypto and Web3 communities',
+    'Couples and families (matching shirts and gifts)',
+    'Thai creators, brands, and companies',
+  ],
   pricingSnapshotDate: '2026-11-03',
 } as const;
 
@@ -38,6 +50,7 @@ export const GEO_URLS = {
   pricing: 'https://pimsuea.com/pricing',
   vsPrintful: 'https://pimsuea.com/vs-printful',
   customShirtNoMinimum: 'https://pimsuea.com/custom-shirt-no-minimum',
+  customShirtsThailand: 'https://pimsuea.com/custom-shirts-thailand',
   clubAndGiftShirts: 'https://pimsuea.com/club-and-gift-shirts',
   line: 'https://line.me/R/ti/p/%40PimSuea',
 } as const;
@@ -129,9 +142,9 @@ export const CASE_NOTES = [
     name: 'IBC Basketball Club',
     qty: 100,
     summaryEn:
-      '100-piece club run — self-serve design, DTG print, nationwide delivery.',
+      '100-piece sports club run — self-serve design, DTG print, nationwide delivery.',
     summaryTh:
-      'ออเดอร์ชมรมบasketball 100 ตัว — ออกแบบเองบนเว็บ พิมพ์ DTG จัดส่งทั่วไทย',
+      'ออเดอร์ชมรมบาสเกตบอล 100 ตัว — ออกแบบเองบนเว็บ พิมพ์ DTG จัดส่งทั่วไทย',
     year: 2025,
   },
   {
@@ -179,7 +192,17 @@ export function faqSchemaEntries(): { question: string; answer: string }[] {
     },
     {
       question: 'What payment methods are accepted?',
-      answer: 'PromptPay and other THB checkout options on app.pimsuea.com.',
+      answer: 'Card payments and PromptPay, priced in Thai baht (THB), on app.pimsuea.com.',
+    },
+    {
+      question: 'Do I need to speak Thai to order custom shirts from PimSuea?',
+      answer:
+        'No. The design studio and checkout are in English, and the team answers in English on LINE.',
+    },
+    {
+      question: 'Can expat clubs and international companies order small batches?',
+      answer:
+        'Yes. There is no minimum order — from 1 shirt to 100+ for a run club, company offsite, or community event.',
     },
     {
       question: 'Where is PimSuea based?',

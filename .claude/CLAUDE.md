@@ -166,23 +166,27 @@ Tiers are defined by **strict** width × height (no rotation normalisation). A l
 
 ## SEO
 
-Deployed at **pimsuea.com** on Vercel. Target: Thai + English speakers.
+Deployed at **pimsuea.com** on Vercel. **Primary audience (since 2026-11): expats in Thailand** — clubs (run, ice bath, Muay Thai, padel), international companies, digital nomads, crypto/Web3 communities, couples & families. Thai customers still served. Strategy and allowed claims: `docs/marketing/expat-gtm.md` (only claim English LINE support, card/PromptPay, no MOQ — no tax invoice, crypto payment or rush yet).
 Domain registered and DNS managed via **Cloudflare**.
 
-### Public routes (crawlable)
-- `/` — **main landing page post-launch** (`NewLanding.tsx`), canonical `https://pimsuea.com/`
+### Public routes (crawlable) — English-first, Thai mirror under `/th`
+- `MARKETING_PATHS` in `src/content/marketingRoutes.ts` is the single list: `/`, `/custom-shirts-thailand` (expat hub), `/print-on-demand`, `/pricing`, `/vs-printful`, `/custom-shirt-no-minimum`, `/club-and-gift-shirts`. Each also exists at `/th/...` (`/th` for home).
+- Language on marketing pages comes **from the URL** via `RouteLanguageProvider` (`src/i18n/LanguageContext.tsx`); the switcher navigates between paired URLs. App host still uses cookie → `navigator.language` → default `en`.
+- Use `LocalizedLink` (`src/components/LocalizedLink.tsx`) for internal marketing links so `/th` is preserved.
 - `/home` — redirects to `/` (not in sitemap)
 
 All other routes are protected (login required) and blocked in `robots.txt`.
 
 ### Implementation
-- **`src/components/PageSEO.tsx`** — reusable component; uses React 19 native head hoisting (no library). Props: `title`, `description`, `canonical`, `ogImage?`. Injects OG (`og:locale = th_TH`), Twitter Card, hreflang (th/en/x-default).
-- **`index.html`** — base fallback meta tags (`lang="th"`, description, OG image, twitter:card, `theme-color = #08636D`).
-- **`public/robots.txt`** — allows `/`, disallows all protected routes.
-- **`public/sitemap.xml`** — single entry: `/` (priority 1.0, NewLanding post-launch).
-- **JSON-LD** — Organization + WebSite schema rendered in `NewLanding.tsx` via `<script dangerouslySetInnerHTML>`.
+- **`src/components/PageSEO.tsx`** — `title`/`description` accept `{ en, th }`; `canonical` is the English URL. Emits self-canonical per language, real hreflang (en `/x`, th `/th/x`, x-default `/x`), `og:locale` per language. SEO URLs always use `SEO_ORIGIN` (`https://pimsuea.com`), never the env origin.
+- **Prerendering** — `npm run build` also runs `vite build --ssr src/entry-server.tsx` + `scripts/prerender.mjs`, writing `dist/home.html` and `dist/<path>.html` for every marketing route (EN + TH). `dist/index.html` stays the clean SPA shell because `app.pimsuea.com` shares the build. `vercel.json` `routes` serve the prerendered files **only for the pimsuea.com host**. When adding a marketing route: add it to `MARKETING_PATHS`, `MarketingLayout.tsx`, `vercel.json` routes regex, `sitemap.xml`, and `scripts/verify-geo-public.sh`.
+- **`src/main.tsx`** hydrates prerendered markup (`hydrateRoot`); `entry-server.tsx` mirrors App's sibling structure so `useId` matches.
+- **`index.html`** — base fallback meta tags (`lang="en"`, English description, OG image, `theme-color = #08636D`).
+- **`public/robots.txt`** — allows `/` (incl. `/th/`) and AI crawlers, disallows protected routes.
+- **`public/sitemap.xml`** — every marketing URL in EN and TH with paired `xhtml:link` alternates.
+- **`public/llms.txt`** + **`src/content/geoFacts.ts`** — canonical facts (keep in sync). JSON-LD built by `src/lib/geoSchema.tsx` (`buildGeoJsonLd({ lang, pageUrl, ... })`).
+- **Verify:** `MARKETING_ORIGIN=https://pimsuea.com bash scripts/verify-geo-public.sh`
 
 ### Pending manual steps
-1. Create `public/og-image.png` (1200×630px) — logo + bilingual tagline ("Custom shirts, made simple. | สั่งทำเสื้อ ง่ายกว่าที่เคย")
-2. Register in Google Search Console → submit `https://pimsuea.com/sitemap.xml`
-3. Update `sitemap.xml` `lastmod` date when landing page content changes
+1. Register in Google Search Console → submit `https://pimsuea.com/sitemap.xml`; inspect `/` and `/th`
+2. Update `sitemap.xml` `lastmod` dates when page content changes

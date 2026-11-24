@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { PageSEO } from "@/components/PageSEO";
 import { buildGeoJsonLd, JsonLdScript } from "@/lib/geoSchema";
 import { GEO_URLS } from "@/content/geoFacts";
-import { Link } from "react-router-dom";
+import { LocalizedLink } from "@/components/LocalizedLink";
 import { motion, useInView } from "framer-motion";
 import { getProducts, fetchAddons } from "@/services/api";
 import { filterActivePrintMethods } from "@/constants/printing";
@@ -503,6 +503,10 @@ function FAQSection() {
     { q: t.faqQ4, a: t.faqA4 },
     { q: t.faqQ5, a: t.faqA5 },
     { q: t.faqQ6, a: t.faqA6 },
+    { q: t.faqQ7, a: t.faqA7 },
+    { q: t.faqQ8, a: t.faqA8 },
+    { q: t.faqQ9, a: t.faqA9 },
+    { q: t.faqQ10, a: t.faqA10 },
   ];
 
   return (
@@ -893,6 +897,7 @@ export default function NewLanding() {
   };
 
   const jsonLd = buildGeoJsonLd({
+    lang,
     pageUrl: GEO_URLS.home,
     pageName: "PimSuea — Print on demand Thailand",
   });
@@ -900,8 +905,14 @@ export default function NewLanding() {
   return (
     <>
       <PageSEO
-        title="PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ | Custom T-Shirt Printing Thailand"
-        description="ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ คุณภาพสูง จัดส่งทั่วไทย | Design and print custom t-shirts online. High quality DTG printing. Fast delivery across Thailand."
+        title={{
+          en: "PimSuea | Custom T-Shirt Printing in Thailand — Order in English, from 1 Piece",
+          th: "PimSuea | สั่งพิมพ์เสื้อยืดออนไลน์ ไม่มีขั้นต่ำ รู้ราคาทันที",
+        }}
+        description={{
+          en: "Design custom shirts online in English. Live THB pricing, no minimum order, card or PromptPay, English support on LINE. Printed in Bangkok, delivered across Thailand.",
+          th: "ออกแบบและสั่งพิมพ์เสื้อยืดออนไลน์ ไม่มีขั้นต่ำ รู้ราคาทันที จ่ายผ่านบัตรหรือ PromptPay พิมพ์ DTG ในกรุงเทพ จัดส่งทั่วไทย 77 จังหวัด",
+        }}
         canonical="https://pimsuea.com/"
       />
       <JsonLdScript data={jsonLd} />
@@ -915,9 +926,9 @@ export default function NewLanding() {
           }`}
         >
           <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-            <Link to="/">
+            <LocalizedLink to="/">
               <img src="/logo.svg" alt="PimSuea" className="h-8" />
-            </Link>
+            </LocalizedLink>
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
               <a href={appUrl("/catalog")}>

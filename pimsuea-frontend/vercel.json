@@ -1,3 +1,16 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "routes": [
+    {
+      "src": "/",
+      "has": [{ "type": "host", "value": "^(www\\.)?pimsuea\\.com$" }],
+      "dest": "/home.html"
+    },
+    {
+      "src": "/(th|th/(?:custom-shirts-thailand|print-on-demand|pricing|vs-printful|custom-shirt-no-minimum|club-and-gift-shirts)|custom-shirts-thailand|print-on-demand|pricing|vs-printful|custom-shirt-no-minimum|club-and-gift-shirts)/?",
+      "has": [{ "type": "host", "value": "^(www\\.)?pimsuea\\.com$" }],
+      "dest": "/$1.html"
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }

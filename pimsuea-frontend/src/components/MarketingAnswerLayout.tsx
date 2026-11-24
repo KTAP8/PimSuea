@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { LocalizedLink } from '@/components/LocalizedLink';
 import { ArrowRight, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react';
 import { PageSEO } from '@/components/PageSEO';
+import type { LocalizedText } from '@/i18n/localized';
 import { SiteFooter } from '@/components/SiteFooter';
 import { TermsModal } from '@/components/TermsModal';
 import { Button } from '@/components/ui/button';
@@ -13,8 +14,8 @@ import { useMarketingLang } from '@/i18n/LanguageContext';
 export { useMarketingLang };
 
 interface MarketingAnswerLayoutProps {
-  title: string;
-  description: string;
+  title: LocalizedText;
+  description: LocalizedText;
   canonical: string;
   jsonLd: Record<string, unknown> | Record<string, unknown>[];
   ctaLabelTh?: string;
@@ -60,9 +61,9 @@ export function MarketingAnswerLayout({
           }`}
         >
           <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 group">
+            <LocalizedLink to="/" className="flex items-center gap-2 group">
               <img src="/logo.svg" alt="PimSuea" className="h-8 transition-transform group-hover:scale-105" />
-            </Link>
+            </LocalizedLink>
 
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
@@ -98,8 +99,8 @@ export function MarketingAnswerLayout({
 
               <p className="text-muted-foreground font-light text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
                 {lang === 'en'
-                  ? 'Open the design studio in your browser. Upload your graphic, see instant THB pricing, and pay via PromptPay.'
-                  : 'เปิดสตูดิโอออกแบบบนเบราว์เซอร์ ลากวางลายเสื้อ รู้ราคาทันที จ่ายผ่าน PromptPay พร้อมจัดส่งทั่วไทย'}
+                  ? 'Open the design studio in your browser, in English. Upload your graphic, see the exact THB price instantly, and pay by card or PromptPay. Questions? Our team answers in English on LINE.'
+                  : 'เปิดสตูดิโอออกแบบบนเบราว์เซอร์ ลากวางลายเสื้อ รู้ราคาทันที จ่ายผ่านบัตรหรือ PromptPay พร้อมจัดส่งทั่วไทย'}
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -112,13 +113,13 @@ export function MarketingAnswerLayout({
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </a>
-                <Link
+                <LocalizedLink
                   to="/pricing"
                   className="inline-flex items-center text-sm font-semibold text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-secondary/60 transition-colors"
                 >
                   {lang === 'en' ? 'View Pricing Tables' : 'ดูตารางราคาทั้งหมด'}
                   <ChevronRight className="w-4 h-4 ml-1" />
-                </Link>
+                </LocalizedLink>
               </div>
 
               {/* Trust highlights under CTA */}
@@ -133,7 +134,11 @@ export function MarketingAnswerLayout({
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-primary" />
-                  {lang === 'en' ? 'PromptPay Supported' : 'ชำระผ่าน PromptPay'}
+                  {lang === 'en' ? 'Card or PromptPay' : 'ชำระผ่านบัตรหรือ PromptPay'}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                  {lang === 'en' ? 'English support on LINE' : 'ซัพพอร์ตภาษาไทยและอังกฤษทาง LINE'}
                 </span>
               </div>
             </div>
@@ -147,7 +152,7 @@ export function MarketingAnswerLayout({
   );
 }
 
-/** Bilingual section wrapper — both languages always rendered in DOM for SEO crawlers with semantic lang tags */
+/** Renders the section for the page's language (each language has its own URL). */
 export function BilingualSections({
   th,
   en,
@@ -158,43 +163,20 @@ export function BilingualSections({
   const { lang } = useMarketingLang();
 
   return (
-    <>
-      {/* Active visible section based on selected language */}
-      <div className="space-y-16">
-        {lang === 'th' ? (
-          <section lang="th" className="space-y-16">
-            {th}
-          </section>
-        ) : (
-          <section lang="en" className="space-y-16">
-            {en}
-          </section>
-        )}
-      </div>
-
-      {/* Hidden semantic section for crawlers to guarantee 100% indexing of the alternate language */}
-      <div className="sr-only" aria-hidden="true">
-        {lang === 'th' ? (
-          <section lang="en">{en}</section>
-        ) : (
-          <section lang="th">{th}</section>
-        )}
-      </div>
-    </>
+    <div className="space-y-16">
+      <section lang={lang} className="space-y-16">
+        {lang === 'th' ? th : en}
+      </section>
+    </div>
   );
 }
 
 export function AnswerH1({ th, en }: { th: string; en: string }) {
   const { lang } = useMarketingLang();
   return (
-    <div className="space-y-3">
-      <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
-        {lang === 'en' ? en : th}
-      </h1>
-      <p className="text-base sm:text-lg md:text-xl text-muted-foreground font-light leading-relaxed max-w-2xl">
-        {lang === 'en' ? th : en}
-      </p>
-    </div>
+    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
+      {lang === 'en' ? en : th}
+    </h1>
   );
 }
 

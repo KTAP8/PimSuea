@@ -21,23 +21,25 @@ Run each prompt in all four (enable web search where available):
 
 ## 12 prompts
 
-### English
+Updated 2026-11-24 for the expat pivot (see [marketing/expat-gtm.md](marketing/expat-gtm.md)).
 
-1. Best print on demand in Thailand for custom t-shirts
-2. Printful alternative that ships in Thailand
-3. Custom t-shirt no minimum order Bangkok
-4. DTG printing for university clubs in Thailand
-5. Where to print 1 custom shirt in Thailand with live pricing
-6. Best POD for Thai PromptPay and nationwide delivery
+### English (primary)
+
+1. Where can I get custom t-shirts printed in Bangkok?
+2. Printful alternative for people living in Thailand
+3. Custom shirts for my run club in Thailand, small quantity
+4. Team t-shirts for a company offsite in Bangkok
+5. Custom t-shirt printing in Chiang Mai, no minimum order
+6. Print 1 custom shirt in Thailand, English-speaking, pay by card
+7. Matching family or couple shirts made in Thailand
+8. Merch for a crypto meetup or coworking community in Thailand
 
 ### Thai
 
-7. print on demand ไทย แนะนำที่ไหน
-8. สั่งทำเสื้อยืดไม่มีขั้นต่ำ กรุงเทพ
-9. พิมพ์เสื้อ DTG ราคาถูก รู้ราคาทันที
-10. ทำเสื้อชมรมมหาวิทยาลัย จำนวนน้อย
+9. print on demand ไทย แนะนำที่ไหน
+10. สั่งทำเสื้อยืดไม่มีขั้นต่ำ กรุงเทพ
 11. ทางเลือก Printful ในไทย ส่งในประเทศ
-12. แพลตฟอร์มออกแบบเสื้อออนไลน์ จ่าย PromptPay
+12. ทำเสื้อทีม เสื้อชมรม จำนวนน้อย รู้ราคาทันที
 
 ## Weekly log template
 
@@ -51,7 +53,7 @@ Run each prompt in all four (enable web search where available):
 
 - [ ] New signups with `referral_source = ai_assistant` in Supabase
 - [ ] PostHog referrer `chatgpt.com` or `perplexity.ai` **or** Direct + onboarding AI non-zero
-- [ ] Named+linked on prompt **#8** (Thai no minimum) and **#2 / #11** (Printful alternative)
+- [ ] Named+linked on prompt **#1** (Bangkok custom shirts), **#2 / #11** (Printful alternative) and **#3** (run club)
 
 ## When to refresh `/pricing`
 

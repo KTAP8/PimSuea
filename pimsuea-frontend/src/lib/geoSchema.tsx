@@ -6,14 +6,22 @@ import {
   geoSameAs,
 } from '@/content/geoFacts';
 import { translations } from '@/translations/landing';
+import { localizedUrl, stripLangPrefix } from '@/content/marketingRoutes';
+import type { Language } from '@/i18n/types';
 
 /** Build Organization + LocalBusiness + FAQPage JSON-LD graph for marketing pages. */
 export function buildGeoJsonLd(options?: {
   faq?: boolean;
   pageUrl?: string;
   pageName?: string;
+  /** Page language; the Thai variant's URL is /th/... */
+  lang?: Language;
 }): Record<string, unknown> {
-  const pageUrl = options?.pageUrl ?? GEO_URLS.home;
+  const lang = options?.lang ?? 'en';
+  const basePath = stripLangPrefix(
+    (options?.pageUrl ?? GEO_URLS.home).replace(GEO.website, '') || '/',
+  );
+  const pageUrl = localizedUrl(basePath, lang);
   const sameAs = geoSameAs();
   const brandImage = {
     '@type': 'ImageObject',
@@ -32,6 +40,13 @@ export function buildGeoJsonLd(options?: {
       logo: `${GEO.website}/logo.svg`,
       image: brandImage,
       description: GEO.oneLiner,
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer support',
+        url: GEO_URLS.line,
+        availableLanguage: ['English', 'Thai'],
+        areaServed: GEO.location.areaServed,
+      },
       sameAs,
     },
     {
@@ -46,12 +61,15 @@ export function buildGeoJsonLd(options?: {
         addressLocality: GEO.location.city,
         addressCountry: GEO.location.country,
       },
-      areaServed: {
-        '@type': 'Country',
-        name: GEO.location.areaServed,
-      },
+      areaServed: [
+        { '@type': 'Country', name: GEO.location.country },
+        ...GEO.location.cities.map((name) => ({ '@type': 'City', name })),
+      ],
       priceRange: '฿฿',
+      paymentAccepted: GEO.payments.filter((p) => p !== 'THB').join(', '),
+      currenciesAccepted: 'THB',
       knowsLanguage: GEO.languages,
+      audience: GEO.audiences.map((audienceType) => ({ '@type': 'Audience', audienceType })),
       sameAs,
     },
     {
@@ -60,7 +78,7 @@ export function buildGeoJsonLd(options?: {
       name: GEO.brand,
       url: GEO.website,
       publisher: { '@id': `${GEO.website}/#organization` },
-      inLanguage: ['th', 'en'],
+      inLanguage: ['en', 'th'],
     },
   ];
 
@@ -73,19 +91,23 @@ export function buildGeoJsonLd(options?: {
       primaryImageOfPage: brandImage,
       isPartOf: { '@id': `${GEO.website}/#website` },
       about: { '@id': `${GEO.website}/#organization` },
-      inLanguage: ['th', 'en'],
+      inLanguage: lang,
     });
   }
 
   if (options?.faq !== false) {
-    const en = translations.en;
+    const t = translations[lang];
     const landingFaqs = [
-      { q: en.faqQ1, a: en.faqA1 },
-      { q: en.faqQ2, a: en.faqA2 },
-      { q: en.faqQ3, a: en.faqA3 },
-      { q: en.faqQ4, a: en.faqA4 },
-      { q: en.faqQ5, a: en.faqA5 },
-      { q: en.faqQ6, a: en.faqA6 },
+      { q: t.faqQ1, a: t.faqA1 },
+      { q: t.faqQ2, a: t.faqA2 },
+      { q: t.faqQ3, a: t.faqA3 },
+      { q: t.faqQ4, a: t.faqA4 },
+      { q: t.faqQ5, a: t.faqA5 },
+      { q: t.faqQ6, a: t.faqA6 },
+      { q: t.faqQ7, a: t.faqA7 },
+      { q: t.faqQ8, a: t.faqA8 },
+      { q: t.faqQ9, a: t.faqA9 },
+      { q: t.faqQ10, a: t.faqA10 },
     ];
     const faqEntries =
       landingFaqs.length > 0 ? landingFaqs : faqSchemaEntries().map((f) => ({ q: f.question, a: f.answer }));

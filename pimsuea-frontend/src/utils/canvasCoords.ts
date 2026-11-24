@@ -86,3 +86,122 @@ export function zoneFromTemplate(
         height: printArea.height * sf,
     };
 }
+
+export type SideAabbCm = {
+    w: number;
+    h: number;
+    x_cm: number;
+    y_cm: number;
+    px_x: number;
+    px_y: number;
+    px_w: number;
+    px_h: number;
+};
+
+/** Print AABB from stored layers when that side is not hydrated on the canvas yet. */
+export function sideAabbFromSerializedLayers(
+    layers: SerializableImage[],
+    physW_cm: number,
+    physH_cm: number,
+    imgZoneW: number,
+    imgZoneH: number,
+    legacyStageZone?: PrintZoneRect,
+): SideAabbCm | null {
+    if (!layers.length) return null;
+
+    const allRel = layers.every(
+        (l) =>
+            l.relX != null &&
+            l.relY != null &&
+            l.relW != null &&
+            l.relH != null,
+    );
+
+    if (allRel) {
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        for (const l of layers) {
+            minX = Math.min(minX, l.relX!);
+            minY = Math.min(minY, l.relY!);
+            maxX = Math.max(maxX, l.relX! + l.relW!);
+            maxY = Math.max(maxY, l.relY! + l.relH!);
+        }
+        const cx = Math.max(0, minX);
+        const cy = Math.max(0, minY);
+        const cx2 = Math.min(1, maxX);
+        const cy2 = Math.min(1, maxY);
+        if (cx2 <= cx || cy2 <= cy) return null;
+        const rw = cx2 - cx;
+        const rh = cy2 - cy;
+        return {
+            w: rw * physW_cm,
+            h: rh * physH_cm,
+            x_cm: cx * physW_cm,
+            y_cm: cy * physH_cm,
+            px_x: Math.round(cx * imgZoneW),
+            px_y: Math.round(cy * imgZoneH),
+            px_w: Math.round(rw * imgZoneW),
+            px_h: Math.round(rh * imgZoneH),
+        };
+    }
+
+    if (!legacyStageZone) return null;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const l of layers) {
+        const x = l.x ?? 0;
+        const y = l.y ?? 0;
+        const w = l.width ?? 0;
+        const h = l.height ?? 0;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + w);
+        maxY = Math.max(maxY, y + h);
+    }
+    const pz = legacyStageZone;
+    const cx = Math.max(minX, pz.left);
+    const cy = Math.max(minY, pz.top);
+    const cx2 = Math.min(maxX, pz.left + pz.width);
+    const cy2 = Math.min(maxY, pz.top + pz.height);
+    if (cx2 <= cx || cy2 <= cy) return null;
+    const rx = cx - pz.left;
+    const ry = cy - pz.top;
+    const rw = cx2 - cx;
+    const rh = cy2 - cy;
+    const sfW = imgZoneW / pz.width;
+    const sfH = imgZoneH / pz.height;
+    return {
+        w: (rw * physW_cm) / pz.width,
+        h: (rh * physH_cm) / pz.height,
+        x_cm: (rx * physW_cm) / pz.width,
+        y_cm: (ry * physH_cm) / pz.height,
+        px_x: Math.round(rx * sfW),
+        px_y: Math.round(ry * sfH),
+        px_w: Math.round(rw * sfW),
+        px_h: Math.round(rh * sfH),
+    };
+}
+
+export function printDimensionsFromSerializedLayers(
+    layers: SerializableImage[],
+    physW_cm: number,
+    physH_cm: number,
+    imgZoneW: number,
+    imgZoneH: number,
+    legacyStageZone?: PrintZoneRect,
+): { w: number; h: number } | null {
+    const aabb = sideAabbFromSerializedLayers(
+        layers,
+        physW_cm,
+        physH_cm,
+        imgZoneW,
+        imgZoneH,
+        legacyStageZone,
+    );
+    return aabb ? { w: aabb.w, h: aabb.h } : null;
+}

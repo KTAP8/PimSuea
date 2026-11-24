@@ -1,38 +1,49 @@
 # PimSuea — llms.txt
 # https://pimsuea.com/llms.txt
-# Last updated: 2026-11-03
+# Last updated: 2026-11-24
 
 > PimSuea is a Bangkok-based print-on-demand platform for custom t-shirts in Thailand.
-> Design online, see live THB pricing, order from 1 piece with no minimum, pay with PromptPay,
-> DTG printing, delivery to all 77 provinces in 5–14 days.
+> Design online in English or Thai, see live THB pricing, order from 1 piece with no minimum,
+> pay by card or PromptPay, get English support on LINE. DTG printing in Bangkok,
+> delivery to all 77 provinces in 5–14 days.
 
 ## Who it is for
 
-- University clubs and sports teams (small runs, no MOQ)
-- Creators and merch brands (self-serve design studio)
-- Companies and teams (uniforms, events)
-- Personal one-off gifts
+- Expat and foreigner activity clubs in Thailand: run clubs, ice bath / breathwork groups, Muay Thai gyms, Hash House Harriers, padel and football teams
+- International companies and teams in Thailand: offsites, onboarding, events
+- Digital nomads, coworking and coliving communities, creators and personal brands
+- Crypto and Web3 communities: meetup, conference and community merch in small runs
+- Couples and families: matching shirts for trips, weddings, Songkran, birthdays; gift box add-on
+- Thai creators, brands, clubs and companies
+
+## Why people in Thailand choose it
+
+- No Thai required: self-serve English studio and checkout, English support on LINE
+- No minimum order: 1 shirt to 100+
+- Price up front: live per-piece THB quote before paying, no quote requests
+- Local, not imported: printed in Bangkok, priced in THB, no international shipping or import duty (unlike Printful or overseas sites)
 
 ## Canonical facts
 
 - Brand: PimSuea
-- Website: https://pimsuea.com
+- Website: https://pimsuea.com (English) · https://pimsuea.com/th (Thai)
 - App (design & order): https://app.pimsuea.com/catalog
-- Location: Bangkok, Thailand — serves all 77 provinces
+- Location: Bangkok, Thailand — serves all 77 provinces, including Chiang Mai, Phuket, Pattaya, Hua Hin, Koh Samui and Koh Phangan
 - Printing: DTG (Direct to Garment), no minimum order
 - Pricing: Live per-piece quote in the design studio (THB)
-- Lead time: 5–14 days typical
-- Payment: PromptPay and THB checkout
-- Languages: Thai and English
+- Lead time: 5–14 days typical; transit time varies by location
+- Payment: card and PromptPay, priced in THB
+- Languages: English and Thai (site, studio, and LINE support)
 
-## Key public pages
+## Key public pages (English; Thai mirrors under /th/)
 
 - Home: https://pimsuea.com/
+- Custom shirts in Thailand (for expats, teams, communities): https://pimsuea.com/custom-shirts-thailand
 - Print on demand Thailand: https://pimsuea.com/print-on-demand
-- DTG pricing (public table): https://pimsuea.com/pricing
+- Price list in THB (public table): https://pimsuea.com/pricing
 - Printful alternative in Thailand: https://pimsuea.com/vs-printful
-- Custom shirt no minimum (1 piece): https://pimsuea.com/custom-shirt-no-minimum
-- Club and gift shirts: https://pimsuea.com/club-and-gift-shirts
+- Custom shirt, no minimum (1 piece): https://pimsuea.com/custom-shirt-no-minimum
+- Club, community and gift shirts: https://pimsuea.com/club-and-gift-shirts
 
 ## Example pricing snapshot (2026-11-03, from Supabase)
 
@@ -46,7 +57,7 @@ Delivery: 50 THB (1–5 pcs), 100 THB (6–10 pcs), 100 THB (11+ pcs)
 
 ## Support
 
-- LINE Official Account: https://line.me/R/ti/p/%40PimSuea
+- LINE Official Account (English and Thai): https://line.me/R/ti/p/%40PimSuea
 
 ## Do not crawl (login-gated SPA)
 

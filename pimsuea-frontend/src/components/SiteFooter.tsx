@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { LocalizedLink } from '@/components/LocalizedLink';
 import { translations, type Language } from '@/translations/landing';
 import { lineAddFriendUrl, lineDisplayId } from '@/lib/line';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,9 @@ function FooterRouterLink({ to, children }: { to: string; children: React.ReactN
   const className =
     'text-sm font-light text-muted-foreground hover:text-primary transition-colors';
   return (
-    <Link to={to} className={className}>
+    <LocalizedLink to={to} className={className}>
       {children}
-    </Link>
+    </LocalizedLink>
   );
 }
 
@@ -76,9 +76,9 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
           {/* Brand */}
           <div className="space-y-4 sm:col-span-2 lg:col-span-1">
-            <Link to="/">
+            <LocalizedLink to="/">
               <img src="/logo.svg" alt="PimSuea" className="h-8" />
-            </Link>
+            </LocalizedLink>
             <p className="text-sm font-light text-muted-foreground leading-relaxed max-w-xs">
               {t.heroSubtitle}
             </p>
@@ -94,6 +94,7 @@ function MarketingFooter({ lang, onTermsClick, className }: Omit<MarketingFooter
               <FooterRouterLink to="/#how">{t.footerLinkHow}</FooterRouterLink>
               <FooterRouterLink to="/#catalog">{t.footerLinkCatalog}</FooterRouterLink>
               <FooterRouterLink to="/#gift">{t.footerLinkTiers}</FooterRouterLink>
+              <FooterRouterLink to="/custom-shirts-thailand">{t.footerLinkCustomShirtsThailand}</FooterRouterLink>
               <FooterRouterLink to="/print-on-demand">{t.footerLinkPrintOnDemand}</FooterRouterLink>
               <FooterRouterLink to="/pricing">{t.footerLinkPricing}</FooterRouterLink>
               <FooterRouterLink to="/vs-printful">{t.footerLinkVsPrintful}</FooterRouterLink>

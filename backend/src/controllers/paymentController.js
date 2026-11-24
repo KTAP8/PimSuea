@@ -10,7 +10,6 @@ const {
   validateAndPriceCart,
   fulfillOrder,
 } = require('../services/orderFulfillment');
-const { notifyPaidOrder } = require('../services/telegramNotify');
 
 function mapPaymentMethod(session) {
   const types = session.payment_method_types || [];
@@ -43,11 +42,6 @@ function sleep(ms) {
 
 function isUniqueViolation(err) {
   return err?.code === '23505' || /duplicate key/i.test(err?.message || '');
-}
-
-async function notifyQuiet(orderId) {
-  if (!orderId) return;
-  await notifyPaidOrder(orderId);
 }
 
 async function findOrderIdBySession(sessionId) {
@@ -90,7 +84,6 @@ async function waitForExistingFulfillment(draftId, sessionId) {
     const existingId = await findOrderIdBySession(sessionId);
     if (existingId) {
       await markDraftCompleted(draftId, existingId);
-      await notifyQuiet(existingId);
       return { orderId: existingId, alreadyFulfilled: true };
     }
 
@@ -101,7 +94,6 @@ async function waitForExistingFulfillment(draftId, sessionId) {
       .maybeSingle();
 
     if (draft?.status === 'completed' && draft.order_id) {
-      await notifyQuiet(draft.order_id);
       return { orderId: draft.order_id, alreadyFulfilled: true };
     }
 
@@ -148,7 +140,6 @@ async function fulfillDraftById(draftId, stripeMeta, options = {}) {
   const existingId = await findOrderIdBySession(stripeMeta.checkoutSessionId);
   if (existingId) {
     await markDraftCompleted(draftId, existingId);
-    await notifyQuiet(existingId);
     return { orderId: existingId, alreadyFulfilled: true };
   }
 
@@ -165,7 +156,6 @@ async function fulfillDraftById(draftId, stripeMeta, options = {}) {
     if (!draft) throw new Error(`Checkout draft not found: ${draftId}`);
 
     if (draft.status === 'completed' && draft.order_id) {
-      await notifyQuiet(draft.order_id);
       return { orderId: draft.order_id, alreadyFulfilled: true };
     }
     if (draft.status === 'cancelled') {
@@ -189,14 +179,12 @@ async function fulfillDraftById(draftId, stripeMeta, options = {}) {
     });
 
     await markDraftCompleted(draftId, orderId);
-    await notifyQuiet(orderId);
     return { orderId, alreadyFulfilled: false };
   } catch (err) {
     if (isUniqueViolation(err)) {
       const winnerId = await findOrderIdBySession(stripeMeta.checkoutSessionId);
       if (winnerId) {
         await markDraftCompleted(draftId, winnerId);
-        await notifyQuiet(winnerId);
         return { orderId: winnerId, alreadyFulfilled: true };
       }
     }

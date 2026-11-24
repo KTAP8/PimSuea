@@ -1,8 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useState } from 'react';
-
-// All non-root routes redirect to / until this date
-export const LAUNCH_DATE = new Date('2026-03-27T12:00:00+07:00');
+import { LAUNCH_DATE } from './lib/launch';
+import { MarketingLayout } from './components/MarketingLayout';
 import { Analytics } from '@vercel/analytics/react';
 import { AnalyticsProvider } from './components/AnalyticsProvider';
 import { Sidebar } from './components/Sidebar';
@@ -21,22 +20,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import NewsDetails from './pages/NewsDetails';
-import Landing from './pages/Landing';
-import NewLanding from './pages/NewLanding';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { RedirectToApp } from './components/RedirectToApp';
 import { AppRootRedirect } from './components/AppRootRedirect';
-import PrintOnDemandPage from './pages/marketing/PrintOnDemandPage';
-import PricingPage from './pages/marketing/PricingPage';
-import VsPrintfulPage from './pages/marketing/VsPrintfulPage';
-import CustomShirtNoMinimumPage from './pages/marketing/CustomShirtNoMinimumPage';
-import ClubAndGiftShirtsPage from './pages/marketing/ClubAndGiftShirtsPage';
-import { MarketingPageTracker } from './components/MarketingPageTracker';
 import { isAppHost } from './lib/site';
 import { useLanguage } from './i18n/LanguageContext';
 
@@ -46,37 +36,6 @@ function shouldShowAppFooter(pathname: string): boolean {
   if (pathname === '/checkout/success') return false;
   if (pathname === '/onboarding') return false;
   return true;
-}
-
-function MarketingLayout() {
-  const preLaunch = !import.meta.env.DEV && new Date() < LAUNCH_DATE;
-
-  return (
-    <>
-      <MarketingPageTracker />
-      <Routes>
-      <Route
-        path="/"
-        element={preLaunch ? <Landing /> : <NewLanding />}
-      />
-      <Route path="/home" element={<Navigate to="/" replace />} />
-      {!preLaunch && (
-        <>
-          <Route path="/print-on-demand" element={<PrintOnDemandPage />} />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/vs-printful" element={<VsPrintfulPage />} />
-          <Route path="/custom-shirt-no-minimum" element={<CustomShirtNoMinimumPage />} />
-          <Route path="/club-and-gift-shirts" element={<ClubAndGiftShirtsPage />} />
-        </>
-      )}
-      {preLaunch ? (
-        <Route path="*" element={<Navigate to="/" replace />} />
-      ) : (
-        <Route path="*" element={<RedirectToApp />} />
-      )}
-    </Routes>
-    </>
-  );
 }
 
 function AppLayout() {

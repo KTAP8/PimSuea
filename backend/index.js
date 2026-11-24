@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const { generalLimiter, strictLimiter } = require('./src/middleware/rateLimiter');
 const { startCheckoutDraftMaintenanceJob } = require('./src/jobs/checkoutDraftMaintenance');
+const { startTelegramPaidOrderDailyJob } = require('./src/jobs/telegramPaidOrderDaily');
 
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const catalogRoutes = require('./src/routes/catalogRoutes');
@@ -67,6 +68,7 @@ app.get('/', (req, res) => {
 });
 
 startCheckoutDraftMaintenanceJob();
+startTelegramPaidOrderDailyJob();
 
 // Start server
 app.listen(PORT, () => {

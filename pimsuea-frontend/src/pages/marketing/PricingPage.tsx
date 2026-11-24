@@ -510,8 +510,10 @@ function ValueHighlights() {
 }
 
 export default function PricingPage() {
+  const { lang } = useMarketingLang();
   const jsonLd = [
     buildGeoJsonLd({
+    lang,
       pageUrl: GEO_URLS.pricing,
       pageName: 'DTG t-shirt pricing Thailand — PimSuea',
       faq: false,
@@ -519,13 +521,18 @@ export default function PricingPage() {
     buildPricingOfferJsonLd(),
   ];
 
-  const { lang } = useMarketingLang();
   const snapshotNote = `ข้อมูลอ้างอิงจากฐานข้อมูล ณ ${GEO.pricingSnapshotDate} — ราคาสุทธิคำนวณตามขนาดและจำนวนจริงในสตูดิโอ`;
 
   return (
     <MarketingAnswerLayout
-      title="ราคาพิมพ์เสื้อ DTG | ตารางราคา PimSuea"
-      description="ตารางราคาเสื้อ + พิมพ์ DTG (3×4 / A5 / A4 / A3) และค่าจัดส่งตามจำนวน — จากระบบ PimSuea จริง"
+      title={{
+        en: 'Custom T-Shirt Printing Prices in Thailand (THB) | PimSuea Rate Card',
+        th: 'ราคาพิมพ์เสื้อ DTG | ตารางราคา PimSuea',
+      }}
+      description={{
+        en: 'Public THB price list for custom shirts in Thailand: garment + DTG print (3×4, A5, A4, A3) and delivery by quantity. No minimum, card or PromptPay.',
+        th: 'ตารางราคาเสื้อ + พิมพ์ DTG (3×4 / A5 / A4 / A3) และค่าจัดส่งตามจำนวน — จากระบบ PimSuea จริง',
+      }}
       canonical={GEO_URLS.pricing}
       jsonLd={jsonLd}
       ctaLabelTh="ดูราคาสด"
@@ -545,7 +552,7 @@ export default function PricingPage() {
 
           <AnswerH1
             th="ราคาพิมพ์เสื้อ DTG — ตารางราคาสาธารณะและคำนวณราคาสด"
-            en="DTG T-Shirt Printing Rates — Public Pricing Snapshot"
+            en="Custom T-Shirt Printing Prices in Thailand — Public THB Rate Card"
           />
 
           <p className="text-base sm:text-lg text-muted-foreground font-light leading-relaxed">

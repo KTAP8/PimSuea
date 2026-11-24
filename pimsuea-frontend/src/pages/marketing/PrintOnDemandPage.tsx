@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { appUrl } from '@/lib/site';
+import { LocalizedLink } from '@/components/LocalizedLink';
 
 function HeroVisual() {
   const { lang } = useMarketingLang();
@@ -421,8 +422,10 @@ function FaqAccordion() {
 }
 
 export default function PrintOnDemandPage() {
+  const { lang } = useMarketingLang();
   const jsonLd = [
     buildGeoJsonLd({
+    lang,
       pageUrl: GEO_URLS.printOnDemand,
       pageName: 'Print on demand Thailand — PimSuea',
       faq: true,
@@ -430,13 +433,12 @@ export default function PrintOnDemandPage() {
     buildCaseNotesJsonLd(),
   ];
 
-  const { lang } = useMarketingLang();
 
   const factsTh = [
     { label: 'เทคนิคพิมพ์', value: 'DTG (Direct to Garment)' },
     { label: 'ขั้นต่ำ', value: 'ไม่มี — สั่ง 1 ตัวได้' },
     { label: 'ราคา', value: 'คำนวณทันทีใน design studio (THB)' },
-    { label: 'ชำระเงิน', value: 'PromptPay' },
+    { label: 'ชำระเงิน', value: 'บัตร หรือ PromptPay' },
     { label: 'ระยะเวลา', value: `${GEO.printing.leadTimeDays} วัน` },
     { label: 'พื้นที่ให้บริการ', value: `ทั่วไทย ${GEO.printing.provinces} จังหวัด` },
     { label: 'ต่างจากร้าน LINE', value: 'Self-serve ออกแบบ + รู้ราคาก่อนสั่ง' },
@@ -446,16 +448,23 @@ export default function PrintOnDemandPage() {
     { label: 'Print method', value: 'DTG on premium cotton blanks' },
     { label: 'Minimum', value: 'None — order 1 or 100+' },
     { label: 'Pricing', value: 'Live quote in the design studio (THB)' },
-    { label: 'Payment', value: 'PromptPay' },
+    { label: 'Payment', value: 'Card or PromptPay (THB)' },
+    { label: 'Language', value: 'English & Thai studio, English support on LINE' },
     { label: 'Lead time', value: `${GEO.printing.leadTimeDays} days typical` },
-    { label: 'Coverage', value: `All ${GEO.printing.provinces} provinces` },
+    { label: 'Coverage', value: `All ${GEO.printing.provinces} provinces — Bangkok, Chiang Mai, Phuket, Pattaya, the islands` },
     { label: 'Advantage', value: 'Self-serve canvas + instant per-piece quote' },
   ];
 
   return (
     <MarketingAnswerLayout
-      title="Print on Demand ไทย | สั่งพิมพ์เสื้อไม่มีขั้นต่ำ | PimSuea"
-      description={`${GEO.taglineTh} พิมพ์ DTG รู้ราคาทันที PromptPay จัดส่ง ${GEO.printing.provinces} จังหวัด ${GEO.printing.leadTimeDays} วัน`}
+      title={{
+        en: 'Print on Demand Thailand | Custom T-Shirt Printing Bangkok, No Minimum | PimSuea',
+        th: 'Print on Demand ไทย | สั่งพิมพ์เสื้อไม่มีขั้นต่ำ | PimSuea',
+      }}
+      description={{
+        en: `${GEO.taglineEn} DTG printing in Bangkok, card or PromptPay, English support, delivery to all ${GEO.printing.provinces} provinces in ${GEO.printing.leadTimeDays} days.`,
+        th: `${GEO.taglineTh} พิมพ์ DTG รู้ราคาทันที จ่ายบัตรหรือ PromptPay จัดส่ง ${GEO.printing.provinces} จังหวัด ${GEO.printing.leadTimeDays} วัน`,
+      }}
       canonical={GEO_URLS.printOnDemand}
       jsonLd={jsonLd}
       ctaLabelTh="เริ่มออกแบบ"
@@ -495,7 +504,7 @@ export default function PrintOnDemandPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </a>
-              <a href="/pricing">
+              <LocalizedLink to="/pricing">
                 <Button
                   size="lg"
                   variant="outline"
@@ -503,7 +512,7 @@ export default function PrintOnDemandPage() {
                 >
                   {lang === 'en' ? 'View Rate Card' : 'ดูตารางราคา'}
                 </Button>
-              </a>
+              </LocalizedLink>
             </div>
           </div>
 

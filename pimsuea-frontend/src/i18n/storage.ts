@@ -33,6 +33,10 @@ export function readStoredLanguage(): Language {
     /* ignore */
   }
 
+  if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('th')) {
+    return 'th';
+  }
+
   return DEFAULT_LANGUAGE;
 }
 

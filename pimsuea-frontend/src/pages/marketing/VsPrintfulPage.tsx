@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { appUrl } from '@/lib/site';
+import { LocalizedLink } from '@/components/LocalizedLink';
 
 const COMPARISON_TH = [
   {
@@ -28,7 +29,7 @@ const COMPARISON_TH = [
   },
   {
     feature: 'สกุลเงิน & วิธีชำระเงิน',
-    pimsuea: 'สกุลเงินบาท (THB) + PromptPay QR',
+    pimsuea: 'สกุลเงินบาท (THB) + บัตร หรือ PromptPay QR',
     printful: 'สกุลเงิน USD + ตัดบัตรเครดิตต่างประเทศ',
     winner: 'pimsuea',
   },
@@ -58,9 +59,15 @@ const COMPARISON_TH = [
   },
   {
     feature: 'กลุ่มผู้ใช้งานที่เหมาะสม',
-    pimsuea: 'ผู้ใช้ในไทย, ชมรม, มหาวิทยาลัย, แบรนด์ไทย, ของขวัญ',
+    pimsuea: 'คนไทยและชาวต่างชาติในไทย, ชมรม, ทีมบริษัท, แบรนด์ไทย, ของขวัญ',
     printful: 'ผู้ขายร้านค้าออนไลน์ส่งลูกค้าต่างประเทศ (Global)',
     winner: 'neutral',
+  },
+  {
+    feature: 'ภาษาและการซัพพอร์ต',
+    pimsuea: 'สตูดิโอภาษาไทย/อังกฤษ + แชท LINE ทีมงานในไทย',
+    printful: 'ภาษาอังกฤษ ซัพพอร์ตจากต่างประเทศ',
+    winner: 'pimsuea',
   },
 ];
 
@@ -73,7 +80,7 @@ const COMPARISON_EN = [
   },
   {
     feature: 'Currency & Payment',
-    pimsuea: 'Thai Baht (THB) + PromptPay QR checkout',
+    pimsuea: 'Thai Baht (THB) — pay by card or PromptPay QR',
     printful: 'USD billing + credit card FX conversion fees',
     winner: 'pimsuea',
   },
@@ -103,9 +110,15 @@ const COMPARISON_EN = [
   },
   {
     feature: 'Best Suited For',
-    pimsuea: 'Thai buyers, university clubs, local streetwear, gifts',
+    pimsuea: 'Anyone in Thailand: expat clubs, international teams, nomad communities, Thai brands, gifts',
     printful: 'Global merchants drop-shipping to US/Europe',
     winner: 'neutral',
+  },
+  {
+    feature: 'Language & Support',
+    pimsuea: 'English & Thai studio, English support on LINE from a Bangkok team',
+    printful: 'English, support from overseas',
+    winner: 'pimsuea',
   },
 ];
 
@@ -181,11 +194,11 @@ function FourPillars() {
     {
       num: '02',
       titleTh: 'จ่ายเงินบาทแท้ๆ ผ่าน QR PromptPay',
-      titleEn: 'Native THB Baht & PromptPay QR Checkout',
+      titleEn: 'Pay in THB — Card or PromptPay',
       descTh:
         'ไม่ต้องมีบัตรเครดิต ไม่ต้องเสียค่าธรรมเนียมแปลงสกุลเงินต่างประเทศ (FX Fee) สแกน PromptPay ผ่านแอปธนาคารไทยได้ทันที',
       descEn:
-        'No foreign transaction fees, no currency volatility. Effortlessly scan PromptPay QR through any Thai banking app in pure THB.',
+        'Priced in baht, not USD. Pay by card, or scan PromptPay QR from any Thai banking app. No surprise conversion from dollar pricing.',
       icon: CreditCard,
     },
     {
@@ -193,9 +206,9 @@ function FourPillars() {
       titleTh: 'ไม่มีขั้นต่ำ สั่ง 1 ตัวก็คุ้มค่า',
       titleEn: 'True Zero Minimums (Perfect for 1 pc)',
       descTh:
-        'เหมาะอย่างยิ่งสำหรับเสื้อรุ่น ชมรมมหาวิทยาลัย หรือของขวัญวันเกิด 1 ชิ้น สั่งตัวเดียวได้ในราคาโปร่งใส ไม่โดนชาร์จค่าส่งข้ามประเทศ',
+        'เหมาะสำหรับเสื้อชมรม เสื้อทีม หรือของขวัญวันเกิด 1 ชิ้น สั่งตัวเดียวได้ในราคาโปร่งใส ไม่โดนชาร์จค่าส่งข้ามประเทศ',
       descEn:
-        'Ideal for individual gifts, college clubs, and small batch runs. Order a single shirt without prohibitive overseas shipping overhead.',
+        'Ideal for gifts, run and sports clubs, and small team batches. Order a single shirt without prohibitive overseas shipping overhead.',
       icon: Sparkles,
     },
     {
@@ -293,7 +306,7 @@ function DecisionGuide() {
                 <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <span>
                   {lang === 'en'
-                    ? 'You want effortless PromptPay payment in THB'
+                    ? 'You live in Thailand and want to pay in THB (card or PromptPay)'
                     : 'ต้องการจ่ายเงินด้วย PromptPay สกุลเงินบาท'}
                 </span>
               </li>
@@ -301,7 +314,7 @@ function DecisionGuide() {
                 <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <span>
                   {lang === 'en'
-                    ? 'You are printing club, campus, or 1-piece gift shirts'
+                    ? 'You are printing club, team, community, or 1-piece gift shirts'
                     : 'สั่งเสื้อชมรม เสื้อกลุ่ม เสื้อรุ่น หรือของขวัญ 1 ชิ้น'}
                 </span>
               </li>
@@ -374,32 +387,40 @@ function DecisionGuide() {
 }
 
 export default function VsPrintfulPage() {
+  const { lang } = useMarketingLang();
   const jsonLd = buildGeoJsonLd({
+    lang,
     pageUrl: GEO_URLS.vsPrintful,
     pageName: 'Printful alternative Thailand — PimSuea',
     faq: true,
   });
 
-  const { lang } = useMarketingLang();
 
   const factsTh = [
-    { label: 'Campus / ชมรม', value: 'สั่ง 10–100 ตัว รู้ราคาก่อนสั่ง ไม่ต้องแอดมิน LINE' },
+    { label: 'ชมรม / ทีม', value: 'สั่ง 10–100 ตัว รู้ราคาก่อนสั่ง ไม่ต้องรอแอดมิน' },
     { label: 'ของขวัญ 1 ชิ้น', value: 'ไม่มี MOQ — เหมาะกับงานส่วนตัว' },
-    { label: 'แบรนด์ไทย', value: 'PromptPay + ใบเสร็จ THB' },
+    { label: 'ชำระเงิน', value: 'บัตร หรือ PromptPay เป็นเงินบาท' },
     { label: 'การจัดส่ง', value: `ทั่วไทย ${GEO.printing.provinces} จังหวัดใน ${GEO.printing.leadTimeDays} วัน` },
   ];
 
   const factsEn = [
-    { label: 'Campus & Clubs', value: 'Instant quotes for 10–100 pieces, no LINE chats needed' },
+    { label: 'Clubs & Teams', value: 'Instant quotes for 10–100 pieces, no back-and-forth' },
     { label: 'Single-item Gifts', value: 'Zero MOQ — order 1 custom piece without freight penalty' },
-    { label: 'Thai Local Brands', value: 'PromptPay QR checkout and THB receipts' },
+    { label: 'Payment', value: 'Card or PromptPay, priced in THB (not USD)' },
+    { label: 'Language', value: 'English studio + English support on LINE' },
     { label: 'Nationwide Delivery', value: `All ${GEO.printing.provinces} provinces within ${GEO.printing.leadTimeDays} days` },
   ];
 
   return (
     <MarketingAnswerLayout
-      title="Printful Alternative ไทย | PimSuea — ผลิตในประเทศ ไม่มีขั้นต่ำ"
-      description="ทางเลือก Printful ในประเทศไทย: ผลิต DTG ในกรุงเทพ ราคา THB PromptPay จัดส่งทั่วไทย ไม่มีขั้นต่ำ"
+      title={{
+        en: 'Printful Alternative in Thailand | PimSuea — Printed in Bangkok, Priced in THB',
+        th: 'Printful Alternative ไทย | PimSuea — ผลิตในประเทศ ไม่มีขั้นต่ำ',
+      }}
+      description={{
+        en: 'Living in Thailand? Skip USD pricing, international shipping, and customs. PimSuea prints DTG in Bangkok, no minimum, card or PromptPay, English support, delivered in 5–14 days.',
+        th: 'ทางเลือก Printful ในประเทศไทย: ผลิต DTG ในกรุงเทพ ราคา THB จ่ายบัตรหรือ PromptPay จัดส่งทั่วไทย ไม่มีขั้นต่ำ',
+      }}
       canonical={GEO_URLS.vsPrintful}
       jsonLd={jsonLd}
       ctaLabelTh="ลอง PimSuea"
@@ -413,18 +434,18 @@ export default function VsPrintfulPage() {
             <span>
               {lang === 'en'
                 ? 'Printful Alternative for Thailand'
-                : 'ทางเลือก Printful ที่ตอบโจทย์คนไทยที่สุด'}
+                : 'ทางเลือก Printful ที่ผลิตในไทย'}
             </span>
           </div>
 
           <AnswerH1
             th="ทางเลือก Printful ในประเทศไทย — ผลิตในประเทศ จ่ายบาท ส่งไว"
-            en="The Leading Printful Alternative in Thailand"
+            en="A local Printful alternative for people living in Thailand"
           />
 
           <p className="text-base sm:text-lg text-muted-foreground font-light leading-relaxed">
             {lang === 'en'
-              ? 'Looking for a Print-on-Demand solution in Thailand? Skip expensive cross-border shipping, currency exchange markups, and long customs waits. PimSuea delivers local Bangkok DTG printing, live THB quotes, and PromptPay checkout.'
+              ? 'Ordering from Printful or Amazon while living in Thailand means USD pricing, cross-border shipping, and customs waits. PimSuea prints DTG in Bangkok, quotes live in THB, takes card or PromptPay, and answers in English on LINE.'
               : 'ถ้าคุณต้องการสั่งเสื้อพิมพ์ลายในประเทศไทย ไม่ต้องจ่าย USD ค่าขนส่งข้ามประเทศ และไม่ต้องรอ fulfillment นานจากต่างประเทศ PimSuea ให้คุณออกแบบออนไลน์ รู้ราคา THB จ่าย PromptPay ผลิต DTG ในกรุงเทพ และจัดส่งถึงบ้านทั่ว 77 จังหวัด'}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -441,7 +462,7 @@ export default function VsPrintfulPage() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </a>
-            <a href="/pricing">
+            <LocalizedLink to="/pricing">
               <Button
                 size="lg"
                 variant="outline"
@@ -449,7 +470,7 @@ export default function VsPrintfulPage() {
               >
                 {lang === 'en' ? 'Compare Rates' : 'ดูตารางราคา'}
               </Button>
-            </a>
+            </LocalizedLink>
           </div>
         </div>
 

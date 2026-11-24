@@ -9,8 +9,9 @@ Weeks 2–4 ops. Models cite facts they see in more than one place.
 - **Address:** Bangkok studio location (use real production address)
 - **Website:** https://pimsuea.com
 - **Hours:** Match actual support/production hours
-- **Photos:** Real DTG prints — IBC, ABG, studio shots (not stock)
-- **Description:** Use one-liner from `pimsuea-frontend/src/content/geoFacts.ts`
+- **Photos:** Real DTG prints and real club / team photos (not stock)
+- **Description:** Use the English one-liner from `pimsuea-frontend/src/content/geoFacts.ts` (expat-first)
+- **Reviews:** Ask expat customers for English reviews that name the use case
 
 ## 2. sameAs profiles (match schema)
 
@@ -34,21 +35,23 @@ Published on `/print-on-demand` — refresh with real dates/names when possible:
 
 Add photos or LINE post links when available for third-party corroboration.
 
-## 4. Outreach — 5 Thai POD roundup pages
+## 4. Outreach — expat media, guides and communities
+
+Updated 2026-11-24 for the expat pivot. Full playbook: [marketing/expat-gtm.md](marketing/expat-gtm.md).
 
 Pitch angle (copy/paste base):
 
-> PimSuea is a Bangkok print-on-demand platform: self-serve DTG design studio, no minimum order, live THB pricing, PromptPay checkout, delivery to all 77 provinces. Public pages: https://pimsuea.com/print-on-demand , https://pimsuea.com/pricing , https://pimsuea.com/custom-shirt-no-minimum , https://pimsuea.com/vs-printful , https://pimsuea.com/club-and-gift-shirts
+> PimSuea is a Bangkok print-on-demand platform for custom shirts, in English: self-serve design studio, no minimum order, live THB pricing, card or PromptPay, English support on LINE, delivery to all 77 provinces. Built for clubs, teams, communities and families in Thailand. Public pages: https://pimsuea.com/custom-shirts-thailand , https://pimsuea.com/club-and-gift-shirts , https://pimsuea.com/pricing , https://pimsuea.com/vs-printful
 
 **Target list** (find current URLs via search):
 
-1. Shopify Thailand POD roundup articles
-2. “Printful alternative Thailand” list posts
-3. Thai factory / merch blog roundups
-4. University entrepreneur / startup resource lists
-5. Thai e-commerce tool comparison sites
+1. Expat news / lifestyle sites (Bangkok, Chiang Mai, Phuket, Pattaya)
+2. "Living in Bangkok / Chiang Mai" and relocation guides, coworking directories
+3. "Printful alternative Thailand" and Thai POD roundup posts
+4. Community partners: run clubs, Hash House Harriers chapters, Muay Thai gyms, coworking / coliving spaces (each delivered order → a mention + photo)
+5. Reddit / Facebook expat threads asking where to print shirts (genuine answers only)
 
-Track outreach in a spreadsheet: URL, contact, date, response, live mention Y/N.
+Track outreach in [marketing/offsite-outreach-tracker.md](marketing/offsite-outreach-tracker.md): URL, contact, date, response, live mention Y/N.
 
 ## 5. Wikidata (optional)
 
@@ -64,3 +67,4 @@ After GBP exists, create a Wikidata item with:
 - Mass AI-generated blog posts
 - Paid “GEO tools” with no measurable signup lift
 - Opening `/catalog` to crawlers (login-gated SPA)
+- Claiming services we don't offer yet (tax invoice, crypto payment, rush deadlines)
