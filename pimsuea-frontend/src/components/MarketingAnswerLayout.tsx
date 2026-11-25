@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LocalizedLink } from '@/components/LocalizedLink';
 import { ArrowRight, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react';
 import { PageSEO } from '@/components/PageSEO';
-import type { LocalizedText } from '@/i18n/localized';
+import { pickLocalized, type LocalizedText } from '@/i18n/localized';
 import { SiteFooter } from '@/components/SiteFooter';
 import { TermsModal } from '@/components/TermsModal';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,12 @@ interface MarketingAnswerLayoutProps {
   jsonLd: Record<string, unknown> | Record<string, unknown>[];
   ctaLabelTh?: string;
   ctaLabelEn?: string;
+  /** Overrides the bottom CTA section's headline, body and button for this page. */
+  closingCta?: { title: LocalizedText; body?: LocalizedText; button?: LocalizedText };
   children: React.ReactNode;
 }
+
+export const CLOSING_CTA_ID = 'closing-cta';
 
 export function MarketingAnswerLayout({
   title,
@@ -30,6 +34,7 @@ export function MarketingAnswerLayout({
   jsonLd,
   ctaLabelTh = 'เริ่มออกแบบ',
   ctaLabelEn = 'Start designing',
+  closingCta,
   children,
 }: MarketingAnswerLayoutProps) {
   const { lang } = useMarketingLang();
@@ -83,7 +88,7 @@ export function MarketingAnswerLayout({
           {children}
 
           {/* Bottom Conversion CTA Section */}
-          <section className="relative overflow-hidden border-t border-border bg-gradient-to-b from-secondary/30 via-background to-secondary/40 py-16 md:py-24">
+          <section id={CLOSING_CTA_ID} className="relative overflow-hidden border-t border-border bg-gradient-to-b from-secondary/30 via-background to-secondary/40 py-16 md:py-24">
             {/* Glow backdrop */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 blur-[100px] rounded-full pointer-events-none -z-10" />
 
@@ -94,11 +99,17 @@ export function MarketingAnswerLayout({
               </div>
 
               <h2 className="font-black text-3xl sm:text-4xl md:text-5xl tracking-tight">
-                {lang === 'en' ? 'Ready to bring your ideas to life?' : 'พร้อมเริ่มออกแบบเสื้อของคุณแล้วหรือยัง?'}
+                {closingCta
+                  ? pickLocalized(closingCta.title, lang)
+                  : lang === 'en'
+                    ? 'Ready to bring your ideas to life?'
+                    : 'พร้อมเริ่มออกแบบเสื้อของคุณแล้วหรือยัง?'}
               </h2>
 
               <p className="text-muted-foreground font-light text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
-                {lang === 'en'
+                {closingCta?.body
+                  ? pickLocalized(closingCta.body, lang)
+                  : lang === 'en'
                   ? 'Open the design studio in your browser, in English. Upload your graphic, see the exact THB price instantly, and pay by card or PromptPay. Questions? Our team answers in English on LINE.'
                   : 'เปิดสตูดิโอออกแบบบนเบราว์เซอร์ ลากวางลายเสื้อ รู้ราคาทันที จ่ายผ่านบัตรหรือ PromptPay พร้อมจัดส่งทั่วไทย'}
               </p>
@@ -109,7 +120,11 @@ export function MarketingAnswerLayout({
                     size="lg"
                     className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm sm:text-base px-8 h-12 shadow-lg shadow-action/25 hover:shadow-xl hover:shadow-action/30 transition-all cursor-pointer"
                   >
-                    {lang === 'en' ? 'Open Design Studio' : 'เปิดสตูดิโอออกแบบ'}
+                    {closingCta?.button
+                      ? pickLocalized(closingCta.button, lang)
+                      : lang === 'en'
+                        ? 'Open Design Studio'
+                        : 'เปิดสตูดิโอออกแบบ'}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </a>
