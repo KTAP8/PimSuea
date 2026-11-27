@@ -6,6 +6,7 @@ import { isLegacyDtfPrintingType } from "@/constants/printing";
 import { dtfDiscontinuedMessage } from "@/translations/app/checkout";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
+import { trackMeta } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -718,6 +719,11 @@ export default function Order() {
         };
 
         const { url } = await createCheckoutSession(orderPayload);
+        trackMeta('InitiateCheckout', {
+            currency: 'THB',
+            value: grandTotal,
+            num_items: cartItems.reduce((n, item) => n + item.quantity, 0),
+        });
         window.location.href = url;
       } catch (error: unknown) {
           console.error("Checkout session failed:", error);

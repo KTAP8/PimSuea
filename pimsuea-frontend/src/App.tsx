@@ -4,6 +4,7 @@ import { LAUNCH_DATE } from './lib/launch';
 import { MarketingLayout } from './components/MarketingLayout';
 import { Analytics } from '@vercel/analytics/react';
 import { AnalyticsProvider } from './components/AnalyticsProvider';
+import { MetaPageTracker } from './components/MetaPageTracker';
 import { Sidebar } from './components/Sidebar';
 import { SiteFooter } from './components/SiteFooter';
 import { TermsModal } from './components/TermsModal';
@@ -115,6 +116,7 @@ function App() {
         <CartProvider>
           <Router>
             <AnalyticsProvider />
+            <MetaPageTracker />
             <Layout />
             <Analytics />
           </Router>

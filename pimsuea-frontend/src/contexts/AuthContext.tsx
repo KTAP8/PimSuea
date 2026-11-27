@@ -3,7 +3,7 @@ import { type AuthChangeEvent, type User, type Session } from "@supabase/supabas
 import { supabase } from "@/lib/supabase";
 import { recordTermsAcceptance } from "@/services/api";
 import { shouldRecordSignupConsent, clearPendingTermsAcceptance } from "@/lib/legal";
-import { identifyUser, resetAnalytics } from "@/lib/analytics";
+import { identifyUser, resetAnalytics, trackMeta } from "@/lib/analytics";
 
 export interface UserProfile {
   id: string;
@@ -93,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fetchProfile(session.user.id);
         }
         if (event !== 'TOKEN_REFRESHED' && shouldRecordSignupConsent(event)) {
+          trackMeta('CompleteRegistration', { method: 'google' });
           recordTermsAcceptance()
             .then(() => {
               clearPendingTermsAcceptance();

@@ -11,7 +11,7 @@ import { MarketingLayout } from '@/components/MarketingLayout';
 import { LanguageProvider } from '@/i18n/LanguageContext';
 import { allMarketingUrlPaths } from '@/content/marketingRoutes';
 
-/** Mirrors <AnalyticsProvider/> and <Analytics/> in App.tsx (both render null) so useId values match on hydrate. */
+/** Mirrors <AnalyticsProvider/>, <MetaPageTracker/>, and <Analytics/> in App.tsx (all render null) so useId values match on hydrate. */
 function Placeholder() {
   return null;
 }
@@ -23,6 +23,7 @@ export function render(url: string): string {
     <StrictMode>
       <LanguageProvider>
         <StaticRouter location={url}>
+          <Placeholder />
           <Placeholder />
           <MarketingLayout />
           <Placeholder />

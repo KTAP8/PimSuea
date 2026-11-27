@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { TermsModal } from "@/components/TermsModal";
 import { APP_ORIGIN } from "@/lib/site";
 import { CURRENT_TERMS_VERSION, markPendingTermsAcceptance } from "@/lib/legal";
+import { trackMeta } from "@/lib/analytics";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
@@ -82,6 +83,7 @@ export default function Register() {
     if (signUpError) {
       setError(signUpError.message);
     } else {
+      trackMeta('CompleteRegistration', { method: 'email' });
       setSuccess(true);
     }
     setLoading(false);

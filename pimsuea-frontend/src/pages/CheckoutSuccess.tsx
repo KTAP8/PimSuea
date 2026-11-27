@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { getCheckoutSessionStatus } from '@/services/api';
 import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/i18n/LanguageContext';
+import { supabase } from '@/lib/supabase';
+import { trackMetaPurchase } from '@/lib/analytics';
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 15;
@@ -40,6 +42,15 @@ export default function CheckoutSuccess() {
           setOrderId(result.orderId);
           setStatus('paid');
           clearCart();
+          const { data: order } = await supabase
+            .from('orders')
+            .select('total_amount')
+            .eq('id', result.orderId)
+            .maybeSingle();
+          if (cancelled) return;
+          const raw = order?.total_amount;
+          const value = raw != null ? Number(raw) : null;
+          trackMetaPurchase(result.orderId, Number.isFinite(value) ? value : null);
           return;
         }
 

@@ -7,6 +7,7 @@ import {
     clearCartInDB,
 } from '@/services/api';
 import { useAuth } from './AuthContext';
+import { trackMeta } from '@/lib/analytics';
 
 // Define the shape of a Cart Item
 export interface CartItem {
@@ -81,6 +82,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const newItem = { ...item, id };
         setCartItems(prev => [...prev, newItem]);
         upsertCartItemToDB(newItem).catch(console.error);
+        trackMeta('AddToCart', {
+            content_type: 'product',
+            content_ids: String(item.product_id),
+            num_items: item.quantity,
+            currency: 'THB',
+            ...(typeof item.price === 'number' ? { value: item.price } : {}),
+        });
         return id;
     };
 
