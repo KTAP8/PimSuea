@@ -33,6 +33,7 @@ import {
 import { SiteFooter } from "@/components/SiteFooter";
 import { InspirationShowcaseSection } from "@/components/marketing/InspirationShowcase";
 import { NationwideDeliverySection } from "@/components/marketing/NationwideDeliverySection";
+import { HolidayPromoPopup } from "@/components/marketing/HolidayPromoPopup";
 import { useLandingLang } from "@/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 import { appUrl } from "@/lib/site";
@@ -1204,6 +1205,7 @@ export default function NewLanding() {
           initialExpandedSection={termsSection}
           lang={lang}
         />
+        <HolidayPromoPopup />
       </div>
     </>
   );

@@ -8,6 +8,7 @@ exports.getDashboardData = async (req, res) => {
       .from('articles')
       .select('*')
       .eq('is_published', true)
+      .order('published_at', { ascending: false, nullsFirst: false })
       .limit(10);
 
     if (newsError) throw newsError;

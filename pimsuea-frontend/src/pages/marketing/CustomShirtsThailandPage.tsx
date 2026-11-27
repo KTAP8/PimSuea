@@ -13,6 +13,7 @@ import { PainPointsIntro } from '@/components/marketing/expat/PainPointsIntro';
 import { PriceSection } from '@/components/marketing/expat/PriceSection';
 import { RealOrdersStrip } from '@/components/marketing/expat/RealOrdersStrip';
 import { StickyMobileCta } from '@/components/marketing/expat/StickyMobileCta';
+import { HolidayPromoPopup } from '@/components/marketing/HolidayPromoPopup';
 import { useLandingLang } from '@/i18n/LanguageContext';
 
 const EN = CUSTOM_SHIRTS_THAILAND_COPY.en;
@@ -67,6 +68,7 @@ export default function CustomShirtsThailandPage() {
         cta={copy.ctaPrimary}
         fromLabel={copy.stickyFrom}
       />
+      <HolidayPromoPopup />
     </MarketingAnswerLayout>
   );
 }

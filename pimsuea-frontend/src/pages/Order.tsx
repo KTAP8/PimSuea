@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { getDesignById, getProductById, createCheckoutSession, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee, fetchAddons } from "@/services/api";
+import { getDesignById, getProductById, createCheckoutSession, getMyDesigns, getProductTemplates, getPrice, fetchDeliveryFee, fetchAddons, validateCoupon } from "@/services/api";
 import CouponInput, { type AppliedCoupon, type CouponItem, computeDiscount } from "@/components/CouponInput";
 import { isLegacyDtfPrintingType } from "@/constants/printing";
 import { dtfDiscontinuedMessage } from "@/translations/app/checkout";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useCart } from "@/contexts/CartContext";
 import { trackMeta } from "@/lib/analytics";
+import { readPendingPromoCode } from "@/lib/promoCode";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2, ShoppingCart, Truck, ChevronRight, Check, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -212,6 +213,31 @@ export default function Order() {
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [discountAmount, setDiscountAmount] = useState(0);
+  const promoAutoApplied = useRef(false);
+
+  useEffect(() => {
+    if (promoAutoApplied.current) return;
+    const code = readPendingPromoCode();
+    if (!code) return;
+    promoAutoApplied.current = true;
+    let cancelled = false;
+    validateCoupon(code)
+      .then((result) => {
+        if (cancelled || !result.valid || !result.code) return;
+        setAppliedCoupon({
+          code: result.code,
+          discount_type: result.discount_type!,
+          discount_value: result.discount_value!,
+          max_discount_thb: result.max_discount_thb ?? null,
+          max_qty: result.max_qty ?? null,
+          allowed_printing_types: result.allowed_printing_types ?? null,
+        });
+      })
+      .catch(() => { /* user can still type the code */ });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Gift Service add-on pricing (from Supabase, not hardcoded)
   const [giftAddon, setGiftAddon] = useState<AddonPricing | null>(null);

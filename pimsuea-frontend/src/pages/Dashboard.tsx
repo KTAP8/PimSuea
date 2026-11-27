@@ -185,8 +185,28 @@ export default function Dashboard() {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl">
-                              📰
+                            <div className={`w-full h-full flex flex-col items-center justify-center gap-1 ${
+                              item.type === 'promotion'
+                                ? 'bg-[#08636D] text-[#F8F9FA]'
+                                : 'bg-gray-100 text-4xl'
+                            }`}>
+                              {item.type === 'promotion' ? (
+                                <>
+                                  <span className="text-xs font-bold uppercase tracking-[0.2em] opacity-80">
+                                    {lang === 'th' ? 'โปรโมชัน' : 'Promotion'}
+                                  </span>
+                                  <span className="font-black text-2xl tracking-wide px-4 text-center line-clamp-2">
+                                    {item.title.includes('HOLIDAY20')
+                                      ? 'HOLIDAY20'
+                                      : (lang === 'th' ? 'โปรโมชัน' : 'On now')}
+                                  </span>
+                                  {item.title.includes('HOLIDAY20') && (
+                                    <span className="text-sm font-medium opacity-90">20% off</span>
+                                  )}
+                                </>
+                              ) : (
+                                '📰'
+                              )}
                             </div>
                           )}
                           {item.type && (

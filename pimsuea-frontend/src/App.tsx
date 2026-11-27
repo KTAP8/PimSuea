@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LAUNCH_DATE } from './lib/launch';
 import { MarketingLayout } from './components/MarketingLayout';
 import { Analytics } from '@vercel/analytics/react';
@@ -29,6 +29,7 @@ import { LanguageProvider } from './i18n/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppRootRedirect } from './components/AppRootRedirect';
 import { isAppHost } from './lib/site';
+import { isHolidayPromoLive, writePromoCookie } from './lib/promoCode';
 import { useLanguage } from './i18n/LanguageContext';
 
 function shouldShowAppFooter(pathname: string): boolean {
@@ -43,6 +44,12 @@ function AppLayout() {
   const location = useLocation();
   const { lang } = useLanguage();
   const [termsOpen, setTermsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isHolidayPromoLive()) return;
+    const coupon = new URLSearchParams(location.search).get('coupon')?.trim();
+    if (coupon) writePromoCookie(coupon);
+  }, [location.search]);
   const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/home', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/studio/');
