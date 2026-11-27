@@ -4,10 +4,9 @@ const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY as string | undefine
 const POSTHOG_HOST = (import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined)
     ?? 'https://eu.i.posthog.com';
 
-/** Events Manager pixel. Override with VITE_PUBLIC_META_PIXEL_ID; set empty to disable. */
-const META_PIXEL_FALLBACK_ID = '2286157558618203';
-const META_PIXEL_ENV = import.meta.env.VITE_PUBLIC_META_PIXEL_ID as string | undefined;
-const META_PIXEL_ID = META_PIXEL_ENV === '' ? '' : (META_PIXEL_ENV?.trim() || META_PIXEL_FALLBACK_ID);
+/** Events Manager pixel. Loads only when VITE_PUBLIC_META_PIXEL_ID is set. */
+const META_PIXEL_ID =
+    (import.meta.env.VITE_PUBLIC_META_PIXEL_ID as string | undefined)?.trim() || '';
 
 type Fbq = {
     (...args: unknown[]): void;
