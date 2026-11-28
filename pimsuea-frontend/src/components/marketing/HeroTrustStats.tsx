@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'framer-motion';
 import { TRUST_STATS } from '@/content/geoFacts';
 
 type Props = {
@@ -12,12 +13,20 @@ type Props = {
  * Static values — prerendered HTML shows the real numbers. Source of truth: TRUST_STATS in geoFacts.
  */
 export function HeroTrustStats({ labels, className = '' }: Props) {
+  const reduced = useReducedMotion();
   const stats = [
     { value: `${TRUST_STATS.shirtsPrinted}+`, label: labels.shirts },
     { value: String(TRUST_STATS.provinces), label: labels.provinces },
   ];
   return (
-    <dl
+    <motion.dl
+      initial={reduced ? false : { opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.65,
+        delay: reduced ? 0 : 0.55,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className={`relative isolate inline-flex items-stretch overflow-hidden rounded-full px-3 py-3
         border border-white/70 bg-white/30 backdrop-blur-2xl backdrop-saturate-[1.8]
         shadow-[inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_1px_rgba(255,255,255,0.35),0_12px_32px_rgba(18,18,18,0.12)]
@@ -33,6 +42,6 @@ export function HeroTrustStats({ labels, className = '' }: Props) {
           <dd className="order-1 font-black text-xl md:text-2xl tracking-tight tabular-nums text-foreground leading-none">{s.value}</dd>
         </div>
       ))}
-    </dl>
+    </motion.dl>
   );
 }
