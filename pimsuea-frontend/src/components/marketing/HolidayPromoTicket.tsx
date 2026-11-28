@@ -18,14 +18,30 @@ export function HolidayPromoTicket() {
   const copy = HOLIDAY_PROMO_COPY[lang];
   const [visible, setVisible] = useState(false);
   const tracked = useRef(false);
+  /** Stops the scroll/timer handlers from reopening after dismiss (they outlive setVisible(false)). */
+  const suppressedRef = useRef(hasSeenHolidayPopupThisSession());
+  const stopTriggersRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!isHolidayPromoLive() || hasSeenHolidayPopupThisSession()) return;
-    const show = () => setVisible(true);
-    const onScroll = () => { if (window.scrollY > window.innerHeight * 0.6) show(); };
+    if (!isHolidayPromoLive() || suppressedRef.current) return;
+    const show = () => {
+      if (suppressedRef.current || hasSeenHolidayPopupThisSession()) return;
+      setVisible(true);
+    };
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * 0.6) show();
+    };
     const timer = window.setTimeout(show, SHOW_AFTER_MS);
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { window.clearTimeout(timer); window.removeEventListener('scroll', onScroll); };
+    const stop = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+    };
+    stopTriggersRef.current = stop;
+    return () => {
+      stop();
+      stopTriggersRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -37,12 +53,18 @@ export function HolidayPromoTicket() {
   if (!visible) return null;
 
   const dismiss = () => {
+    suppressedRef.current = true;
     markHolidayPopupSeen();
+    stopTriggersRef.current?.();
+    stopTriggersRef.current = null;
     track('promo_banner_dismissed', { campaign: HOLIDAY_PROMO_CODE, lang });
     setVisible(false);
   };
   const go = () => {
+    suppressedRef.current = true;
     markHolidayPopupSeen();
+    stopTriggersRef.current?.();
+    stopTriggersRef.current = null;
     writePromoCookie(HOLIDAY_PROMO_CODE);
     track('promo_banner_cta', { campaign: HOLIDAY_PROMO_CODE, lang, destination: 'studio' });
     trackMeta('Lead', { content_name: HOLIDAY_PROMO_CODE });
