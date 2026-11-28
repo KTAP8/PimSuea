@@ -20,24 +20,38 @@ export function filterAddressInput(field: keyof GiftRecipientInfo, value: string
   return value;
 }
 
-export function validateAddressField(field: AddressField, value: string): string | undefined {
+const MESSAGES = {
+  th: {
+    fullName: 'กรุณากรอกชื่อ-นามสกุล', phoneRequired: 'กรุณากรอกเบอร์โทรศัพท์', phoneInvalid: 'เบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)',
+    province: 'กรุณากรอกจังหวัด', district: 'กรุณากรอกเขต/อำเภอ', postalRequired: 'กรุณากรอกรหัสไปรษณีย์',
+    postalInvalid: 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก', addressLine1: 'กรุณากรอกที่อยู่',
+  },
+  en: {
+    fullName: 'Enter the recipient’s full name', phoneRequired: 'Enter a phone number', phoneInvalid: 'Use a Thai mobile number, e.g. 0812345678',
+    province: 'Choose a province', district: 'Choose a district', postalRequired: 'Enter the postal code',
+    postalInvalid: 'Postal code must be 5 digits', addressLine1: 'Enter the street address',
+  },
+};
+
+export function validateAddressField(field: AddressField, value: string, lang: 'th' | 'en' = 'th'): string | undefined {
+  const m = MESSAGES[lang];
   switch (field) {
     case 'fullName':
-      return value.trim() ? undefined : 'กรุณากรอกชื่อ-นามสกุล';
+      return value.trim() ? undefined : m.fullName;
     case 'phone':
-      if (!value.trim()) return 'กรุณากรอกเบอร์โทรศัพท์';
-      if (!/^0\d{8,9}$/.test(value.trim())) return 'เบอร์โทรศัพท์ไม่ถูกต้อง (เช่น 0812345678)';
+      if (!value.trim()) return m.phoneRequired;
+      if (!/^0\d{8,9}$/.test(value.trim())) return m.phoneInvalid;
       return undefined;
     case 'province':
-      return value.trim() ? undefined : 'กรุณากรอกจังหวัด';
+      return value.trim() ? undefined : m.province;
     case 'district':
-      return value.trim() ? undefined : 'กรุณากรอกเขต/อำเภอ';
+      return value.trim() ? undefined : m.district;
     case 'postalCode':
-      if (!value.trim()) return 'กรุณากรอกรหัสไปรษณีย์';
-      if (!/^\d{5}$/.test(value.trim())) return 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก';
+      if (!value.trim()) return m.postalRequired;
+      if (!/^\d{5}$/.test(value.trim())) return m.postalInvalid;
       return undefined;
     case 'addressLine1':
-      return value.trim() ? undefined : 'กรุณากรอกที่อยู่';
+      return value.trim() ? undefined : m.addressLine1;
     default:
       return undefined;
   }

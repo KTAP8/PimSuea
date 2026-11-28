@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ProfileNudgeCard } from "@/components/profile/ProfileNudgeCard";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -104,7 +105,10 @@ export default function Dashboard() {
             className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-heavy mb-4 md:mb-6 text-slate-900 tracking-tight leading-[1.1]"
           >
             {d.heroTitle1} <br className="hidden md:block" />
-            <span className="text-primary">{d.heroTitle2}</span>
+            <span className="text-primary">
+              {d.heroTitle2} <br className="hidden md:block" />
+              {d.heroTitle3}
+            </span>
           </motion.h1>
 
           <motion.p
@@ -135,6 +139,7 @@ export default function Dashboard() {
       </div>
 
       {/* Personalized user summary */}
+      <ProfileNudgeCard />
       <UserGreeting stats={stats} />
 
       <div className="container mx-auto px-4 space-y-16 mt-10">
@@ -281,13 +286,17 @@ export default function Dashboard() {
                     <h3 className="font-medium text-lg mb-1 text-slate-800 truncate">
                       {getProductName(product, lang)}
                     </h3>
-                    <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
-                      <span>{d.soldCount} {product.sold_count || "100+"}</span>
-                      <div className="flex items-center text-yellow-500">
-                        <Star className="w-3 h-3 fill-current" />{" "}
-                        {product.rating || "4.8"}
+                    {/* Only real numbers — no invented sales counts or ratings. */}
+                    {(product.sold_count || product.rating) && (
+                      <div className="flex justify-between items-center text-sm text-gray-500 mb-3">
+                        {product.sold_count ? <span>{d.soldCount} {product.sold_count}</span> : <span />}
+                        {product.rating && (
+                          <div className="flex items-center text-yellow-600">
+                            <Star className="w-3 h-3 fill-current" aria-hidden="true" />{" "}{product.rating}
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-semibold text-primary">
                         ฿{product.price.toLocaleString(dateLocale(lang))}

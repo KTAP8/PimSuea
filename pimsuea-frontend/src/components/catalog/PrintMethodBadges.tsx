@@ -6,10 +6,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { filterActivePrintMethods, getPrintMethodShortLabel } from "@/constants/printing"
+import { useLanguage } from "@/i18n/LanguageContext"
 
-const PRINT_META: Record<string, { description: string; className: string }> = {
+const PRINT_META: Record<string, { description: { en: string; th: string }; className: string }> = {
   DTG: {
-    description: "พิมพ์ลงผ้าโดยตรง — เหมาะสำหรับเสื้อสีขาว ดีไซน์ละเอียด",
+    description: {
+      en: "Printed straight into the fabric — soft feel, great for detailed and photo designs",
+      th: "พิมพ์ลงผ้าโดยตรง — เหมาะสำหรับเสื้อสีขาว ดีไซน์ละเอียด",
+    },
     className: "border-transparent bg-purple-100 text-purple-800 hover:bg-purple-100 cursor-default",
   },
 }
@@ -20,6 +24,7 @@ interface Props {
 }
 
 export function PrintMethodBadges({ print_methods, className }: Props) {
+  const { lang } = useLanguage()
   const activeMethods = filterActivePrintMethods(print_methods)
   if (!activeMethods.length) return null
   return (
@@ -46,7 +51,7 @@ export function PrintMethodBadges({ print_methods, className }: Props) {
               </TooltipTrigger>
               {meta && (
                 <TooltipContent side="top">
-                  <p>{fullLabel} — {meta.description}</p>
+                  <p>{fullLabel} — {meta.description[lang]}</p>
                 </TooltipContent>
               )}
             </Tooltip>

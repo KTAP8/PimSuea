@@ -172,6 +172,12 @@ export function buildPricingOfferJsonLd(): Record<string, unknown> {
         price: '99',
         priceCurrency: 'THB',
       },
+      {
+        '@type': 'Offer',
+        name: 'Essential long sleeve cotton tee (White, qty 1–11)',
+        price: '450',
+        priceCurrency: 'THB',
+      },
     ],
   };
 }

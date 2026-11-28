@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { recordTermsAcceptance } from "@/services/api";
 import { shouldRecordSignupConsent, clearPendingTermsAcceptance } from "@/lib/legal";
 import { identifyUser, resetAnalytics, trackMeta } from "@/lib/analytics";
+import { adoptClaimFromUrl, isGuestUser, runGuestClaim, type ClaimResult } from "@/lib/guestSession";
 
 export interface UserProfile {
   id: string;
@@ -21,6 +22,10 @@ export interface UserProfile {
 
 interface AuthContextType {
   user: User | null;
+  /** True for an anonymous (guest studio) session — treat as signed out for account pages. */
+  isGuest: boolean;
+  /** Set once after a guest's work was moved into the account they just signed into. */
+  lastClaim: ClaimResult | null;
   session: Session | null;
   loading: boolean;
   profile: UserProfile | null;
@@ -31,6 +36,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  isGuest: false,
+  lastClaim: null,
   session: null,
   loading: true,
   profile: null,
@@ -47,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [lastClaim, setLastClaim] = useState<ClaimResult | null>(null);
 
   const profileUserIdRef = useRef<string | null>(null);
 
@@ -69,13 +77,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) await fetchProfile(user.id);
   }, [user, fetchProfile]);
 
+  /** Identify real accounts only (guests stay anonymous in PostHog) and claim guest work once. */
+  const onPermanentSession = useCallback(async (session: Session) => {
+    if (isGuestUser(session.user)) return;
+    identifyUser(session.user.id);
+    const result = await runGuestClaim(session);
+    if (result && (result.designs || result.cartItems)) setLastClaim(result);
+  }, []);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    adoptClaimFromUrl();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      // Finish moving guest work into the account before pages fetch it (e.g. back from Google).
+      if (session?.user) await onPermanentSession(session);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
-        identifyUser(session.user.id);
         fetchProfile(session.user.id);
       } else {
         setProfileLoading(false);
@@ -87,12 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
-        identifyUser(session.user.id);
+        if (event !== 'TOKEN_REFRESHED') void onPermanentSession(session);
         // Token refresh on tab focus must not refetch profile — that unmounts the whole app.
         if (event !== 'TOKEN_REFRESHED') {
           fetchProfile(session.user.id);
         }
-        if (event !== 'TOKEN_REFRESHED' && shouldRecordSignupConsent(event)) {
+        if (event !== 'TOKEN_REFRESHED' && !isGuestUser(session.user) && shouldRecordSignupConsent(event)) {
           trackMeta('CompleteRegistration', { method: 'google' });
           recordTermsAcceptance()
             .then(() => {
@@ -117,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [fetchProfile, onPermanentSession]);
 
   const signOut = async () => {
     resetAnalytics();
@@ -125,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, profile, profileLoading, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ session, user, isGuest: isGuestUser(user), lastClaim, loading, profile, profileLoading, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

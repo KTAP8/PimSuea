@@ -2,10 +2,10 @@ import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-/** App subdomain `/` → dashboard when signed in, otherwise login. */
+/** App subdomain `/` → dashboard for accounts; everyone else straight to the catalog (no login wall). */
 export function AppRootRedirect() {
-  const { user, loading, profile, profileLoading } = useAuth();
-  const awaitingInitialProfile = Boolean(user && profileLoading && !profile);
+  const { user, isGuest, loading, profile, profileLoading } = useAuth();
+  const awaitingInitialProfile = Boolean(user && !isGuest && profileLoading && !profile);
 
   if (loading || awaitingInitialProfile) {
     return (
@@ -15,5 +15,5 @@ export function AppRootRedirect() {
     );
   }
 
-  return <Navigate to={user ? '/dashboard' : '/login'} replace />;
+  return <Navigate to={user && !isGuest ? '/dashboard' : '/catalog'} replace />;
 }

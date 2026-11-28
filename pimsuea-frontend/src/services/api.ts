@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { Attribution } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
+import { ensureSession, isGuestCapablePath } from '@/lib/guestSession';
 import type {
     Category,
     DashboardData,
@@ -24,7 +25,9 @@ const api = axios.create({
 api.interceptors.request.use(async (config) => {
     try {
         const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
+        // Guests get an anonymous session the first time they need one (upload, save, pricing, cart).
+        const session = data.session ?? (isGuestCapablePath(config.url) ? await ensureSession() : null);
+        const token = session?.access_token;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -80,6 +83,28 @@ export const getMyDesigns = async (): Promise<any[]> => { // Type 'any' for now,
     return response.data;
 };
 
+/** Copy a saved design (same artwork + files) under a new name. Returns the new design. */
+export const duplicateDesign = async (id: string, newName: string): Promise<{ id: string }> => {
+    const { data: d } = await api.get(`/designs/${id}`);
+    const { data } = await api.post('/designs', {
+        design_name: newName,
+        canvas_data: d.canvas_data,
+        preview_image_url: d.preview_image_url,
+        print_file_url: d.print_file_url,
+        design_hash: d.design_hash,
+        available_colors: d.available_colors,
+        printing_type: d.printing_type,
+        base_product_id: d.base_product_id,
+        print_dimensions: d.print_dimensions ?? undefined,
+    });
+    return data.design;
+};
+
+/** One-click unsubscribe from reminder emails (signed link from the email). Public. */
+export const unsubscribeEmails = async (u: string, t: string): Promise<void> => {
+    await axios.post(`${API_BASE}/email/unsubscribe`, { u, t });
+};
+
 export const getDesignById = async (id: string): Promise<any> => {
     const response = await api.get(`/designs/${id}`);
     return response.data;
@@ -130,6 +155,7 @@ export const createCheckoutSession = async (orderData: {
     shipping: unknown;
     coupon_code?: string | null;
     attribution?: Attribution | null;
+    locale?: 'en' | 'th';
 }): Promise<CheckoutSessionResponse> => {
     const response = await api.post<CheckoutSessionResponse>('/payments/checkout-session', orderData);
     return response.data;
@@ -170,6 +196,27 @@ export const composePrintFiles = async (
 ): Promise<Record<string, string>> => {
     const response = await api.post<{ urls: Record<string, string> }>('/print/compose', { sides });
     return response.data.urls;
+};
+
+export type BulkQuoteLine = { size: string; qty: number; shirt_per_unit: number; print_per_unit: number; unit: number; total: number };
+export type BulkQuote = {
+    lines: BulkQuoteLine[];
+    total: number;
+    totalQty: number;
+    avgUnit: number;
+    next: { qty: number; addMore: number; avgUnit: number; savingPerShirt: number } | null;
+};
+
+/** Price a size grid for one design + colour. Tier = total quantity (same as checkout). */
+export const getBulkQuote = async (payload: {
+    printingType: string;
+    productId: string;
+    color_id: string;
+    sides: { w: number; h: number }[];
+    lines: { size: string; qty: number }[];
+}): Promise<BulkQuote> => {
+    const response = await api.post<BulkQuote>('/pricing/quote', payload);
+    return response.data;
 };
 
 export const uploadFile = async (file: Blob | File, type: 'preview' | 'print' | 'asset', fileName?: string): Promise<string> => {

@@ -1,135 +1,72 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  Upload,
-  ImageIcon,
-  Layers,
-  Loader2,
-  Save,
-  ShoppingCart,
-  Trash2,
-  Undo2,
-  Redo2,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { trackStudioOrderOpened } from "../lib/studioAnalytics";
 import { useCanvasDesign } from "../hooks/useCanvasDesign";
+import { useStudioTools } from "../hooks/useStudioTools";
+import { useStudioAccountPrompt } from "../hooks/useStudioAccountPrompt";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { useBulkOrder } from "../hooks/useBulkOrder";
 import { ImageLibraryPanel } from "../components/canvas/ImageLibraryPanel";
 import { LayerPanel } from "../components/canvas/LayerPanel";
 import { BottomContextPanel } from "../components/canvas/BottomContextPanel";
 import { CanvasStage } from "../components/canvas/CanvasStage";
 import { PriceCard } from "../components/canvas/PriceCard";
-import { SizeEditor } from "../components/canvas/SizeEditor";
 import { LeaveConfirmModal } from "../components/canvas/LeaveConfirmModal";
 import { MockupModal } from "../components/canvas/MockupModal";
 import { OrderPanel } from "../components/canvas/OrderPanel";
+import { StudioHeader } from "../components/canvas/StudioHeader";
+import { SaveStatusBar } from "../components/canvas/SaveStatusBar";
+import { CanvasToolbar } from "../components/canvas/CanvasToolbar";
+import { StudioToolRail } from "../components/canvas/StudioToolRail";
+import { MobilePriceSheet } from "../components/canvas/MobilePriceSheet";
+import { MobilePriceChip } from "../components/canvas/MobilePriceChip";
+import { LowResModal } from "../components/canvas/LowResModal";
+import { DeleteImageModal } from "../components/canvas/DeleteImageModal";
+import { SignupSheet } from "../components/auth/SignupSheet";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
 
 export default function DesignStudio() {
   const d = useCanvasDesign();
+  const tools = useStudioTools(d);
+  const account = useStudioAccountPrompt({ designId: d.designId });
   const navigate = useNavigate();
   const { t } = useLanguage();
   const s = t.studio;
-  const c = t.common;
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showOrderPanel, setShowOrderPanel] = useState(false);
-  const [showMobileTools, setShowMobileTools] = useState(false);
   const designNameInputRef = useRef<HTMLInputElement | null>(null);
-  const [isDesktop, setIsDesktop] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(min-width: 768px)").matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const bulk = useBulkOrder({
+    open: showOrderPanel, productId: d.currentTemplate?.product_id, colorId: d.selectedColorId,
+    printingType: d.printingType, sizes: d.availableSizes, defaultSize: d.selectedSize,
+    getSides: d.collectPrintDimensionsForPricing,
+  });
+  const orderColors = d.uniqueColors.filter((c) => d.activeColorIds.has(c.id));
+  const addLines = () => d.handleAddToCart(false,
+    bulk.lines.map((l) => ({ ...l, unit: bulk.quote?.lines.find((q) => q.size === l.size)?.unit })), d.selectedColorId);
 
   const contextPanelProps = {
-    currentSides: d.currentSides,
-    currentTemplate: d.currentTemplate,
-    selectedColorId: d.selectedColorId,
-    activeColorIds: d.activeColorIds,
-    showColorPicker: d.showColorPicker,
-    uniqueColors: d.uniqueColors,
-    colorPickerRef: d.colorPickerRef,
-    onSideChange: (t: Parameters<typeof d.handleSideChange>[0]) => {
-      d.handleSideChange(t);
-    },
-    onColorSelect: d.handleColorSelect,
-    onToggleColorPicker: () => d.setShowColorPicker((p) => !p),
-    onColorAdd: d.handleColorAdd,
-    onColorRemove: d.handleColorRemove,
+    currentSides: d.currentSides, currentTemplate: d.currentTemplate, selectedColorId: d.selectedColorId,
+    activeColorIds: d.activeColorIds, showColorPicker: d.showColorPicker, uniqueColors: d.uniqueColors,
+    colorPickerRef: d.colorPickerRef, onSideChange: d.handleSideChange, onColorSelect: d.handleColorSelect,
+    onToggleColorPicker: () => d.setShowColorPicker((p) => !p), onColorAdd: d.handleColorAdd, onColorRemove: d.handleColorRemove,
   } as const;
 
-  const toggleImageLibrary = () => {
-    setShowMobileTools(false);
-    d.setShowImageLibrary((v) => {
-      if (!v) d.setShowLayerPanel(false);
-      return !v;
-    });
+  const cartErrorMessage = { auth: s.cartErrorAuth, save: null, cart: s.cartErrorCart, dtf: s.cartErrorDtf }[d.cartError ?? ""] ?? null;
+  const mockupDisabled = !d.templates.some((tp) => tp.color?.id === d.selectedColorId && tp.mockup_config);
+
+  const handleSaveClick = async () => {
+    const wasNew = !d.designId;
+    const result = await d.handleSave();
+    if (result && wasNew) account.afterFirstSave();
   };
-
-  const toggleLayerPanel = () => {
-    setShowMobileTools(false);
-    d.setShowLayerPanel((v) => {
-      if (!v) d.setShowImageLibrary(false);
-      return !v;
-    });
-  };
-
-  // Block browser tab close / refresh when there are unsaved changes
-  useEffect(() => {
-    if (!d.isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [d.isDirty]);
-
+  const openOrderPanel = () => { trackStudioOrderOpened(); d.setCartError(null); setShowOrderPanel(true); };
   const handleBack = () => {
-    if (d.isDirty) {
-      setShowLeaveModal(true);
-    } else {
-      d.reportStudioExit("back", false);
-      navigate(-1);
-    }
+    if (d.isDirty) return setShowLeaveModal(true);
+    d.reportStudioExit("back", false);
+    navigate(-1);
   };
-
-  const openOrderPanel = () => {
-    trackStudioOrderOpened();
-    d.setCartError(null);
-    setShowOrderPanel(true);
-  };
-
-  const cartErrorMessage = (() => {
-    switch (d.cartError) {
-      case "auth":
-        return s.cartErrorAuth;
-      case "save":
-        return s.cartErrorSave;
-      case "cart":
-        return s.cartErrorCart;
-      case "dtf":
-        return s.cartErrorDtf;
-      default:
-        return null;
-    }
-  })();
-
-  useEffect(() => {
-    if (d.openOrderPanelAfterSave > 0) {
-      trackStudioOrderOpened();
-      setShowOrderPanel(true);
-    }
-  }, [d.openOrderPanelAfterSave]);
 
   useEffect(() => {
     if (!d.shouldFocusDesignName || !designNameInputRef.current) return;
@@ -138,564 +75,110 @@ export default function DesignStudio() {
     d.setShouldFocusDesignName(false);
   }, [d.shouldFocusDesignName, d.setShouldFocusDesignName, d.designName]);
 
+  // Live price: re-quote shortly after any artwork/size/colour change (deduped by a cache key in the hook).
   useEffect(() => {
-    if (!showOrderPanel) return;
-    void d.refreshDisplayPrice();
-  }, [
-    showOrderPanel,
-    d.priceRefreshSignal,
-    d.selectedSize,
-    d.selectedColorId,
-    d.printingType,
-    d.refreshDisplayPrice,
-  ]);
+    const timer = setTimeout(() => { void d.refreshDisplayPrice(); }, 400);
+    return () => clearTimeout(timer);
+  }, [d.priceRefreshSignal, d.selectedSize, d.selectedColorId, d.printingType, d.refreshDisplayPrice]);
 
-  // Track abandon on tab close / refresh
+  // Track abandon on tab close (the local draft keeps the work, so no blocking prompt).
   useEffect(() => {
-    const onPageHide = () => {
-      d.reportStudioExit("pagehide", d.isDirty);
-    };
+    const onPageHide = () => { d.flushDraft(); d.reportStudioExit("pagehide", d.isDirty); };
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
-  }, [d.isDirty, d.reportStudioExit]);
+  }, [d.isDirty, d.reportStudioExit, d.flushDraft]);
 
   return (
     <div className="flex flex-col h-dvh-screen max-h-dvh min-h-0 overflow-hidden bg-background">
-      {/* ── Top header ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between pt-safe-bar pb-2 md:pb-3 px-safe md:px-6 bg-white/90 backdrop-blur-xl border-b border-gray-100 z-20 shrink-0 gap-1 sm:gap-2 md:gap-0">
-        <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-none md:w-1/3">
-          <button
-            onClick={handleBack}
-            className="w-11 h-11 md:w-9 md:h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition-colors shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <span className="font-semibold text-gray-800 tracking-tight text-sm hidden md:inline">
-            {s.designCanvas}
-          </span>
-        </div>
+      <StudioHeader designName={d.designName} onNameChange={d.handleDesignNameChange} nameInputRef={designNameInputRef}
+        isDirty={d.isDirty} onBack={handleBack} onMockup={d.handleMockup} mockupDisabled={mockupDisabled}
+        generatingMockup={d.generatingMockup} onOrder={openOrderPanel} orderDisabled={!d.currentTemplate}
+        onSave={handleSaveClick} isSaving={d.isSaving} saveStatus={d.saveStatus} />
+      <SaveStatusBar saveStatus={d.saveStatus} saveError={d.saveError} cartErrorMessage={cartErrorMessage}
+        onRetry={handleSaveClick} onOrder={openOrderPanel} />
 
-        <div className="flex-1 flex items-center justify-center md:w-1/3 min-w-0 px-1">
-          <div className="relative flex flex-col items-center w-full max-w-44 sm:max-w-xs md:max-w-none">
-            <input
-              value={d.designName}
-              onChange={(e) => d.handleDesignNameChange(e.target.value)}
-              ref={(el) => {
-                designNameInputRef.current = el;
-                if (el && d.nameError) el.focus();
-              }}
-              className={`relative z-10 bg-transparent hover:bg-gray-100/60 focus:bg-white border text-center rounded-xl px-2 md:px-4 py-2 md:py-1.5 text-xs md:text-sm font-bold text-gray-800 w-full md:w-64 focus:outline-none transition-all placeholder-gray-400 cursor-pointer focus:cursor-text truncate min-h-11 md:min-h-0 ${
-                d.nameError
-                  ? "border-red-400 ring-4 ring-red-100 bg-red-50/40 animate-[shake_0.35s_ease-in-out]"
-                  : "border-transparent focus:border-gray-200 focus:ring-4 focus:ring-gray-100/50"
-              }`}
-              placeholder={s.untitledDesign}
-            />
-            <div
-              className={`absolute top-full left-1/2 -translate-x-1/2 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] z-0 pointer-events-none flex justify-center ${d.isDirty ? "opacity-100 translate-y-1" : "opacity-0 -translate-y-2 scale-95"}`}
-            >
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-200/60 shadow-[0_2px_8px_-2px_rgba(251,191,36,0.2)] text-[10.5px] font-bold tracking-wide whitespace-nowrap">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-                </span>
-                {s.unsaved}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-1 sm:gap-1.5 md:gap-2.5 flex-none md:w-1/3">
-          <LanguageSwitcher compact className="hidden sm:flex shrink-0" />
-          <button
-            onClick={d.handleMockup}
-            disabled={
-              d.generatingMockup ||
-              !d.templates.some(
-                (t) => t.color?.id === d.selectedColorId && t.mockup_config,
-              )
-            }
-            title={s.mockupPreview}
-            className="flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:gap-1.5 md:px-4 md:py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-all hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.02)] shrink-0"
-          >
-            {d.generatingMockup ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <ImageIcon className="w-4 h-4 md:hidden" />
-            )}
-            <span
-              className={
-                d.generatingMockup ? "text-xs md:text-sm" : "hidden md:inline"
-              }
-            >
-              {d.generatingMockup ? s.generatingMockup : s.mockup}
-            </span>
-          </button>
-
-          <div className="hidden md:block w-px h-5 bg-gray-200 mx-1 rounded-full"></div>
-
-          <button
-            onClick={openOrderPanel}
-            disabled={!d.currentTemplate}
-            title={s.order}
-            className="flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:gap-1.5 md:px-4 md:py-2 bg-action text-white rounded-xl text-sm font-bold shadow-sm shadow-action/20 transition-all hover:bg-action/90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none shrink-0"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span className="hidden md:inline">{s.order}</span>
-          </button>
-
-          <button
-            onClick={d.handleSave}
-            disabled={d.isSaving || !d.currentTemplate}
-            title={c.save}
-            className={`flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:gap-2 md:px-5 md:py-2 rounded-xl text-sm font-bold transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-[0_1px_2px_rgba(0,0,0,0.05)] shrink-0 ${
-              d.saveStatus === "saved"
-                ? "bg-green-500 text-white hover:bg-green-600"
-                : d.saveStatus === "error"
-                  ? "bg-destructive text-white"
-                  : "bg-primary text-white hover:bg-primary/90"
-            }`}
-          >
-            {d.isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            <span className="hidden md:inline">
-              {d.isSaving
-                ? s.saving
-                : d.saveStatus === "saved"
-                  ? s.saved
-                  : d.saveStatus === "error"
-                    ? s.cartErrorSave
-                    : c.save}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      {cartErrorMessage && (
-        <p className="md:hidden shrink-0 px-4 py-1.5 text-xs text-red-600 font-semibold text-center bg-red-50 border-b border-red-100">
-          {cartErrorMessage}
-        </p>
-      )}
-
-      {/* ── Main content ─────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-hidden grid grid-rows-[minmax(0,1fr)_auto] md:grid-rows-none md:flex md:flex-row">
-        {/* Desktop sidebar */}
-        <aside className="hidden md:flex md:w-24 md:h-auto md:flex-col md:justify-start md:items-center md:py-6 md:gap-6 md:shrink-0 md:border-r md:border-gray-100 md:bg-white md:shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-          {/* Upload */}
-          <label
-            className={`flex flex-col items-center justify-center gap-1 cursor-pointer ${d.isUploading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            <span
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all border border-transparent ${d.isUploading ? "bg-gray-200" : "bg-gray-50 text-gray-600 hover:bg-gray-100"}`}
-            >
-              {d.isUploading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              ) : (
-                <Upload className="w-5 h-5" />
-              )}
-            </span>
-            <span className="text-[10px] font-semibold text-gray-500">
-              {d.isUploading ? "..." : s.upload}
-            </span>
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={d.handleSidebarUpload}
-              disabled={d.isUploading}
-            />
-          </label>
-          <button
-            type="button"
-            className={`flex flex-col items-center justify-center gap-1 ${d.showImageLibrary ? "text-primary" : "text-gray-600"}`}
-            onClick={toggleImageLibrary}
-          >
-            <span
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${d.showImageLibrary ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent hover:bg-gray-100"}`}
-            >
-              <ImageIcon className="w-5 h-5" />
-            </span>
-            <span className={`text-[10px] font-semibold ${d.showImageLibrary ? "" : "text-gray-500"}`}>{s.library}</span>
-          </button>
-          <div className="w-10 h-px bg-gray-100" />
-          <button
-            type="button"
-            className={`relative flex flex-col items-center justify-center gap-1 ${d.showLayerPanel ? "text-primary" : "text-gray-600"}`}
-            onClick={toggleLayerPanel}
-          >
-            <span
-              className={`relative w-12 h-12 rounded-2xl flex items-center justify-center border ${d.showLayerPanel ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent hover:bg-gray-100"}`}
-            >
-              <Layers className="w-5 h-5" />
-              {d.canvasImages.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white ring-2 ring-white">
-                  {d.canvasImages.length}
-                </span>
-              )}
-            </span>
-            <span className={`text-[10px] font-semibold ${d.showLayerPanel ? "" : "text-gray-500"}`}>{s.layers}</span>
-          </button>
-        </aside>
+        <StudioToolRail variant="rail" active={tools.panel} onToggle={tools.toggle} isUploading={d.isUploading}
+          onUpload={d.handleSidebarUpload} layerCount={d.canvasImages.length} />
 
-        {/* Canvas + mobile context bar */}
         <div className="grid grid-rows-[minmax(0,1fr)_auto] min-h-0 overflow-hidden md:flex md:flex-col md:flex-1 md:basis-0 md:min-h-0">
-          <div
-            ref={d.containerRef}
-            className="flex-1 min-h-0 relative overflow-hidden bg-gray-50/30"
-          >
-            {/* Undo / redo — top-left of canvas */}
-            <div className="absolute top-3 md:top-6 left-3 md:left-4 z-10 pointer-events-none">
-              <div className="pointer-events-auto flex items-center bg-white/95 backdrop-blur-sm border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <button
-                  type="button"
-                  title={s.undoShortcut}
-                  disabled={!d.canUndo}
-                  onClick={d.undo}
-                  className="min-h-11 md:min-h-0 px-3 py-2.5 md:py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center border-r border-gray-200"
-                  aria-label={s.undo}
-                >
-                  <Undo2 className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  title={s.redoShortcut}
-                  disabled={!d.canRedo}
-                  onClick={d.redo}
-                  className="min-h-11 md:min-h-0 px-3 py-2.5 md:py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none transition-colors flex items-center justify-center"
-                  aria-label={s.redo}
-                >
-                  <Redo2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+          <div ref={d.containerRef} className="flex-1 min-h-0 relative overflow-hidden bg-gray-50/30" {...tools.dropHandlers}>
+            <CanvasToolbar canUndo={d.canUndo} canRedo={d.canRedo} onUndo={d.undo} onRedo={d.redo}
+              displaySizeIn={d.displaySizeIn} printableIn={tools.printableIn} onApplySize={d.applySizeIn}
+              onApplyPreset={tools.applyPreset} hasSelection={Boolean(d.selectedId)}
+              onRemove={() => d.selectedId && d.removeCanvasLayer(d.selectedId)} />
 
-            {/* Top center: size editor (desktop) + remove */}
-            <div className="absolute top-3 md:top-6 left-1/2 -translate-x-1/2 flex flex-row items-center gap-2 md:gap-3 z-10 pointer-events-none origin-top px-2">
-              <div className="hidden md:block">
-                <SizeEditor
-                  displaySizeIn={d.displaySizeIn}
-                  onApply={d.applySizeIn}
-                />
-              </div>
-              {d.selectedId && (
-                <button
-                  type="button"
-                  onClick={() => d.removeCanvasLayer(d.selectedId!)}
-                  className="pointer-events-auto px-4 py-2.5 md:py-1.5 bg-white/95 backdrop-blur-sm border border-red-100 text-red-500 rounded-xl shadow-sm text-xs font-semibold hover:bg-red-50 hover:border-red-200 transition-all flex items-center gap-1.5 min-h-11"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />{" "}
-                  <span className="hidden sm:inline">{s.remove}</span>
-                </button>
-              )}
-            </div>
-
-            {/* Desktop price card */}
             <div className="absolute top-4 right-4 md:top-6 md:right-6 z-10 hidden md:block">
-              <PriceCard
-                priceBreakdown={d.priceBreakdown}
-                priceLoading={d.priceLoading}
-              />
+              <PriceCard priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} />
             </div>
-
-            {/* Desktop floating side/color panel */}
-            {isDesktop && (
-              <BottomContextPanel layout="floating" {...contextPanelProps} />
-            )}
+            {isDesktop && <BottomContextPanel layout="floating" {...contextPanelProps} />}
+            {tools.panel === null && <MobilePriceChip priceBreakdown={d.priceBreakdown} onOpen={() => tools.open("price")} />}
 
             {d.currentTemplate && !d.bgImage && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-50/80">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             )}
+            {tools.dragging && (
+              <div className="absolute inset-2 z-30 rounded-3xl border-2 border-dashed border-primary bg-primary/5 flex flex-col items-center justify-center gap-2 text-primary font-semibold pointer-events-none">
+                <Upload className="w-8 h-8" aria-hidden="true" />{t.studioTools.dropHere}
+              </div>
+            )}
 
-            <CanvasStage
-              stageRef={d.stageRef}
-              bgNodeRef={d.bgNodeRef}
-              printZoneNodeRef={d.printZoneNodeRef}
-              transformerRef={d.transformerRef}
-              bgImage={d.bgImage}
-              stageSize={d.stageSize}
-              printZone={d.printZone}
-              canvasImages={d.canvasImages}
-              selectedId={d.selectedId}
-              isExporting={d.isExporting}
-              pxPerInch={d.pxPerInch}
-              onSelect={d.setSelectedId}
-              onDragEnd={d.handleStageDragEnd}
-              onTransform={d.handleStageTransform}
-              onTransformEnd={d.handleStageTransformEnd}
-              onUndo={d.undo}
-              onRedo={d.redo}
-            />
+            <CanvasStage stageRef={d.stageRef} bgNodeRef={d.bgNodeRef} printZoneNodeRef={d.printZoneNodeRef}
+              transformerRef={d.transformerRef} bgImage={d.bgImage} stageSize={d.stageSize} printZone={d.printZone}
+              canvasImages={d.canvasImages} selectedId={d.selectedId} isExporting={d.isExporting} pxPerInch={d.pxPerInch}
+              onSelect={d.setSelectedId} onDragEnd={d.handleStageDragEnd} onTransform={d.handleStageTransform}
+              onTransformEnd={d.handleStageTransformEnd} onUndo={d.undo} onRedo={d.redo} />
           </div>
-
-          {/* Mobile side/color bar — sits below canvas, not over it */}
-          {!isDesktop && (
-            <BottomContextPanel layout="bar" {...contextPanelProps} />
-          )}
+          {!isDesktop && <BottomContextPanel layout="bar" {...contextPanelProps} />}
         </div>
 
-        {/* Mobile bottom toolbar */}
-        <aside className="md:hidden shrink-0 w-full bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.06)] grid grid-cols-4 items-center pt-2 pb-safe-bar px-safe border-t border-gray-100 z-30">
-          {/* Upload */}
-          <label
-            className={`flex flex-col items-center justify-center gap-0.5 cursor-pointer min-h-13 md:min-h-0 ${d.isUploading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            <span
-              className={`w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all border border-transparent ${d.isUploading ? "bg-gray-200" : "bg-gray-50 text-gray-600 active:bg-gray-100"}`}
-            >
-              {d.isUploading ? (
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              ) : (
-                <Upload className="w-5 h-5" />
-              )}
-            </span>
-            <span className="text-[10px] font-semibold text-gray-500">
-              {s.upload}
-            </span>
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={d.handleSidebarUpload}
-              disabled={d.isUploading}
-            />
-          </label>
+        <StudioToolRail variant="tabs" active={tools.panel} onToggle={tools.toggle} isUploading={d.isUploading}
+          onUpload={d.handleSidebarUpload} layerCount={d.canvasImages.length} />
 
-          {/* Library toggle */}
-          <button
-            type="button"
-            className={`flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showImageLibrary ? "text-primary" : "text-gray-600"}`}
-            onClick={toggleImageLibrary}
-          >
-            <span
-              className={`w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all border ${d.showImageLibrary ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent active:bg-gray-100"}`}
-            >
-              <ImageIcon className="w-5 h-5" />
-            </span>
-            <span className="text-[10px] font-semibold">{s.library}</span>
-          </button>
-
-          {/* Layers toggle */}
-          <button
-            type="button"
-            className={`relative flex flex-col items-center justify-center gap-0.5 min-h-13 md:min-h-0 ${d.showLayerPanel ? "text-primary" : "text-gray-600"}`}
-            onClick={toggleLayerPanel}
-          >
-            <span
-              className={`relative w-11 h-11 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center transition-all border ${d.showLayerPanel ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent active:bg-gray-100"}`}
-            >
-              <Layers className="w-5 h-5" />
-              {d.canvasImages.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white shadow-sm ring-2 ring-white">
-                  {d.canvasImages.length}
-                </span>
-              )}
-            </span>
-            <span className="text-[10px] font-semibold">{s.layers}</span>
-          </button>
-
-          {/* Mobile: price & size tools */}
-          <button
-            type="button"
-            className={`flex md:hidden flex-col items-center justify-center gap-0.5 min-h-13 ${showMobileTools ? "text-primary" : "text-gray-500"}`}
-            onClick={() => setShowMobileTools((v) => !v)}
-          >
-            <span
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all border ${showMobileTools ? "bg-primary/10 text-primary border-primary/20" : "bg-gray-50 border-transparent active:bg-gray-100"}`}
-            >
-              <SlidersHorizontal className="w-5 h-5" />
-            </span>
-            <span className="text-[10px] font-semibold">{s.price}</span>
-          </button>
-        </aside>
-
-        {/* Image library panel */}
         {d.showImageLibrary && (
-          <ImageLibraryPanel
-            userUploads={d.userUploads}
-            loadingUploads={d.loadingUploads}
-            uploadsError={d.uploadsError}
-            isUploading={d.isUploading}
-            onClose={() => d.setShowImageLibrary(false)}
-            onAddImage={d.addImageFromUrl}
-            onUpload={d.handleSidebarUpload}
-            onDeleteRequest={d.setDeleteImageName}
-          />
+          <ImageLibraryPanel userUploads={d.userUploads} loadingUploads={d.loadingUploads} uploadsError={d.uploadsError}
+            isUploading={d.isUploading} onClose={() => tools.open(null)} onAddImage={d.addImageFromUrl}
+            onUpload={d.handleSidebarUpload} onDeleteRequest={d.setDeleteImageName} />
         )}
-
-        {/* Layer panel */}
         {d.showLayerPanel && (
-          <LayerPanel
-            canvasImages={d.canvasImages}
-            selectedId={d.selectedId}
-            onSelect={d.setSelectedId}
-            onMove={d.moveLayer}
-            onDelete={d.removeCanvasLayer}
-            onClose={() => d.setShowLayerPanel(false)}
-          />
+          <LayerPanel canvasImages={d.canvasImages} selectedId={d.selectedId} onSelect={d.setSelectedId}
+            onMove={d.moveLayer} onDelete={d.removeCanvasLayer} onClose={() => tools.open(null)} />
         )}
       </div>
 
-      {/* Mobile price & size sheet */}
-      {showMobileTools && (
-        <div className="fixed inset-x-0 bottom-studio-offset z-50 md:hidden px-4">
-          <div className="bg-white rounded-2xl shadow-xl border p-4 space-y-4 max-h-[50dvh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">{s.priceAndSize}</h3>
-              <button
-                onClick={() => setShowMobileTools(false)}
-                className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <PriceCard
-              priceBreakdown={d.priceBreakdown}
-              priceLoading={d.priceLoading}
-            />
-            {d.displaySizeIn && (
-              <div>
-                <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider mb-2">
-                  {s.designSizeInches}
-                </p>
-                <SizeEditor
-                  displaySizeIn={d.displaySizeIn}
-                  onApply={d.applySizeIn}
-                />
-              </div>
-            )}
-            {!d.displaySizeIn && (
-              <p className="text-xs text-gray-400 text-center py-2">
-                {s.selectDesignToResize}
-              </p>
-            )}
-          </div>
-        </div>
+      {tools.panel === "price" && (
+        <MobilePriceSheet priceBreakdown={d.priceBreakdown} priceLoading={d.priceLoading} displaySizeIn={d.displaySizeIn}
+          printableIn={tools.printableIn} onApplySize={d.applySizeIn} onApplyPreset={tools.applyPreset} onClose={() => tools.open(null)} />
       )}
 
-      {/* Order panel */}
       {showOrderPanel && (
-        <OrderPanel
-          selectedSize={d.selectedSize}
-          onSizeChange={d.handleSizeSelect}
-          availableSizes={d.availableSizes}
-          quantity={d.quantity}
-          onQuantityChange={d.setQuantity}
-          priceBreakdown={d.priceBreakdown}
-          priceLoading={d.priceLoading}
-          cartErrorMessage={cartErrorMessage}
-          isAddingToCart={d.isAddingToCart}
-          isSaving={d.isSaving}
-          onAddToCart={async () => {
-            const result = await d.handleAddToCart(false);
-            if (result.ok) setShowOrderPanel(false);
-          }}
+        <OrderPanel sizes={d.availableSizes} grid={bulk.grid} onQtyChange={bulk.setQty} totalQty={bulk.totalQty}
+          quote={bulk.quote} quoteLoading={bulk.loading} onAddMore={bulk.addMore}
+          colors={orderColors} colorId={d.selectedColorId} onColorChange={d.handleColorSelect}
+          cartErrorMessage={cartErrorMessage} isAddingToCart={d.isAddingToCart} isSaving={d.isSaving} printingType={d.printingType}
+          onAddToCart={async () => { if ((await addLines()).ok) setShowOrderPanel(false); }}
           onOrderNow={async () => {
-            const result = await d.handleAddToCart(true);
-            if (result.ok) setShowOrderPanel(false);
-          }}
-          onClose={() => {
-            d.setCartError(null);
+            if (!(await addLines()).ok) return;
             setShowOrderPanel(false);
+            account.goToCheckout();
           }}
-          printingType={d.printingType}
-        />
+          onClose={() => { d.setCartError(null); setShowOrderPanel(false); }} />
       )}
 
-      {/* Delete confirmation modal */}
-      {d.deleteImageName && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-80 shadow-xl">
-            <h3 className="font-bold text-base mb-2">{s.deleteImageTitle}</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              {s.deleteImageDesc}
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => d.setDeleteImageName(null)}
-                className="px-4 py-2 text-sm rounded-lg border hover:bg-gray-50"
-              >
-                {c.cancel}
-              </button>
-              <button
-                onClick={d.confirmDeleteImage}
-                className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600"
-              >
-                {c.delete}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mockup preview modal */}
-      {d.showMockup && (
-        <MockupModal
-          results={d.mockupUrl}
-          onClose={() => d.setShowMockup(false)}
-        />
-      )}
-
-      {/* Leave confirmation modal */}
+      <SignupSheet {...account.sheet} />
+      {d.deleteImageName && <DeleteImageModal onCancel={() => d.setDeleteImageName(null)} onConfirm={d.confirmDeleteImage} />}
+      {d.showMockup && <MockupModal results={d.mockupUrl} onClose={() => d.setShowMockup(false)} />}
       {showLeaveModal && (
         <LeaveConfirmModal
-          onConfirm={() => {
-            d.reportStudioExit("leave_modal", true);
-            navigate(-1);
-          }}
-          onCancel={() => setShowLeaveModal(false)}
-        />
+          onKeep={() => { d.flushDraft(); d.reportStudioExit("leave_modal", true); navigate(-1); }}
+          onDiscard={() => { d.discardDraft(); d.reportStudioExit("leave_modal", true); navigate(-1); }}
+          onCancel={() => setShowLeaveModal(false)} />
       )}
-
-      {/* DPI warning modal */}
       {d.dpiWarningFile && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
-            role="dialog"
-            aria-labelledby="low-res-title"
-          >
-            <h3 id="low-res-title" className="font-bold text-base text-gray-900 mb-3">
-              {s.lowResTitle}
-            </h3>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6">
-              {s.lowResDesc}{" "}
-              <span className="font-semibold text-gray-900">
-                {d.dpiWarningFile.dpi} DPI
-              </span>
-              {s.lowResHint}
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
-              <button
-                type="button"
-                disabled={d.isUploading}
-                onClick={() => d.setDpiWarningFile(null)}
-                className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-              >
-                {s.lowResDontAdd}
-              </button>
-              <button
-                type="button"
-                disabled={d.isUploading}
-                onClick={() => d.proceedWithUpload(d.dpiWarningFile!.file)}
-                className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold rounded-lg bg-[#08636D] text-white hover:bg-[#065a63] disabled:opacity-50 transition-colors flex items-center justify-center gap-2 min-h-11"
-              >
-                {d.isUploading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {s.uploading}
-                  </>
-                ) : (
-                  s.lowResAddToShirt
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LowResModal dpi={d.dpiWarningFile.dpi} isUploading={d.isUploading} onCancel={() => d.setDpiWarningFile(null)}
+          onProceed={() => d.proceedWithUpload(d.dpiWarningFile!.file)} />
       )}
     </div>
   );

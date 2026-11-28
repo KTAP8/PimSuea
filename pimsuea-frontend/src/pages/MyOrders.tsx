@@ -1,5 +1,10 @@
+import { OrderTimeline } from "@/components/orders/OrderTimeline";
+import { TrackingLinks } from "@/components/orders/TrackingLinks";
+import { useReorder } from "@/hooks/useReorder";
 import { Badge } from "@/components/ui/badge";
-import { Package, Loader2, Eye, MapPin, CreditCard, ShoppingBag, Copy, Check, MessageCircle } from "lucide-react";
+import { ProfileNudgeCard } from "@/components/profile/ProfileNudgeCard";
+import { Package, Loader2, Eye, MapPin, CreditCard, ShoppingBag, Copy, Check, MessageCircle, RotateCcw } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getMyOrders } from "@/services/api";
 import type { Order } from "@/types/api";
@@ -29,6 +34,8 @@ function paymentMethodLabel(method: string | null | undefined, o: ReturnType<typ
 }
 
 export default function MyOrders() {
+  const { reorder, canReorder } = useReorder();
+  const navigate = useNavigate();
   const { t, lang } = useLanguage();
   const o = t.orders;
   const common = t.common;
@@ -136,6 +143,7 @@ export default function MyOrders() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <ProfileNudgeCard />
       <h1 className="text-3xl font-bold mb-8 flex items-center">
         <Package className="mr-3" /> {o.historyTitle}
       </h1>
@@ -249,6 +257,17 @@ export default function MyOrders() {
                             <span>{formatDate(lang, selectedOrder.created_at, { dateStyle: 'long', timeStyle: 'short' })}</span>
                         </div>
                     </div>
+
+                    <OrderTimeline status={selectedOrder.status} />
+                    <TrackingLinks numbers={selectedOrder.tracking_numbers} />
+                    {canReorder(selectedOrder) && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button onClick={() => reorder(selectedOrder)} className="min-h-11">
+                          <RotateCcw className="w-4 h-4 mr-2" aria-hidden="true" />{t.ordering.reorder}
+                        </Button>
+                        <Button variant="outline" onClick={() => navigate('/catalog')} className="min-h-11">{t.ordering.designAnother}</Button>
+                      </div>
+                    )}
 
                     {selectedOrder.status === 'pending_payment' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-5 space-y-4">

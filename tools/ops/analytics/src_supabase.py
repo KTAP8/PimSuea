@@ -42,7 +42,7 @@ def _touch(attr: dict | None) -> dict:
 
 def _profiles_cols() -> str:
     base = "id, created_at, referral_source, referral_detail, design_purpose, onboarding_completed"
-    return base + ", attribution"
+    return base + ", attribution, is_guest"
 
 
 def fetch() -> dict:
@@ -51,7 +51,7 @@ def fetch() -> dict:
         orders = _all("orders", "id, user_id, total_amount, delivery_fee, discount_amount, coupon_code, status, "
                                 "payment_method, paid_at, created_at, attribution")
     except Exception:  # attribution column not migrated yet
-        profiles = _all("profiles", _profiles_cols().replace(", attribution", ""))
+        profiles = _all("profiles", _profiles_cols().replace(", attribution, is_guest", ""))
         orders = _all("orders", "id, user_id, total_amount, delivery_fee, discount_amount, coupon_code, status, "
                                 "payment_method, paid_at, created_at")
     designs = _all("user_designs", "user_id, created_at, is_ordered, printing_type")
@@ -94,6 +94,10 @@ def fetch() -> dict:
             "items": lines, **{f"ft_{k}": v for k, v in _touch(o.get("attribution")).items()},
         })
 
+    guests = [p for p in profiles if p.get("is_guest")]
+    profiles = [p for p in profiles if not p.get("is_guest")]
+    guest_rows = [{"signup": _bkk(p["created_at"]), **_monotonic(firsts.get(p["id"], {}))} for p in guests]
+
     users = []
     for p in profiles:
         f = _monotonic(firsts.get(p["id"], {}))
@@ -108,6 +112,8 @@ def fetch() -> dict:
     return {
         "status": "ok",
         "users": users,
+        # Guest studio sessions (anonymous). Not signups; useful as a top-of-funnel stage.
+        "guests": guest_rows,
         "orders": out_orders,
         "drafts": [{"ts": _bkk(d["created_at"]), "status": d["status"]} for d in drafts],
         "open_carts": _open_carts(carts, orders),

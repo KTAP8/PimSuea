@@ -1,3 +1,4 @@
+import { DEFAULT_STUDIO_PRODUCT_ID } from '@/content/catalogBlanks';
 /** Production app origin (login, catalog, studio). */
 export const APP_ORIGIN =
   import.meta.env.VITE_APP_URL?.replace(/\/$/, '') ?? 'https://app.pimsuea.com';
@@ -33,4 +34,9 @@ export function isMarketingHost(): boolean {
 export function appUrl(path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   return `${APP_ORIGIN}${normalized}`;
+}
+
+/** Straight into the design studio (no login needed — guests can design). Defaults to the cheapest blank. */
+export function studioUrl(productId?: string): string {
+  return appUrl(`/studio/${productId ?? DEFAULT_STUDIO_PRODUCT_ID}`);
 }

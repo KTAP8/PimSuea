@@ -22,7 +22,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 
 /** Interactive Real-Time Price Estimator */
 function PriceCalculatorWidget() {
@@ -95,7 +95,7 @@ function PriceCalculatorWidget() {
             <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <span>1. {lang === 'en' ? 'Choose Garment Style' : 'เลือกทรงเสื้อ'}</span>
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
               {GARMENT_PRICING.map((g, idx) => (
                 <button
                   key={idx}
@@ -276,7 +276,7 @@ function PriceCalculatorWidget() {
               </div>
             </div>
 
-            <a href={appUrl('/catalog')} className="block">
+            <a href={studioUrl()} className="block">
               <Button
                 size="lg"
                 className="w-full bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm h-11 shadow-md shadow-action/20 transition-all cursor-pointer"
@@ -313,7 +313,7 @@ function RateCards() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {GARMENT_PRICING.map((g, i) => (
             <div
               key={i}

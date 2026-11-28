@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
+import { withNext } from "@/lib/nextPath";
 
 import logo from "@/assets/logo.svg";
 
 const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolean, onItemClick?: () => void }) => {
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { user, isGuest, signOut } = useAuth();
+  const hasAccount = Boolean(user && !isGuest);
   const { t } = useLanguage();
 
   const handleLogout = async () => {
@@ -68,29 +70,42 @@ const SidebarContent = ({ collapsed = false, onItemClick }: { collapsed?: boolea
             <LanguageSwitcher className="w-full justify-center" />
           </div>
         )}
-        <Link to="/settings" onClick={onItemClick}>
+        {hasAccount ? (
+          <>
+            <Link to="/settings" onClick={onItemClick}>
+                <Button 
+                    variant="ghost" 
+                    className={cn(
+                        "w-full text-gray-500 hover:text-gray-900 min-h-11",
+                        collapsed ? "justify-center px-0" : "justify-start px-4"
+                    )}
+                >
+                    <Settings className="w-5 h-5" />
+                    {!collapsed && <span className="ml-3 animate-in fade-in duration-300">{t.nav.settings}</span>}
+                </Button>
+            </Link>
             <Button 
                 variant="ghost" 
                 className={cn(
-                    "w-full text-gray-500 hover:text-gray-900 min-h-11",
+                    "w-full text-red-500 hover:text-red-600 hover:bg-red-50 min-h-11",
                     collapsed ? "justify-center px-0" : "justify-start px-4"
                 )}
+                onClick={() => handleLogout()}
             >
-                <Settings className="w-5 h-5" />
-                {!collapsed && <span className="ml-3 animate-in fade-in duration-300">{t.nav.settings}</span>}
+                <LogOut className="w-5 h-5" />
+                {!collapsed && <span className="ml-3 animate-in fade-in duration-300">{t.nav.signOut}</span>}
             </Button>
-        </Link>
-        <Button 
-            variant="ghost" 
-            className={cn(
-                "w-full text-red-500 hover:text-red-600 hover:bg-red-50 min-h-11",
-                collapsed ? "justify-center px-0" : "justify-start px-4"
-            )}
-            onClick={() => handleLogout()}
-        >
-            <LogOut className="w-5 h-5" />
-            {!collapsed && <span className="ml-3 animate-in fade-in duration-300">{t.nav.signOut}</span>}
-        </Button>
+          </>
+        ) : !collapsed && (
+          <div className="space-y-2 px-1">
+            <Link to={withNext('/register', location.pathname)} onClick={onItemClick} className="block">
+              <Button className="w-full min-h-11">{t.account.createAccount}</Button>
+            </Link>
+            <Link to={withNext('/login', location.pathname)} onClick={onItemClick} className="block">
+              <Button variant="ghost" className="w-full min-h-11">{t.account.logIn}</Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -40,7 +40,7 @@ export const GEO = {
     'Couples and families (matching shirts and gifts)',
     'Thai creators, brands, and companies',
   ],
-  pricingSnapshotDate: '2026-11-03',
+  pricingSnapshotDate: '2026-11-28',
 } as const;
 
 /** Public marketing URLs (also listed in sitemap.xml). */
@@ -90,6 +90,16 @@ export const GARMENT_PRICING = [
       { key: 'Other', labelTh: 'สีอื่น', labelEn: 'Other colors', thb: 420 },
     ],
   },
+  {
+    nameTh: 'เสื้อแขนยาวคอตตอน 100% สกรีนลงเนื้อผ้า',
+    nameEn: 'Essential long sleeve cotton tee',
+    sizeNote: 'S–XL',
+    qtyLabel: '1–11 ชิ้น',
+    colors: [
+      { key: 'White', labelTh: 'สีขาว', labelEn: 'White', thb: 450 },
+      { key: 'Other', labelTh: 'สีอื่น', labelEn: 'Other colors', thb: 480 },
+    ],
+  },
 ] as const;
 
 /** DTG print add-on from Supabase `print_pricing`, qty 1–11. */
@@ -109,7 +119,21 @@ export const DTG_PRINT_QTY1_11 = {
 } as const;
 
 /** Classic white tee + smallest DTG print tier (199 + 99). */
-export const EXAMPLE_STARTING_PRICE_THB = 298;
+export const GARMENT_FROM_THB = 199;
+export const PRINT_FROM_THB = 99;
+export const EXAMPLE_STARTING_PRICE_THB = GARMENT_FROM_THB + PRINT_FROM_THB;
+
+/**
+ * Trust stats shown in heroes and checkout. Update BY HAND, always rounding DOWN.
+ * shirtsPrinted (Nov 2026): 43 paid in-app shirts + offline orders IBC 100, ABG 40, Issa Compass 20 = 203 → "200+".
+ * Mirror any change in public/llms.txt.
+ */
+export const TRUST_STATS = {
+  shirtsPrinted: 200,
+  provinces: 77,
+  minPieces: 1,
+  fromThb: EXAMPLE_STARTING_PRICE_THB,
+} as const;
 
 /** Delivery fees from Supabase `delivery_fees`. */
 export const DELIVERY_FEE_TIERS = [

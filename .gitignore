@@ -69,6 +69,11 @@ tools/real_data/
 tools/test_data/
 tools/ops/data/
 
+# ── Catalog source art (uploaded to R2; keep locally for tools/ops only) ───────
+longsleeve/
+ls-model-shot*.png
+ls-model-shot*.webp
+
 # ── Optional: large local mockup / export artifacts (uncomment if needed) ─────
 # *.png
 # premium_shirt/

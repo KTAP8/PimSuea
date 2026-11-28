@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import { OrderTimeline } from "@/components/orders/OrderTimeline";
+import { DeliveryEstimate } from "@/components/checkout/DeliveryEstimate";
+import { clearCheckoutSession } from "@/lib/checkoutSession";
+import { ProfileNudgeCard } from "@/components/profile/ProfileNudgeCard";
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +46,7 @@ export default function CheckoutSuccess() {
           setOrderId(result.orderId);
           setStatus('paid');
           clearCart();
+          clearCheckoutSession();
           const { data: order } = await supabase
             .from('orders')
             .select('total_amount')
@@ -130,11 +135,25 @@ export default function CheckoutSuccess() {
         </div>
       )}
 
-      <Link to="/orders">
-        <Button className="w-full" size="lg">
-          {c.viewMyOrders} <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </Link>
+      {status === 'paid' && (
+        <div className="bg-white rounded-xl border p-5 space-y-5">
+          <OrderTimeline status="paid_processing" />
+          <DeliveryEstimate />
+        </div>
+      )}
+
+      <ProfileNudgeCard />
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Link to="/orders">
+          <Button className="w-full min-h-11" size="lg">
+            {c.viewMyOrders} <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </Link>
+        <Link to="/catalog">
+          <Button variant="outline" className="w-full min-h-11" size="lg">{t.ordering.designAnother}</Button>
+        </Link>
+      </div>
     </div>
   );
 }

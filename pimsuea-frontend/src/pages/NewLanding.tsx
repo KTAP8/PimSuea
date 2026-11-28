@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { HeroTrustStats } from "@/components/marketing/HeroTrustStats";
+import { TestimonialsSection } from "@/components/marketing/TestimonialsSection";
+import { EXAMPLE_STARTING_PRICE_THB, GARMENT_FROM_THB, PRINT_FROM_THB } from "@/content/geoFacts";
 import { PageSEO } from "@/components/PageSEO";
 import { buildGeoJsonLd, JsonLdScript } from "@/lib/geoSchema";
 import { GEO_URLS } from "@/content/geoFacts";
@@ -9,7 +12,6 @@ import { filterActivePrintMethods } from "@/constants/printing";
 import type { Product } from "@/types/api";
 import {
   MousePointer2,
-  Type,
   Image as ImageIcon,
   Layers,
   Upload,
@@ -33,14 +35,14 @@ import {
 import { SiteFooter } from "@/components/SiteFooter";
 import { InspirationShowcaseSection } from "@/components/marketing/InspirationShowcase";
 import { NationwideDeliverySection } from "@/components/marketing/NationwideDeliverySection";
-import { HolidayPromoPopup } from "@/components/marketing/HolidayPromoPopup";
+import { HolidayPromoTicket } from "@/components/marketing/HolidayPromoTicket";
 import { useLandingLang } from "@/i18n/LanguageContext";
 import { LanguageSwitcher } from "@/i18n/LanguageSwitcher";
-import { appUrl } from "@/lib/site";
+import { studioUrl } from "@/lib/site";
 import { getProductName } from "@/lib/productName";
 
 const TRUST_LOGOS = [
-  { src: "/logos/Horizontal_Black.webp", alt: "Partner logo", scale: 2.4 },
+  { src: "/logos/Horizontal_Black.webp", alt: "Tevox Automotive", scale: 2.4 },
   { src: "/logos/abg_logo_grey.webp", alt: "ABG" },
   {
     src: "/logos/IssaCompass-PrimaryLogo-Black.webp",
@@ -99,7 +101,6 @@ function CanvasHeroGraphic() {
           <div className="w-11 md:w-14 border-r border-border bg-secondary/20 flex flex-col items-center py-3 md:py-4 gap-2 md:gap-3 shrink-0">
             {[
               { Icon: MousePointer2, active: true },
-              { Icon: Type, active: false },
               { Icon: ImageIcon, active: false },
               { Icon: Layers, active: false },
             ].map(({ Icon, active }, i) => (
@@ -198,7 +199,7 @@ function CanvasHeroGraphic() {
                 transition={{ delay: 1.4 }}
                 className="h-8 bg-action/20 text-action rounded flex items-center justify-center font-bold text-xs uppercase tracking-wider"
               >
-                ฿132 / pc
+                ฿{EXAMPLE_STARTING_PRICE_THB} / pc
               </motion.div>
             </div>
           </div>
@@ -213,7 +214,7 @@ function CanvasHeroGraphic() {
         className="absolute -right-4 top-1/4 bg-card border border-border shadow-xl rounded-lg px-3 py-2 hidden md:flex items-center gap-2"
       >
         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-sm font-bold">฿132 / piece</span>
+        <span className="text-sm font-bold">฿{EXAMPLE_STARTING_PRICE_THB}+ / pc</span>
       </motion.div>
 
       <motion.div
@@ -279,7 +280,7 @@ function StepVisual2() {
 
   useEffect(() => {
     if (!isInView) return;
-    const target = 132;
+    const target = EXAMPLE_STARTING_PRICE_THB;
     const duration = 1200;
     const start = Date.now();
     const timer = setInterval(() => {
@@ -308,8 +309,8 @@ function StepVisual2() {
         </div>
         <div className="space-y-2 text-sm">
           {[
-            [t.canvasGarment, "฿110"],
-            [t.canvasPrintTier, "฿22"],
+            [t.canvasGarment, `฿${GARMENT_FROM_THB}`],
+            [t.canvasPrintTier, `฿${PRINT_FROM_THB}`],
           ].map(([label, price]) => (
             <div
               key={label}
@@ -752,7 +753,7 @@ function WhoWeAreSection() {
 
 function GiftSpotlightSection() {
   const { t } = useLandingLang();
-  const ctaHref = appUrl("/checkout");
+  const ctaHref = studioUrl();
   const [addonPrice, setAddonPrice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -932,7 +933,7 @@ export default function NewLanding() {
             </LocalizedLink>
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
-              <a href={appUrl("/catalog")}>
+              <a href={studioUrl()}>
                 <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
                   {t.navStartDesigning} <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -962,7 +963,7 @@ export default function NewLanding() {
                 {t.heroAeoAnswer} {t.heroPricingLink}
               </p>
               <div className="flex flex-wrap items-center gap-3 md:gap-4 pt-1 md:pt-2">
-                <a href={appUrl("/catalog")}>
+                <a href={studioUrl()}>
                   <Button
                     size="lg"
                     className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-base px-8"
@@ -984,6 +985,10 @@ export default function NewLanding() {
             {/* Graphic */}
             <div className="order-first lg:order-last">
               <CanvasHeroGraphic />
+              {/* Glass pill overlaps the visual's bottom edge so the blur has something to refract. */}
+              <div className="relative z-10 -mt-6 md:-mt-10 flex justify-center">
+                <HeroTrustStats labels={{ shirts: t.trustShirts, provinces: t.trustProvinces }} />
+              </div>
             </div>
           </div>
         </section>
@@ -996,6 +1001,7 @@ export default function NewLanding() {
 
         {/* ── Inspiration Showcase ─────────────────────────────────────── */}
         <InspirationShowcaseSection t={t} />
+        <TestimonialsSection lang={lang} title={t.testimonialsTitle} />
 
         {/* ── Painkillers Grid ─────────────────────────────────────────── */}
         <section className="py-24 border-t border-border bg-secondary/10">
@@ -1157,7 +1163,7 @@ export default function NewLanding() {
                       </div>
                       <div className="mt-auto pt-2">
                         <a
-                          href={appUrl(`/product/${product.id}`)}
+                          href={studioUrl(String(product.id))}
                           className="block"
                         >
                           <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-full font-bold uppercase tracking-wider text-xs py-5 shadow-md shadow-primary/15 hover:shadow-primary/30 transition-all duration-300">
@@ -1186,7 +1192,7 @@ export default function NewLanding() {
             <h2 className="font-black text-5xl md:text-6xl lg:text-7xl leading-tight">
               {t.footerTitle}
             </h2>
-            <a href={appUrl("/catalog")}>
+            <a href={studioUrl()}>
               <Button
                 size="lg"
                 className="bg-action text-action-foreground hover:bg-action/90 font-black uppercase tracking-widest text-lg px-12 py-6 mt-4"
@@ -1205,7 +1211,7 @@ export default function NewLanding() {
           initialExpandedSection={termsSection}
           lang={lang}
         />
-        <HolidayPromoPopup />
+        <HolidayPromoTicket />
       </div>
     </>
   );

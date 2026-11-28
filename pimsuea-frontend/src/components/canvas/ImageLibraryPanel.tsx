@@ -43,7 +43,7 @@ export function ImageLibraryPanel({ userUploads, loadingUploads, uploadsError, i
                         </div>
                     ) : uploadsError ? (
                         <div className="col-span-2 flex flex-col items-center justify-center text-center text-red-500 py-10 gap-2 px-4">
-                            <span className="text-sm">{uploadsError}</span>
+                            <span className="text-sm">{uploadsError === 'library_load_failed' ? t.studioTools.libraryLoadFailed : uploadsError}</span>
                         </div>
                     ) : userUploads.length === 0 ? (
                         <div className="col-span-2 flex flex-col items-center justify-center text-center text-gray-400 py-10 gap-2">

@@ -1,3 +1,4 @@
+const { ensureCatalogFresh } = require('../utils/pricingCatalogCache');
 const { supabase } = require('../config/supabaseClient');
 const { isUUID, isPositiveInt } = require('../utils/validate');
 const { filterActivePrintMethods, productHasActivePrintMethod } = require('../constants/printing');
@@ -17,6 +18,27 @@ exports.getCategories = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
 };
+
+/** product id → cheapest qty-1 shirt price + cheapest qty-1 DTG print price (from the price tables). */
+async function allInStartingPrices(productIds) {
+  const out = new Map();
+  if (!productIds.length) return out;
+  try {
+    await ensureCatalogFresh();
+    const { catalog } = require('../utils/pricingCatalogCache');
+    const minPrint = Math.min(...catalog.print
+      .filter((r) => r.type_code === 'DTG' && (r.min_qty ?? 1) <= 1)
+      .map((r) => Number(r.price_per_unit_thb)));
+    if (!Number.isFinite(minPrint)) return out;
+    for (const id of productIds) {
+      const shirts = catalog.shirt.filter((r) => r.product_id === id && (r.min_qty ?? 1) <= 1).map((r) => Number(r.price_per_unit_thb));
+      if (shirts.length) out.set(id, Math.min(...shirts) + minPrint);
+    }
+  } catch (err) {
+    console.warn('[catalog] all-in price failed, using min_price:', err.message);
+  }
+  return out;
+}
 
 exports.getProducts = async (req, res) => {
   const { category_id, is_beginner_friendly } = req.query;
@@ -52,6 +74,7 @@ exports.getProducts = async (req, res) => {
     const { data: products, error } = await query;
 
     if (error) throw error;
+    const allInFrom = await allInStartingPrices(products.map((p) => p.id));
 
     const formattedProducts = products
       .filter(p => productHasActivePrintMethod(p.product_print_methods))
@@ -64,8 +87,9 @@ exports.getProducts = async (req, res) => {
             ...p,
             image_url: gallery.length > 0 ? gallery[0].image_url : null,
             hover_image_url: hoverImg ? hoverImg.image_url : null,
-            starting_price: p.min_price ?? null,
-            price: p.min_price ?? p.price,
+            // All-in: cheapest shirt + cheapest print at qty 1 (what "from ฿298" means).
+            starting_price: allInFrom.get(p.id) ?? p.min_price ?? null,
+            price: allInFrom.get(p.id) ?? p.min_price ?? p.price,
             print_methods: filterActivePrintMethods(
                 p.product_print_methods
                     ? p.product_print_methods.map(ppm => ppm.print_method).filter(Boolean)
@@ -135,7 +159,7 @@ exports.getProductById = async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    const startingPrice = product.min_price ?? null;
+    const startingPrice = (await allInStartingPrices([product.id])).get(product.id) ?? product.min_price ?? null;
 
     // Derive available sizes from shirt_pricing (authoritative source)
     const pricingSizes = await getAvailableSizes(product.id);

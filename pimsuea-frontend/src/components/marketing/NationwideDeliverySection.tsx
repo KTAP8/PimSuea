@@ -8,7 +8,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { appUrl } from "@/lib/site";
+import { studioUrl } from "@/lib/site";
 import { translations } from "@/translations/landing";
 
 type LandingCopy = (typeof translations)["en"];
@@ -237,7 +237,7 @@ export function NationwideDeliverySection({
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
-              <a href={appUrl("/catalog")} className="w-full sm:w-auto">
+              <a href={studioUrl()} className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto rounded-full font-bold uppercase tracking-wider text-xs px-8 py-5.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] cursor-pointer">
                   {t.heroStartDesigning}
                   <ArrowRight className="ml-2 w-4 h-4" />

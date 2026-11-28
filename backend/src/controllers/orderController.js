@@ -12,10 +12,15 @@ exports.getUserOrders = async (req, res) => {
       .from('orders')
       .select(`
         *,
+        order_shipments ( kind, tracking_number ),
         order_items (
           id,
           quantity,
           unit_price,
+          size,
+          color,
+          user_design_id,
+          print_file_url,
           is_gift,
           gift_message,
           addon_code,
@@ -31,7 +36,8 @@ exports.getUserOrders = async (req, res) => {
           ),
           user_design:user_designs (
             design_name,
-            preview_image_url
+            preview_image_url,
+            base_product_id
           )
         )
       `)
@@ -43,12 +49,21 @@ exports.getUserOrders = async (req, res) => {
     // Transform to match frontend interface
     const formattedOrders = orders.map(order => ({
         ...order,
+        tracking_numbers: [
+          ...(order.tracking_number ? [order.tracking_number] : []),
+          ...((order.order_shipments || []).map((s) => s.tracking_number).filter(Boolean)),
+        ].filter((v, i, a) => a.indexOf(v) === i),
         items: order.order_items ? order.order_items.map(item => ({
             id: item.id,
             quantity: item.quantity,
             price: item.unit_price,
             product_name: item.user_design?.design_name || 'Custom Design',
             image: item.user_design?.preview_image_url,
+            size: item.size,
+            color_id: item.color,
+            design_id: item.user_design_id,
+            product_id: item.user_design?.base_product_id ?? null,
+            print_file_url: item.print_file_url,
             is_gift: item.is_gift,
             gift_message: item.gift_message,
             addon_code: item.addon_code,
