@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { Attribution } from '@/lib/attribution';
 import { supabase } from '@/lib/supabase';
 import type {
     Category,
@@ -128,6 +129,7 @@ export const createCheckoutSession = async (orderData: {
     items: unknown[];
     shipping: unknown;
     coupon_code?: string | null;
+    attribution?: Attribution | null;
 }): Promise<CheckoutSessionResponse> => {
     const response = await api.post<CheckoutSessionResponse>('/payments/checkout-session', orderData);
     return response.data;

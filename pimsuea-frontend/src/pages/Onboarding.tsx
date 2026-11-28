@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAttribution } from "@/lib/attribution";
 import {
   AI_ASSISTANT_TOOLS,
   isAiAssistantSource,
@@ -81,6 +82,7 @@ export default function Onboarding() {
     if (!user) return;
     setSaving(true);
     setSaveError(null);
+    const attribution = getAttribution();
     const { error } = await supabase.from('profiles').upsert({
       id: user.id,
       first_name: firstName.trim(),
@@ -93,6 +95,7 @@ export default function Onboarding() {
         ? referralDetail
         : null,
       onboarding_completed: true,
+      ...(attribution ? { attribution } : {}),
     }, { onConflict: 'id' });
     
     if (error) {

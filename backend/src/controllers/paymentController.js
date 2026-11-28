@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../config/supabaseClient');
+const { sanitizeAttribution } = require('../utils/attribution');
 const {
   getStripe,
   getPendingOrderTtlHours,
@@ -226,7 +227,7 @@ async function fulfillCheckoutSession(session, { eventType, allowExpired = false
 exports.createCheckoutSession = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { items, shipping, coupon_code } = req.body;
+    const { items, shipping, coupon_code, attribution } = req.body;
 
     const pricedPayload = await validateAndPriceCart({
       items,
@@ -234,6 +235,7 @@ exports.createCheckoutSession = async (req, res) => {
       coupon_code,
       userId,
     });
+    pricedPayload.attribution = sanitizeAttribution(attribution);
 
     const ttlHours = getPendingOrderTtlHours();
     const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);

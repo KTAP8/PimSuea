@@ -1,4 +1,5 @@
 import posthog from 'posthog-js';
+import { attributionProps } from '@/lib/attribution';
 
 const POSTHOG_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY as string | undefined;
 const POSTHOG_HOST = (import.meta.env.VITE_PUBLIC_POSTHOG_HOST as string | undefined)
@@ -81,16 +82,19 @@ export function initAnalytics(): void {
         api_host: POSTHOG_HOST,
         capture_pageview: false,
         autocapture: false,
-        persistence: 'localStorage',
+        // Cookie on .pimsuea.com keeps one anonymous id across pimsuea.com → app.pimsuea.com.
+        persistence: 'localStorage+cookie',
+        cross_subdomain_cookie: true,
         session_recording: {
             maskAllInputs: true,
         },
     });
+    posthog.register({ ...attributionProps('ft'), ...attributionProps('lt') });
 }
 
 export function identifyUser(userId: string): void {
     if (!shouldCapture() || !initialized) return;
-    posthog.identify(userId);
+    posthog.identify(userId, undefined, attributionProps('ft'));
 }
 
 export function resetAnalytics(): void {

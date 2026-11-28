@@ -1,4 +1,4 @@
-import { track, getViewport } from './analytics';
+import { track, trackMeta, getViewport } from './analytics';
 
 export type StudioSource =
     | 'catalog'
@@ -56,6 +56,7 @@ export function startStudioSession(ctx: StudioSessionContext): void {
         left_fired: false,
     };
     track('studio_opened', baseProps());
+    trackMeta('ViewContent', { content_type: 'product', content_ids: ctx.product_id });
 }
 
 export function setStudioLastAction(action: StudioLastAction): void {

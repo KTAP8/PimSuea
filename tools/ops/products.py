@@ -176,7 +176,7 @@ def save_template(product_id: str, template_id: str | None, form: dict) -> str:
         mockup_config = {
             "image_url": mockup_url,
             "placement": {
-                "x": float(form.get("mp_x", 647)),
+                "x": float(form.get("mp_x", 668)),
                 "y": float(form.get("mp_y", 431)),
                 "w": float(form.get("mp_w", 716.4)),
                 "h": float(form.get("mp_h", 955.2)),

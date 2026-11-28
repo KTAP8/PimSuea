@@ -305,6 +305,7 @@ async function fulfillOrder({ pricedPayload, userId, authHeader, stripeMeta = {}
     appliedCouponId,
     grandTotal,
     legalStamp,
+    attribution,
   } = pricedPayload;
 
   const paidAt = stripeMeta.paidAt || new Date().toISOString();
@@ -326,6 +327,7 @@ async function fulfillOrder({ pricedPayload, userId, authHeader, stripeMeta = {}
       created_at: paidAt,
       updated_at: paidAt,
       ...legalStamp,
+      ...(attribution ? { attribution } : {}),
     })
     .select()
     .single();

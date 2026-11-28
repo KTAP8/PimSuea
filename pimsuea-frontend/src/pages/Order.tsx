@@ -27,6 +27,7 @@ import {
 } from "@/lib/addressValidation";
 import { parsePreviewUrls, resolvePreviewDisplayUrl, getPreviewDisplayUrl } from "@/lib/previews";
 import { getProductName } from "@/lib/productName";
+import { getAttribution } from "@/lib/attribution";
 
 // Interfaces
 interface SidePriceBreakdown { side: string; tier: string; print_per_unit: number; }
@@ -742,6 +743,7 @@ export default function Order() {
             })),
             shipping: shippingInfo,
             coupon_code: appliedCoupon?.code ?? null,
+            attribution: getAttribution(),
         };
 
         const { url } = await createCheckoutSession(orderPayload);

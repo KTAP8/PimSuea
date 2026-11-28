@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Analytics · PimSuea Ops{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='analytics.css') }}" />
+{% endblock %}
+{% block content %}
+<div class="an" id="an-root" data-stale="{{ 'true' if status.stale else 'false' }}">
+  <div class="an-head">
+    <div>
+      <h2>Growth analytics</h2>
+      <p class="muted" id="an-pulled">Last pulled: {{ status.generated_at or 'never' }} · auto-pull daily after 17:00 Bangkok</p>
+    </div>
+    <div class="an-head-actions">
+      <span id="an-sources" class="an-sources"></span>
+      <button type="button" class="btn" id="an-refresh">Refresh now</button>
+    </div>
+  </div>
+
+  <form class="an-filters" id="an-filters" onsubmit="return false">
+    <label>Range
+      <select name="range">
+        <option value="7">Last 7 days</option>
+        <option value="30" selected>Last 30 days</option>
+        <option value="90">Last 90 days</option>
+        <option value="365">Last 12 months</option>
+        <option value="all">Since launch</option>
+        <option value="custom">Custom…</option>
+      </select>
+    </label>
+    <label class="an-custom" hidden>From <input type="date" name="from" /></label>
+    <label class="an-custom" hidden>To <input type="date" name="to" /></label>
+    <label>Channel (self-reported) <select name="source"><option value="">All</option></select></label>
+    <label>UTM source <select name="utm_source"><option value="">All</option></select></label>
+    <label>Campaign <select name="utm_campaign"><option value="">All</option></select></label>
+    <label>Purpose <select name="purpose"><option value="">All</option></select></label>
+    <label>Language <select name="lang"><option value="">All</option><option value="en">English (/)</option><option value="th">Thai (/th)</option></select></label>
+    <label>Device <select name="device"><option value="">All</option><option value="mobile">Mobile</option><option value="desktop">Desktop</option></select></label>
+    <label>Order size <select name="size"><option value="">All</option><option value="bulk">Bulk (≥10)</option><option value="single">Under 10</option></select></label>
+    <label>Coupon <select name="coupon"><option value="">All</option></select></label>
+    <button type="button" class="btn secondary" id="an-reset">Reset</button>
+  </form>
+  <p class="muted an-filter-note">Language/device filter visitor (PostHog) data; channel/purpose/UTM filter users and their orders; order size/coupon filter orders. Deltas compare with the previous period of equal length.</p>
+
+  <section class="an-section" id="sec-summary">
+    <h3>Executive summary</h3>
+    <div class="an-tiles" id="an-tiles"></div>
+  </section>
+
+  <section class="an-section" id="sec-insights">
+    <h3>Insights <span class="muted">(computed at pull time over all data / last 30 days, not filtered)</span></h3>
+    <ul class="an-insights" id="an-insights"></ul>
+  </section>
+
+  <section class="an-section" id="sec-acq">
+    <h3>Acquisition</h3>
+    <div class="an-grid2">
+      <div class="an-card"><h4>New visitors and signups per week</h4><canvas id="ch-visitors"></canvas></div>
+      <div class="an-card"><h4>Signups per week by channel</h4><canvas id="ch-channels"></canvas></div>
+    </div>
+    <div class="an-card">
+      <h4>Channel quality
+        <select id="channel-key" class="an-inline-select">
+          <option value="source">Self-reported channel</option>
+          <option value="ft_utm_source">UTM source</option>
+          <option value="ft_utm_campaign">UTM campaign</option>
+        </select>
+      </h4>
+      <div id="tb-channels"></div>
+    </div>
+    <div class="an-grid2">
+      <div class="an-card"><h4>Top landing pages</h4><div id="tb-landing"></div></div>
+      <div class="an-card"><h4>Top referrers</h4><div id="tb-referrers"></div></div>
+    </div>
+  </section>
+
+  <section class="an-section" id="sec-funnel">
+    <h3>Funnel</h3>
+    <div class="an-grid2">
+      <div class="an-card"><h4>Signup cohort → paid (database)</h4><div id="fn-signup"></div></div>
+      <div class="an-card"><h4>Studio → cart → paid (PostHog, sequential)</h4><div id="fn-studio"></div></div>
+    </div>
+  </section>
+
+  <section class="an-section" id="sec-studio">
+    <h3>Design Studio health</h3>
+    <div class="an-grid2">
+      <div class="an-card"><h4>Failure events per week</h4><canvas id="ch-failures"></canvas></div>
+      <div class="an-card"><h4>Canvas load time (ms, daily)</h4><canvas id="ch-ready"></canvas></div>
+    </div>
+    <p class="muted" id="studio-note"></p>
+  </section>
+
+  <section class="an-section" id="sec-ads">
+    <h3>Ads (Meta)</h3>
+    <div id="ads-body"></div>
+  </section>
+
+  <section class="an-section" id="sec-orders">
+    <h3>Orders and revenue</h3>
+    <div class="an-grid2">
+      <div class="an-card"><h4>Revenue per week (฿)</h4><canvas id="ch-revenue"></canvas></div>
+      <div class="an-card"><h4>Orders by size (shirts per order)</h4><canvas id="ch-ordersize"></canvas></div>
+    </div>
+    <div class="an-grid3">
+      <div class="an-card"><h4>Colours</h4><div id="tb-colors"></div></div>
+      <div class="an-card"><h4>Sizes</h4><div id="tb-sizes"></div></div>
+      <div class="an-card"><h4>Payment and coupons</h4><div id="tb-pay"></div></div>
+    </div>
+    <div class="an-card"><h4>Paid orders</h4><div id="tb-orders"></div></div>
+  </section>
+
+  <section class="an-section" id="sec-cohorts">
+    <h3>Customers and cohorts</h3>
+    <div class="an-grid2">
+      <div class="an-card"><h4>Weekly signup cohorts</h4><div id="tb-cohorts"></div></div>
+      <div>
+        <div class="an-card"><h4>Signup → first paid order</h4><canvas id="ch-ttfo"></canvas></div>
+        <div class="an-card"><h4>Design purpose</h4><div id="tb-purpose"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <p class="muted an-footer">Sources: Supabase (orders, users, carts), PostHog (visitors, studio events, via HogQL), Meta Marketing API (ad insights).
+    Vercel Analytics has no supported query API, so it isn't pulled; PostHog covers the same pageviews in more detail.
+    Paid order = status paid_processing / printing / shipped / delivered.</p>
+</div>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='analytics_data.js') }}"></script>
+<script src="{{ url_for('static', filename='analytics_render.js') }}"></script>
+<script src="{{ url_for('static', filename='analytics_ads.js') }}"></script>
+<script src="{{ url_for('static', filename='analytics.js') }}"></script>
+{% endblock %}

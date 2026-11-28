@@ -67,6 +67,7 @@ coverage/
 # ── Local operator data (print prep tools) ─────────────────────────────────────
 tools/real_data/
 tools/test_data/
+tools/ops/data/
 
 # ── Optional: large local mockup / export artifacts (uncomment if needed) ─────
 # *.png

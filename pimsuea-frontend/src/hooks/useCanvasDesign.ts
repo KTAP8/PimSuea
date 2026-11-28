@@ -13,6 +13,7 @@ import api, {
     type PrintComposeSide,
 } from '../services/api';
 import {
+    capturePrintZoneDataUrl,
     compositeSingleSide,
     loadMockupBackground,
     mockupOutputScale,
@@ -1068,66 +1069,13 @@ export function useCanvasDesign() {
     };
 
     // ── Mockup ────────────────────────────────────────────────────────────────
-    const captureDesignDataUrl = (
-        placement: { w: number; h: number },
-        mockupScale: number,
-    ): string | null => {
-        if (!stageRef.current || !printZone) return null;
-        const pixelRatio = (placement.w * mockupScale) / printZone.width;
-        const tr = transformerRef.current;
-        const prevNodes = tr?.nodes() ?? [];
-        tr?.nodes([]);
-        bgNodeRef.current?.hide();
-        printZoneNodeRef.current?.hide();
-        stageRef.current.getLayers()[0]?.batchDraw();
-        const dataUrl = stageRef.current.toDataURL({
-            x: printZone.left, y: printZone.top,
-            width: printZone.width, height: printZone.height,
-            pixelRatio,
-        });
-        bgNodeRef.current?.show();
-        printZoneNodeRef.current?.show();
-        if (prevNodes.length) tr?.nodes(prevNodes);
-        stageRef.current.getLayers()[0]?.batchDraw();
-        return dataUrl;
-    };
-
-    const captureOffScreenDataUrl = async (
-        tmpl: ProductTemplate,
-        images: CanvasImage[],
-        placement: { w: number; h: number },
-        mockupScale: number,
-    ): Promise<string | null> => {
-        if (!images.length) return null;
-        const bgImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const i = new window.Image();
-            i.crossOrigin = 'anonymous';
-            i.onload = () => resolve(i);
-            i.onerror = reject;
-            i.src = r2ProxyUrl(tmpl.image_url);
-        });
-        const containerW = containerRef.current?.clientWidth || window.innerWidth - 80;
-        const containerH = (containerRef.current?.clientHeight || window.innerHeight) - 48;
-        const sf = Math.min(containerW / bgImg.width, containerH / bgImg.height, 1) * 0.95;
-        const pz = tmpl.print_area_config;
-        const pzScaled = { left: pz.x * sf, top: pz.y * sf, width: pz.width * sf, height: pz.height * sf };
-        const pixelRatio = (placement.w * mockupScale) / pzScaled.width;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(pzScaled.width * pixelRatio);
-        canvas.height = Math.round(pzScaled.height * pixelRatio);
-        const ctx = canvas.getContext('2d')!;
-        ctx.scale(pixelRatio, pixelRatio);
-        ctx.translate(-pzScaled.left, -pzScaled.top);
-        images.forEach(ci => ctx.drawImage(ci.image, ci.x, ci.y, ci.width, ci.height));
-        return canvas.toDataURL('image/png');
-    };
-
     const handleMockup = async () => {
         saveCurrentSide();
         setGeneratingMockup(true);
         try {
             const results: { side: string; url: string }[] = [];
             const colorTemplates = templates.filter(t => t.color?.id === selectedColorId && t.mockup_config);
+            const sf = lastScaleFactor.current ?? 1;
             for (const tmpl of colorTemplates) {
                 const placement = tmpl.mockup_config!.placement;
                 const mockupImageUrl = r2ProxyUrl(tmpl.mockup_config!.image_url);
@@ -1137,9 +1085,11 @@ export function useCanvasDesign() {
                     ? canvasImages
                     : (sideCanvasImages.current[tmpl.side] ?? []);
                 if (!images.length) continue;
-                const designDataUrl = tmpl.side === currentTemplate?.side
-                    ? captureDesignDataUrl(placement, mockupScale)
-                    : await captureOffScreenDataUrl(tmpl, images, placement, mockupScale);
+                const zone = tmpl.side === currentTemplate?.side
+                    ? printZone
+                    : (sideZones.current[tmpl.side] ?? zoneFromTemplate(tmpl.print_area_config, sf));
+                if (!zone) continue;
+                const designDataUrl = capturePrintZoneDataUrl(images, zone, placement, mockupScale);
                 if (!designDataUrl) continue;
                 const composited = await compositeSingleSide(
                     mockupImageUrl,

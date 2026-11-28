@@ -16,6 +16,7 @@ from flask import (
 )
 
 from . import annotate_service, orders as orders_svc, products as products_svc
+from .analytics.routes import bp as analytics_bp
 from .config import (
     BACKEND_ENV,
     COLOR_CATEGORIES,
@@ -39,6 +40,7 @@ app = Flask(
     static_url_path="/static",
 )
 app.secret_key = "pimsuea-local-ops-dev-only"
+app.register_blueprint(analytics_bp)
 
 _print_sessions: dict[str, dict] = {}
 _print_lock = threading.Lock()

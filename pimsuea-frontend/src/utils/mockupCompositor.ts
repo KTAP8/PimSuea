@@ -5,6 +5,22 @@ export interface MockupPlacement {
   h: number;
 }
 
+export interface MockupLayer {
+  image: CanvasImageSource;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+}
+
+export interface MockupPrintZone {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 /** Longest side of the customer-facing mockup (share / download). */
 export const MOCKUP_LONG_EDGE = 1600;
 
@@ -27,6 +43,39 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 export async function loadMockupBackground(mockupImageUrl: string): Promise<HTMLImageElement> {
   return loadImage(mockupImageUrl);
+}
+
+/** Rasterize print-zone layers without Konva zoom/pan. Rotation matches Konva's top-left pivot. */
+export function capturePrintZoneDataUrl(
+  images: MockupLayer[],
+  zone: MockupPrintZone,
+  placement: Pick<MockupPlacement, 'w' | 'h'>,
+  mockupScale: number,
+): string | null {
+  if (!images.length || zone.width <= 0 || zone.height <= 0) return null;
+
+  const pixelRatio = (placement.w * mockupScale) / zone.width;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(zone.width * pixelRatio);
+  canvas.height = Math.round(zone.height * pixelRatio);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.translate(-zone.left, -zone.top);
+
+  for (const layer of images) {
+    ctx.save();
+    ctx.translate(layer.x, layer.y);
+    const rot = layer.rotation ?? 0;
+    if (rot) ctx.rotate((rot * Math.PI) / 180);
+    ctx.drawImage(layer.image, 0, 0, layer.width, layer.height);
+    ctx.restore();
+  }
+
+  return canvas.toDataURL('image/png');
 }
 
 export async function compositeSingleSide(
