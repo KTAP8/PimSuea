@@ -143,6 +143,9 @@ export interface Order {
     items?: OrderItem[];
     shipping_address?: ShippingInfo;
     payment_method?: string;
+    paid_at?: string | null;
+    updated_at?: string | null;
+    tracking_numbers?: string[];
 }
 
 export interface OrderItem {
@@ -151,6 +154,11 @@ export interface OrderItem {
     quantity: number;
     price: number;
     image?: string;
+    size?: string;
+    color_id?: string;
+    design_id?: string | null;
+    product_id?: string | null;
+    print_file_url?: string | null;
     is_gift?: boolean;
     gift_message?: string | null;
     addon_code?: string | null;

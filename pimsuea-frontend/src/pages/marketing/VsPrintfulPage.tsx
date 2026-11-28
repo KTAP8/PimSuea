@@ -17,7 +17,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 import { LocalizedLink } from '@/components/LocalizedLink';
 
 const COMPARISON_TH = [
@@ -329,7 +329,7 @@ function DecisionGuide() {
             </ul>
           </div>
 
-          <a href={appUrl('/catalog')} className="pt-4">
+          <a href={studioUrl()} className="pt-4">
             <Button className="w-full bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-xs sm:text-sm h-11 cursor-pointer">
               {lang === 'en' ? 'Start with PimSuea' : 'เริ่มสั่งเสื้อกับ PimSuea'}
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -453,7 +453,7 @@ export default function VsPrintfulPage() {
           </p>
 
           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <a href={appUrl('/catalog')}>
+            <a href={studioUrl()}>
               <Button
                 size="lg"
                 className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm sm:text-base px-8 h-12 shadow-lg shadow-action/25 hover:shadow-xl transition-all cursor-pointer"

@@ -23,7 +23,7 @@ import {
   Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 import { LocalizedLink } from '@/components/LocalizedLink';
 
 function HeroVisual() {
@@ -495,7 +495,7 @@ export default function PrintOnDemandPage() {
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
-              <a href={appUrl('/catalog')}>
+              <a href={studioUrl()}>
                 <Button
                   size="lg"
                   className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm sm:text-base px-8 h-12 shadow-lg shadow-action/25 hover:shadow-xl transition-all cursor-pointer"

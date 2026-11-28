@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { LAUNCH_DATE } from './lib/launch';
 import { MarketingLayout } from './components/MarketingLayout';
 import { Analytics } from '@vercel/analytics/react';
+import { Toaster } from 'sonner';
 import { AnalyticsProvider } from './components/AnalyticsProvider';
 import { MetaPageTracker } from './components/MetaPageTracker';
 import { Sidebar } from './components/Sidebar';
@@ -20,6 +21,7 @@ import CheckoutSuccess from './pages/CheckoutSuccess';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
+import Unsubscribe from './pages/Unsubscribe';
 import NewsDetails from './pages/NewsDetails';
 import Onboarding from './pages/Onboarding';
 import Settings from './pages/Settings';
@@ -27,6 +29,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { GuestOkRoute } from './components/GuestOkRoute';
 import { AppRootRedirect } from './components/AppRootRedirect';
 import { isAppHost } from './lib/site';
 import { isHolidayPromoLive, writePromoCookie } from './lib/promoCode';
@@ -50,7 +53,7 @@ function AppLayout() {
     const coupon = new URLSearchParams(location.search).get('coupon')?.trim();
     if (coupon) writePromoCookie(coupon);
   }, [location.search]);
-  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/', '/home', '/onboarding'];
+  const hideSidebarRoutes = ['/login', '/register', '/reset-password', '/unsubscribe', '/', '/home', '/onboarding'];
   const shouldShowSidebar = !hideSidebarRoutes.includes(location.pathname)
     && !location.pathname.startsWith('/studio/');
   const showFooter = shouldShowAppFooter(location.pathname);
@@ -82,14 +85,19 @@ function AppLayout() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
+
+            {/* Open to everyone — guests design first, sign up when they save or order. */}
+            <Route element={<GuestOkRoute />}>
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/studio/:id" element={<DesignStudio />} />
+              <Route path="/news/:id" element={<NewsDetails />} />
+            </Route>
 
             <Route element={<ProtectedRoute />}>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/news/:id" element={<NewsDetails />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/product/:id" element={<ProductDetails />} />
-              <Route path="/studio/:id" element={<DesignStudio />} />
               <Route path="/orders" element={<MyOrders />} />
               <Route path="/my-products" element={<MyProducts />} />
               <Route path="/wallet" element={<Wallet />} />
@@ -98,7 +106,7 @@ function AppLayout() {
               <Route path="/settings" element={<Settings />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<AppRootRedirect />} />
           </Routes>
         </main>
 
@@ -108,6 +116,8 @@ function AppLayout() {
       </div>
 
       <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} lang={lang} />
+      {/* App host only — marketing pages are prerendered and must hydrate identically. */}
+      <Toaster position="top-center" richColors closeButton />
     </div>
   );
 }

@@ -5,6 +5,7 @@ const { copyObject, getLocationFromUrl, getPublicUrl } = require('../config/r2Cl
 const { getSizesByProductIds } = require('../utils/sizes');
 const { consentStamp } = require('../constants/legal');
 const { persistProfileConsentIfNeeded } = require('../utils/consent');
+const { sendOrderConfirmation } = require('./email/orderEmails');
 const {
   GIFT_SERVICE_CODE,
   normalizeGiftRecipient,
@@ -464,6 +465,9 @@ async function fulfillOrder({ pricedPayload, userId, authHeader, stripeMeta = {}
       console.warn('[fulfillOrder] failed to set is_ordered on designs:', orderedErr.message);
     }
   }
+
+  // Confirmation email right away (non-blocking; the hourly job retries anything missed).
+  sendOrderConfirmation(order.id).catch((err) => console.warn('[fulfillOrder] confirmation email failed:', err.message));
 
   return { orderId: order.id };
 }

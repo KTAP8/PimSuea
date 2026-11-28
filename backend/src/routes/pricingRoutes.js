@@ -4,6 +4,7 @@ const requireAuth = require('../middleware/requireAuth');
 const { calculatePrice, lookupPrintPrice } = require('../utils/pricing');
 const { ensureCatalogFresh, resolveColorNameFromCache } = require('../utils/pricingCatalogCache');
 const { supabaseAdmin } = require('../config/supabaseClient');
+const { bulkQuote } = require('../services/bulkQuote');
 
 const { ACTIVE_PRINTING_TYPES } = require('../constants/printing');
 const VALID_TIERS = ['3x4in', 'A5', 'A4', 'A3'];
@@ -85,6 +86,27 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Pricing lookup failed';
     return res.status(422).json({ error: message });
+  }
+});
+
+// Bulk quote for the studio size grid: one design, one colour, many sizes.
+// body: { printingType, productId, color_id, sides: [{w,h}] (cm), lines: [{size, qty}] }
+router.post('/quote', requireAuth, async (req, res) => {
+  const { printingType, productId, color_id, sides, lines } = req.body ?? {};
+  if (!ACTIVE_PRINTING_TYPES.includes(printingType)) return res.status(400).json({ error: 'printingType must be DTG' });
+  if (!productId || !color_id) return res.status(400).json({ error: 'productId and color_id are required' });
+  const validSides = Array.isArray(sides) ? sides.filter((d) => d && d.w > 0 && d.h > 0).slice(0, 4) : [];
+  const validLines = Array.isArray(lines)
+    ? lines.filter((l) => l && typeof l.size === 'string' && Number.isInteger(l.qty) && l.qty >= 0 && l.qty <= 5000).slice(0, 12)
+    : [];
+  if (!validSides.length || !validLines.length) return res.status(400).json({ error: 'sides and lines are required' });
+  try {
+    await ensureCatalogFresh();
+    const color_name = resolveColorNameFromCache(color_id);
+    if (!color_name) return res.status(400).json({ error: `Unknown color_id: ${color_id}` });
+    res.json(await bulkQuote({ printingType, productId, color_name, sides: validSides, lines: validLines }));
+  } catch (err) {
+    res.status(422).json({ error: err instanceof Error ? err.message : 'Quote failed' });
   }
 });
 

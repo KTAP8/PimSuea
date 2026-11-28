@@ -73,7 +73,7 @@ export function PriceCard({ priceBreakdown, priceLoading }: Props) {
                     </div>
                 </>
             ) : (
-                <p className="text-xs text-gray-300 text-center py-3">{s.saveToSeePrice}</p>
+                <p className="text-xs text-gray-500 text-center py-3">{t.studioTools.addArtworkForPrice}</p>
             )}
         </div>
     );

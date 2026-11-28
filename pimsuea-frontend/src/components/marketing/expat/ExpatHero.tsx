@@ -3,14 +3,17 @@ import { Button } from '@/components/ui/button';
 import { LocalizedLink } from '@/components/LocalizedLink';
 import { CUSTOM_SHIRTS_THAILAND_COPY } from '@/content/customShirtsThailandCopy';
 import type { Language } from '@/i18n/types';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 import { StudioPreviewAnimation } from './StudioPreviewAnimation';
+import { HeroTrustStats } from '../HeroTrustStats';
+import { translations as landingTranslations } from '@/translations/landing';
 
 export const EXPAT_HERO_ID = 'expat-hero';
 
 /** Split hero: big headline + CTAs on the left, looping studio demo on the right (below on mobile). */
 export function ExpatHero({ lang }: { lang: Language }) {
   const copy = CUSTOM_SHIRTS_THAILAND_COPY[lang];
+  const landing = landingTranslations[lang];
 
   return (
     <section
@@ -43,7 +46,7 @@ export function ExpatHero({ lang }: { lang: Language }) {
           <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-[#121212]/70">{copy.sub}</p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            <a href={appUrl('/catalog')} className="w-full sm:w-auto">
+            <a href={studioUrl()} className="w-full sm:w-auto">
               <Button size="lg" className="w-full sm:w-auto h-12 px-7 rounded-[4px] bg-action text-action-foreground hover:bg-action/90 font-bold text-base">
                 {copy.ctaPrimary}
                 <ArrowRight className="size-4 ml-2" />
@@ -66,7 +69,12 @@ export function ExpatHero({ lang }: { lang: Language }) {
           </ul>
         </div>
 
-        <StudioPreviewAnimation copy={copy.demo} />
+        <div>
+          <StudioPreviewAnimation copy={copy.demo} />
+          <div className="relative z-10 -mt-6 md:-mt-10 flex justify-center">
+            <HeroTrustStats labels={{ shirts: landing.trustShirts, provinces: landing.trustProvinces }} />
+          </div>
+        </div>
       </div>
     </section>
   );

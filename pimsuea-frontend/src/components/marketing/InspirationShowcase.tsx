@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { CATALOG_BLANKS } from "@/content/catalogBlanks";
 import {
   ArrowRight,
   ChevronLeft,
@@ -20,25 +21,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
-import { appUrl } from "@/lib/site";
+import { studioUrl } from "@/lib/site";
 import { translations } from "@/translations/landing";
 import { cn } from "@/lib/utils";
 
 type LandingCopy = (typeof translations)["en"];
 
-/** Mirror active catalog blanks — keep in sync with Supabase `products.title` / `title_en`. */
-const CATALOG_BLANKS = {
-  classic: {
-    productId: "0de86104-0582-4da2-84c5-f46a2878d122",
-    titleEn: "DTG 100% cotton tshirt",
-    titleTh: "เสื้อยืดสกรีนลงเนื้อผ้า",
-  },
-  boxy: {
-    productId: "4e518b71-a23b-4841-aaea-d3fb924d999c",
-    titleEn: "Oversized boxy heavyweight tee",
-    titleTh: "เสื้อ oversized boxy heavyweight tee สกรีนลงเนื้อผ้า",
-  },
-} as const;
+
 
 interface ShowcaseItem {
   id: string;
@@ -67,8 +56,8 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
     category: "club",
     titleEn: "IBC Basketball Club Tee",
     titleTh: "เสื้อทีมบาสเกตบอล IBC",
-    tagEn: "Sports Club",
-    tagTh: "ชมรมกีฬา",
+    tagEn: "Student club",
+    tagTh: "ชมรมนักศึกษา",
     quantityEn: "100 pcs order",
     quantityTh: "สั่งผลิต 100 ตัว",
     blankEn: CATALOG_BLANKS.classic.titleEn,
@@ -107,8 +96,8 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
     category: "brand",
     titleEn: "ABG • #SamyanABG Collection",
     titleTh: "ABG • คอลเลกชัน #SamyanABG",
-    tagEn: "#SamyanABG",
-    tagTh: "#SamyanABG",
+    tagEn: "Fashion brand",
+    tagTh: "แบรนด์แฟชั่น",
     quantityEn: "40 pcs order",
     quantityTh: "สั่งผลิต 40 ตัว",
     blankEn: CATALOG_BLANKS.boxy.titleEn,
@@ -127,8 +116,8 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
     category: "brand",
     titleEn: "Issa Compass Team Sweater",
     titleTh: "สเวตเตอร์ทีม Issa Compass",
-    tagEn: "Special Request",
-    tagTh: "สั่งทำพิเศษ",
+    tagEn: "International company",
+    tagTh: "บริษัทต่างชาติ",
     quantityEn: "20 pcs order",
     quantityTh: "สั่งผลิต 20 ตัว",
     blankEn: "Custom sweater (not in catalog yet)",
@@ -146,8 +135,8 @@ const SHOWCASE_ITEMS: ShowcaseItem[] = [
     category: "brand",
     titleEn: "ABG • #SamyanABG Lookbook",
     titleTh: "ABG • Lookbook #SamyanABG",
-    tagEn: "#SamyanABG",
-    tagTh: "#SamyanABG",
+    tagEn: "Fashion brand",
+    tagTh: "แบรนด์แฟชั่น",
     quantityEn: "40 pcs order",
     quantityTh: "สั่งผลิต 40 ตัว",
     blankEn: CATALOG_BLANKS.boxy.titleEn,
@@ -250,7 +239,7 @@ export function InspirationShowcaseSection({
 
           {/* Action and Navigation button group */}
           <div className="flex items-center gap-3 self-start md:self-end">
-            <a href={appUrl("/catalog")}>
+            <a href={studioUrl()}>
               <Button
                 variant="default"
                 className="rounded-full font-bold uppercase tracking-wider text-xs px-6 py-5 bg-action hover:bg-action/90 text-action-foreground shadow-lg shadow-action/20 transition-all duration-300 hover:scale-[1.02]"
@@ -521,7 +510,7 @@ export function InspirationShowcaseSection({
               <div className="shrink-0 border-t border-border bg-card p-4 sm:p-5 pb-[max(1rem,env(safe-area-inset-bottom))]">
                 {selectedItem.catalogProductId ? (
                   <a
-                    href={appUrl(`/product/${selectedItem.catalogProductId}`)}
+                    href={studioUrl(selectedItem.catalogProductId)}
                     className="block"
                     onClick={() => setSelectedItem(null)}
                   >

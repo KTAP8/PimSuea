@@ -30,6 +30,7 @@
 - App (design & order): https://app.pimsuea.com/catalog
 - Location: Bangkok, Thailand — serves all 77 provinces, including Chiang Mai, Phuket, Pattaya, Hua Hin, Koh Samui and Koh Phangan
 - Printing: DTG (Direct to Garment), no minimum order
+- Volume: 200+ shirts printed (as of Nov 2026) for Thai customers, expats, student clubs (e.g. IBC Basketball Club), fashion brands (e.g. ABG #SamyanABG) and companies (e.g. Issa Compass, Tevox Automotive)
 - Pricing: Live per-piece quote in the design studio (THB)
 - Lead time: 5–14 days typical; transit time varies by location
 - Payment: card and PromptPay, priced in THB
@@ -45,11 +46,14 @@
 - Custom shirt, no minimum (1 piece): https://pimsuea.com/custom-shirt-no-minimum
 - Club, community and gift shirts: https://pimsuea.com/club-and-gift-shirts
 
-## Example pricing snapshot (2026-11-03, from Supabase)
+## Example pricing snapshot (2026-11-28, from Supabase)
 
 Classic DTG tee garment (White, qty 1–11): 199 THB
 Classic DTG tee garment (Other colors, qty 1–11): 219 THB
 Oversized boxy tee (White, qty 1–11): 390 THB
+Oversized boxy tee (Other colors, qty 1–11): 420 THB
+Essential long sleeve cotton tee (White, qty 1–11): 450 THB
+Essential long sleeve cotton tee (Other colors, qty 1–11): 480 THB
 DTG print smallest tier 3×4" (White, qty 1–11): 99 THB
 DTG print smallest tier 3×4" (Other colors, qty 1–11): 129 THB
 Example starting total: ~298 THB per piece (classic white tee + small print)

@@ -19,6 +19,11 @@ import {
     mockupOutputScale,
 } from '../utils/mockupCompositor';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
+import { toast } from 'sonner';
+import { saveErrorReason, type SaveErrorReason } from '../lib/saveErrors';
+import { clearDraft, readDraft, writeDraft } from '../lib/studioDraft';
+import { track } from '../lib/analytics';
 import { isLegacyDtfPrintingType } from '../constants/printing';
 import type { ProductTemplate, Color } from '../types/api';
 import type { CanvasImage, SerializableImage, CanvasPriceBreakdown } from '../types/canvas';
@@ -75,10 +80,12 @@ export function useCanvasDesign() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { addToCart } = useCart();
+    const { addToCart, cartItems, updateCartItem } = useCart();
     const designIdParam = searchParams.get('designId');
     const printingTypeParam = (searchParams.get('printingType') || searchParams.get('printing_type'))?.toUpperCase();
-    const { user } = useAuth();
+    const { user, lastClaim } = useAuth();
+    const { t } = useLanguage();
+    const st = t.studioTools;
 
     // Block new DTF studio entry via URL param
     useEffect(() => {
@@ -120,6 +127,7 @@ export function useCanvasDesign() {
     );
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+    const [saveError, setSaveError] = useState<SaveErrorReason | null>(null);
     const [nameError, setNameError] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const markDirty = () => setIsDirty(true);
@@ -135,7 +143,6 @@ export function useCanvasDesign() {
     const [isAddingToCart, setIsAddingToCart] = useState(false);
     const [cartError, setCartError] = useState<string | null>(null);
     const [priceRefreshSignal, setPriceRefreshSignal] = useState(0);
-    const [openOrderPanelAfterSave, setOpenOrderPanelAfterSave] = useState(0);
     const [shouldFocusDesignName, setShouldFocusDesignName] = useState(false);
     const lastPriceKeyRef = useRef('');
     const bumpPriceRefresh = () => setPriceRefreshSignal((n) => n + 1);
@@ -336,6 +343,24 @@ export function useCanvasDesign() {
                 }
             }
 
+            // Unsaved local draft for this product/design → restore it on top.
+            const draft = id ? readDraft(id, designIdParam) : null;
+            if (draft) {
+                pendingSideData.current = draft.sides;
+                loadedCanvasMeta.current = { version: '3' };
+                shouldResetHistoryAfterRestore.current = true;
+                if (draft.designName) setDesignName(draft.designName);
+                if (draft.colorIds.length) setActiveColorIds(new Set(draft.colorIds));
+                const saved = data.find(t => t.side === draft.activeSide && (!draft.colorIds[0] || t.color?.id === draft.colorIds[0]))
+                    ?? data.find(t => t.side === draft.activeSide);
+                if (saved) { targetTemplate = saved; setSelectedColorId(saved.color?.id ?? null); }
+                setIsDirty(true);
+                track('draft_restored', { has_design: Boolean(designIdParam) });
+                toast(st.draftRestored, {
+                    action: { label: st.draftDiscard, onClick: () => { clearDraft(id!, designIdParam); window.location.reload(); } },
+                });
+            }
+
             setCurrentTemplate(targetTemplate);
         });
     }, [id, designIdParam]);
@@ -427,13 +452,14 @@ export function useCanvasDesign() {
                     imgH,
                     sfLoad: sf,
                 });
+                const src = d.src;
                 return new Promise<CanvasImage | null>((resolve) => {
                     const i = new window.Image();
                     i.crossOrigin = 'anonymous';
                     i.onload = () => resolve({
                         id: d.id,
                         image: i,
-                        src: d.src,
+                        src,
                         ...coords,
                         rotation: d.rotation ?? 0,
                     });
@@ -441,7 +467,7 @@ export function useCanvasDesign() {
                         console.error('[CanvasDesign] Failed to restore layer image:', d.src);
                         resolve(null);
                     };
-                    i.src = r2ProxyUrl(d.src);
+                    i.src = r2ProxyUrl(src);
                 });
             }),
         ).then(results => {
@@ -516,6 +542,19 @@ export function useCanvasDesign() {
         setLiveSizeIn(null);
     }, [selectedId]);
 
+    // ── Guest → account: uploaded files moved to the new user's folder ───────
+    useEffect(() => {
+        if (!lastClaim || lastClaim.from === lastClaim.to) return;
+        const fix = (src: string) => src.split(`uploads/${lastClaim.from}/`).join(`uploads/${lastClaim.to}/`);
+        setCanvasImages((imgs) => imgs.map((ci) => ({ ...ci, src: fix(ci.src) })));
+        for (const side of Object.keys(sideCanvasImages.current)) {
+            sideCanvasImages.current[side] = sideCanvasImages.current[side].map((ci) => ({ ...ci, src: fix(ci.src) }));
+        }
+        for (const side of Object.keys(pendingSideData.current)) {
+            pendingSideData.current[side] = pendingSideData.current[side].map((img) => ({ ...img, src: fix(img.src) }));
+        }
+    }, [lastClaim]);
+
     // ── Fetch user uploads ────────────────────────────────────────────────────
     const fetchUserUploads = async () => {
         if (!user) return;
@@ -526,7 +565,7 @@ export function useCanvasDesign() {
             setUserUploads(data);
         } catch (err) {
             console.error('[CanvasDesign] fetchUserUploads failed:', err);
-            setUploadsError('โหลดคลังรูปไม่สำเร็จ — ลองเข้าสู่ระบบใหม่');
+            setUploadsError('library_load_failed');
         } finally {
             setLoadingUploads(false);
         }
@@ -563,6 +602,27 @@ export function useCanvasDesign() {
     const saveCurrentSide = () => {
         if (currentTemplate) sideCanvasImages.current[currentTemplate.side] = canvasImages;
     };
+
+    // Keep an unsaved draft on this device while the user works (debounced).
+    const flushDraft = () => {
+        if (!isDirty || !id || !currentTemplate) return;
+        writeDraft({
+            productId: id,
+            designId,
+            designName,
+            activeSide: currentTemplate.side,
+            colorIds: Array.from(activeColorIds),
+            sides: collectSerializedSides(),
+        });
+    };
+    useEffect(() => {
+        if (!isDirty || !id || !currentTemplate) return;
+        const timer = setTimeout(flushDraft, 500);
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- serialize on content changes only
+    }, [isDirty, canvasImages, designName, activeColorIds, currentTemplate?.side]);
+
+    const discardDraft = () => { if (id) clearDraft(id, designId); };
 
     const bumpHistory = () => setHistoryVersion(v => v + 1);
 
@@ -696,28 +756,61 @@ export function useCanvasDesign() {
     };
 
     // ── Image helpers ─────────────────────────────────────────────────────────
-    const addImageFromUrl = (url: string, method: 'upload' | 'library' = 'library') => {
-        if (!printZone) return;
+    type PlaceOptions = {
+        method?: 'upload' | 'library';
+        /** Replace this layer, keeping its centre and height. */
+        replaceId?: string;
+        /** Fraction of the print zone width to fill (default: fit, max natural size). */
+        widthFraction?: number;
+        /** Vertical centre as a fraction of the print zone height (default 0.5). */
+        centerY?: number;
+    };
+
+    /** Loads an uploaded image URL and places it on the current side (new layer or in-place replace). */
+    const placeLayerFromUrl = (url: string, opts: PlaceOptions = {}): Promise<string | null> => new Promise((resolve) => {
+        if (!printZone) { resolve(null); return; }
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
+        img.onerror = () => resolve(null);
         img.onload = () => {
             pushHistoryBeforeEdit();
-            const scale = Math.min(printZone.width / img.width, printZone.height / img.height, 1);
-            const w = img.width * scale;
-            const h = img.height * scale;
-            const x = printZone.left + (printZone.width - w) / 2;
-            const y = printZone.top + (printZone.height - h) / 2;
-            const newId = Math.random().toString(36).substring(7);
+            const replaced = opts.replaceId ? canvasImages.find((ci) => ci.id === opts.replaceId) : undefined;
+            let w: number, h: number, x: number, y: number;
+            if (replaced) {
+                h = replaced.height;
+                w = img.width * (h / img.height);
+                x = replaced.x + replaced.width / 2 - w / 2;
+                y = replaced.y;
+            } else {
+                const fit = Math.min(printZone.width / img.width, printZone.height / img.height, 1);
+                const scale = opts.widthFraction
+                    ? Math.min((printZone.width * opts.widthFraction) / img.width, printZone.height / img.height)
+                    : fit;
+                w = img.width * scale;
+                h = img.height * scale;
+                x = printZone.left + (printZone.width - w) / 2;
+                y = printZone.top + printZone.height * (opts.centerY ?? 0.5) - h / 2;
+            }
+            const id = replaced?.id ?? Math.random().toString(36).substring(7);
+            const layer: CanvasImage = {
+                id, image: img, src: url, x, y, width: w, height: h,
+                rotation: replaced?.rotation ?? 0,
+            };
             setCanvasImages(prev => {
-                const next = [...prev, { id: newId, image: img, src: url, x, y, width: w, height: h }];
-                trackStudioArtworkAdded(method, next.length);
+                const next = replaced ? prev.map((ci) => (ci.id === id ? layer : ci)) : [...prev, layer];
+                if (!replaced) trackStudioArtworkAdded(opts.method ?? 'library', next.length);
                 return next;
             });
-            setSelectedId(newId);
+            setSelectedId(id);
             markDirty();
             bumpPriceRefresh();
+            resolve(id);
         };
         img.src = r2ProxyUrl(url);
+    });
+
+    const addImageFromUrl = (url: string, method: 'upload' | 'library' = 'library') => {
+        void placeLayerFromUrl(url, { method });
     };
 
     const removeCanvasLayer = (layerId: string) => {
@@ -732,6 +825,12 @@ export function useCanvasDesign() {
         const file = e.target.files?.[0];
         if (!file) return;
         e.target.value = '';
+        await handleFileChosen(file);
+    };
+
+    /** File from the picker or a drag & drop: DPI check, then upload + place. */
+    const handleFileChosen = async (file: File) => {
+        if (!file.type.startsWith('image/')) return;
         const physW_cm = currentTemplate?.print_area_config?.physical_w_cm ?? 30.48;
         const physH_cm = currentTemplate?.print_area_config?.physical_h_cm ?? 40.64;
         const dpi = await new Promise<number>(resolve => {
@@ -758,6 +857,8 @@ export function useCanvasDesign() {
             console.error('[CanvasDesign] upload failed:', err);
             const status = (err as { response?: { status?: number } })?.response?.status;
             trackStudioUploadFailed(status ? `http_${status}` : 'unknown');
+            const reason = saveErrorReason(err);
+            toast.error(st.uploadFailed.replace('{reason}', st.saveErrors[reason]));
         } finally {
             uploadInFlightRef.current = false;
             setIsUploading(false);
@@ -798,14 +899,16 @@ export function useCanvasDesign() {
         bumpPriceRefresh();
     };
 
-    const applySizeIn = (w: number, h: number) => {
+    const applySizeIn = (w: number, h: number, opts: { keepCenter?: boolean } = {}) => {
         if (!selectedId || !pxPerInch) return;
         pushHistoryBeforeEdit();
-        setCanvasImages(prev => prev.map(ci =>
-            ci.id === selectedId
-                ? { ...ci, width: Math.max(10, w * pxPerInch), height: Math.max(10, h * pxPerInch) }
-                : ci
-        ));
+        setCanvasImages(prev => prev.map(ci => {
+            if (ci.id !== selectedId) return ci;
+            const width = Math.max(10, w * pxPerInch);
+            const height = Math.max(10, h * pxPerInch);
+            if (!opts.keepCenter) return { ...ci, width, height };
+            return { ...ci, width, height, x: ci.x + (ci.width - width) / 2, y: ci.y + (ci.height - height) / 2 };
+        }));
         markDirty();
         bumpPriceRefresh();
     };
@@ -1110,6 +1213,7 @@ export function useCanvasDesign() {
         } catch (err) {
             console.error('[CanvasDesign] Mockup failed:', err);
             trackStudioMockupFailed(err instanceof Error ? err.message : 'unknown');
+            toast.error(st.mockupFailed);
         } finally {
             setGeneratingMockup(false);
         }
@@ -1130,6 +1234,7 @@ export function useCanvasDesign() {
         }
         setIsSaving(true);
         setSaveStatus('idle');
+        setSaveError(null);
         const isFirstSave = !designId;
         try {
             const sf = lastScaleFactor.current ?? 1;
@@ -1188,6 +1293,7 @@ export function useCanvasDesign() {
 
             setSaveStatus('saved');
             setIsDirty(false);
+            if (id) clearDraft(id, savedDesignId || designId);
             resetHistoryStacks();
             setTimeout(() => setSaveStatus('idle'), 2500);
             trackStudioSaveSucceeded(isFirstSave);
@@ -1196,15 +1302,13 @@ export function useCanvasDesign() {
                 await refreshDisplayPrice({ live: true, force: true });
             }
 
-            if (isFirstSave) {
-                setOpenOrderPanelAfterSave((n) => n + 1);
-            }
-
             return { savedDesignId, printFileUrl: printFileUrl ?? '', previewUrl, canvasData };
         } catch (err) {
             console.error('[CanvasDesign] Save failed:', err);
             const status = (err as { response?: { status?: number } })?.response?.status;
-            trackStudioSaveFailed(status, err instanceof Error ? err.message : 'unknown');
+            const reason = saveErrorReason(err);
+            trackStudioSaveFailed(status, reason);
+            setSaveError(reason);
             setSaveStatus('error');
             return null;
         } finally {
@@ -1213,13 +1317,18 @@ export function useCanvasDesign() {
     };
 
     // ── Add to cart ───────────────────────────────────────────────────────────
-    const handleAddToCart = async (navigateToOrder: boolean): Promise<CartActionResult> => {
+    /**
+     * lines: quantity per size from the order panel grid (defaults to the single selected size).
+     * colorId: colour chosen in the panel (defaults to the canvas colour).
+     * Same design + size + colour already in the cart → quantities are merged.
+     */
+    const handleAddToCart = async (
+        navigateToOrder: boolean,
+        lines?: { size: string; qty: number; unit?: number }[],
+        colorIdOverride?: string | null,
+    ): Promise<CartActionResult> => {
         if (!currentTemplate) {
             return { ok: false, reason: 'template' };
-        }
-        if (!user) {
-            setCartError('auth');
-            return { ok: false, reason: 'auth' };
         }
         if (isLegacyDtfPrintingType(printingType)) {
             setCartError('dtf');
@@ -1233,17 +1342,33 @@ export function useCanvasDesign() {
                 setCartError('save');
                 return { ok: false, reason: 'save' };
             }
-            addToCart({
-                product_id: currentTemplate.product_id,
-                color_id: selectedColorId || '',
-                size: selectedSize,
-                quantity,
-                design_id: result.savedDesignId || undefined,
-                print_file_url: result.printFileUrl,
-                design_json: result.canvasData,
-                preview_url: result.previewUrl,
-                design_name: designName.trim() || buildAutoDesignName(),
-            });
+            const colorId = colorIdOverride || selectedColorId || '';
+            const toAdd = (lines?.length ? lines : [{ size: selectedSize, qty: quantity }]).filter((l) => l.qty > 0);
+            for (const line of toAdd) {
+                const existing = cartItems.find((ci) =>
+                    ci.design_id && ci.design_id === result.savedDesignId && ci.size === line.size && ci.color_id === colorId);
+                if (existing) {
+                    updateCartItem(existing.id, {
+                        quantity: existing.quantity + line.qty,
+                        print_file_url: result.printFileUrl,
+                        preview_url: result.previewUrl,
+                    });
+                    continue;
+                }
+                addToCart({
+                    product_id: currentTemplate.product_id,
+                    color_id: colorId,
+                    size: line.size,
+                    quantity: line.qty,
+                    ...(line.unit ? { price: line.unit } : {}),
+                    design_id: result.savedDesignId || undefined,
+                    print_file_url: result.printFileUrl,
+                    design_json: result.canvasData,
+                    preview_url: result.previewUrl,
+                    design_name: designName.trim() || buildAutoDesignName(),
+                });
+            }
+            track('size_grid_added', { total_qty: toAdd.reduce((n, l) => n + l.qty, 0), sizes: toAdd.length });
             trackStudioAddToCart(navigateToOrder);
             if (navigateToOrder) navigate('/checkout');
             return { ok: true };
@@ -1269,23 +1394,23 @@ export function useCanvasDesign() {
         // Color picker
         activeColorIds, setActiveColorIds, showColorPicker, setShowColorPicker,
         // Save + pricing
-        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, nameError, isDirty, markDirty, priceBreakdown, priceLoading, printingType,
+        designName, setDesignName, handleDesignNameChange, isSaving, saveStatus, saveError, nameError, isDirty, markDirty, priceBreakdown, priceLoading, printingType,
         // Sidebar
         showImageLibrary, setShowImageLibrary, showLayerPanel, setShowLayerPanel,
         userUploads, loadingUploads, uploadsError, isUploading,
         deleteImageName, setDeleteImageName, dpiWarningFile, setDpiWarningFile,
         // Actions
         saveCurrentSide, handleSideChange, handleColorSelect, handleColorAdd, handleColorRemove,
-        addImageFromUrl, handleSidebarUpload, proceedWithUpload, confirmDeleteImage,
+        addImageFromUrl, handleSidebarUpload, handleFileChosen, proceedWithUpload, confirmDeleteImage,
         moveLayer, handleExport, handleSave, handleMockup,
         showMockup, setShowMockup, mockupUrl, generatingMockup,
         selectedSize, setSelectedSize, handleSizeSelect, availableSizes, quantity, setQuantity,
         isAddingToCart, handleAddToCart, cartError, setCartError,
-        refreshDisplayPrice, priceRefreshSignal, openOrderPanelAfterSave,
+        refreshDisplayPrice, priceRefreshSignal, designId, collectPrintDimensionsForPricing,
         shouldFocusDesignName, setShouldFocusDesignName,
         removeCanvasLayer,
         handleStageDragEnd, handleStageTransform, handleStageTransformEnd, applySizeIn,
         undo, redo, canUndo, canRedo,
-        reportStudioExit, hasAnyArtwork,
+        reportStudioExit, hasAnyArtwork, discardDraft, flushDraft,
     };
 }

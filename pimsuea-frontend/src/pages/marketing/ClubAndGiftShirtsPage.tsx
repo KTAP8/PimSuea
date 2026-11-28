@@ -10,7 +10,7 @@ import {
 import { FaqList } from '@/components/marketing/FaqList';
 import { Button } from '@/components/ui/button';
 import { LocalizedLink } from '@/components/LocalizedLink';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 
 const FACTS = {
   en: [
@@ -103,7 +103,7 @@ export default function ClubAndGiftShirtsPage() {
               : 'PimSuea ทำเสื้อสำหรับก๊วนวิ่ง กลุ่มไอซ์บาธ ค่ายมวย ทีมพาเดลและฟุตบอล คอมมูนิตี้ และคู่รักหรือครอบครัวที่อยากมีเสื้อเหมือนกัน ออกแบบเองบนเว็บ รู้ราคา THB จ่ายบัตรหรือ PromptPay ผลิต DTG ในกรุงเทพ ส่งทั่วไทย'}
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
-            <a href={appUrl('/catalog')}>
+            <a href={studioUrl()}>
               <Button className="bg-action text-action-foreground font-bold">
                 {en ? 'Open studio' : 'เปิดสตูดิโอ'}
                 <ArrowRight className="w-4 h-4 ml-2" />

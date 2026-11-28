@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { EXAMPLE_STARTING_TOTAL_THB } from '@/content/geoFacts';
 import { useShowAfterHero } from '@/hooks/useShowAfterHero';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 import { cn } from '@/lib/utils';
 
 interface StickyMobileCtaProps {
@@ -32,7 +32,7 @@ export function StickyMobileCta({ heroId, hideWhenVisibleId, line, cta, fromLabe
           </span>
         </p>
         <a
-          href={appUrl('/catalog')}
+          href={studioUrl()}
           tabIndex={show ? 0 : -1}
           className="inline-flex h-12 items-center gap-2 rounded-[4px] bg-action px-5 text-sm font-bold text-action-foreground"
         >

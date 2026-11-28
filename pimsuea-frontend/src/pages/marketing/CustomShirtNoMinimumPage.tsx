@@ -13,7 +13,7 @@ import {
 } from '@/components/MarketingAnswerLayout';
 import { Button } from '@/components/ui/button';
 import { LocalizedLink } from '@/components/LocalizedLink';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 
 export default function CustomShirtNoMinimumPage() {
   const { lang } = useMarketingLang();
@@ -95,7 +95,7 @@ export default function CustomShirtNoMinimumPage() {
               : `${GEO.taglineTh} เหมาะกับของขวัญชิ้นเดียวหรือเสื้อใส่เอง — อัปโหลดลาย รู้ราคาก่อนจ่าย พิมพ์ DTG ในกรุงเทพ ส่งถึงบ้านทั่วไทย`}
           </p>
           <div className="flex flex-wrap gap-3 pt-2">
-            <a href={appUrl('/catalog')}>
+            <a href={studioUrl()}>
               <Button className="bg-action text-action-foreground font-bold">
                 {lang === 'en' ? 'Open studio' : 'เปิดสตูดิโอ'}
                 <ArrowRight className="w-4 h-4 ml-2" />

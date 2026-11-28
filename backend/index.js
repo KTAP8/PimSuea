@@ -5,6 +5,7 @@ const cors = require('cors');
 const { generalLimiter, strictLimiter } = require('./src/middleware/rateLimiter');
 const { startCheckoutDraftMaintenanceJob } = require('./src/jobs/checkoutDraftMaintenance');
 const { startTelegramPaidOrderDailyJob } = require('./src/jobs/telegramPaidOrderDaily');
+const { startLifecycleEmailJob } = require('./src/jobs/lifecycleEmails');
 
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const catalogRoutes = require('./src/routes/catalogRoutes');
@@ -61,6 +62,8 @@ app.use('/api/delivery-fee', require('./src/routes/deliveryFeeRoutes'));
 app.use('/api/addons', require('./src/routes/addonRoutes'));
 app.use('/api/coupons', require('./src/routes/couponRoutes'));
 app.use('/api/terms', require('./src/routes/termsRoutes'));
+app.use('/api/guest', strictLimiter, require('./src/routes/guestRoutes'));
+app.use('/api/email', strictLimiter, require('./src/routes/emailRoutes'));
 
 // Health check
 app.get('/', (req, res) => {
@@ -69,6 +72,7 @@ app.get('/', (req, res) => {
 
 startCheckoutDraftMaintenanceJob();
 startTelegramPaidOrderDailyJob();
+startLifecycleEmailJob();
 
 // Start server
 app.listen(PORT, () => {

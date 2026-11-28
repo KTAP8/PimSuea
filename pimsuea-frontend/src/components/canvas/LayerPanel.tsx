@@ -1,6 +1,7 @@
 import { X, ChevronUp, ChevronDown, Trash2, Layers } from 'lucide-react';
 import { r2ProxyUrl } from '../../services/api';
 import type { CanvasImage } from '../../types/canvas';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 interface Props {
     canvasImages: CanvasImage[];
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function LayerPanel({ canvasImages, selectedId, onSelect, onMove, onDelete, onClose }: Props) {
+    const { t } = useLanguage();
     return (
         <div className="fixed md:absolute bottom-toolbar-offset md:bottom-32 left-0 right-0 md:left-auto md:right-6 top-auto md:top-6 max-h-[50dvh] md:max-h-none md:h-auto md:w-64 bg-white shadow-[0_-8px_30px_rgb(0,0,0,0.12)] md:shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-t-3xl md:rounded-2xl border flex flex-col z-40 overflow-hidden">
             <div className="px-5 py-4 border-b flex items-center justify-between bg-gray-50/50">
@@ -26,7 +28,7 @@ export function LayerPanel({ canvasImages, selectedId, onSelect, onMove, onDelet
 
             <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
                 {canvasImages.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-8">No layers yet</p>
+                    <p className="text-xs text-gray-500 text-center py-8">{t.studioTools.noLayers}</p>
                 ) : (
                     [...canvasImages].reverse().map((ci, displayIdx) => {
                         const realIdx = canvasImages.length - 1 - displayIdx;

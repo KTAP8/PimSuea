@@ -1,6 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Bot,
+  Facebook,
+  Megaphone,
+  MessageCircle,
   HelpCircle,
   Instagram,
   Search,
@@ -13,6 +16,9 @@ export const REFERRAL_SOURCE_AI = 'ai_assistant' as const;
 export type ReferralSourceValue =
   | typeof REFERRAL_SOURCE_AI
   | 'instagram'
+  | 'facebook'
+  | 'line'
+  | 'google_ads'
   | 'tiktok'
   | 'search'
   | 'word_of_mouth'
@@ -32,6 +38,9 @@ export const REFERRAL_SOURCES: {
   emoji?: string;
 }[] = [
   { value: 'instagram', label: 'Instagram', icon: Instagram },
+  { value: 'facebook', label: 'Facebook', icon: Facebook },
+  { value: 'line', label: 'LINE', icon: MessageCircle },
+  { value: 'google_ads', label: 'Google ad', icon: Megaphone },
   { value: 'tiktok', label: 'TikTok', icon: Sparkles },
   { value: 'search', label: 'ค้นหาออนไลน์', icon: Search },
   {
@@ -46,6 +55,9 @@ export const REFERRAL_SOURCES: {
 /** Emoji icons for onboarding grid (Settings uses Lucide). */
 export const REFERRAL_SOURCES_ONBOARDING = [
   { value: 'instagram', label: 'Instagram', icon: '📱' },
+  { value: 'facebook', label: 'Facebook', icon: '👍' },
+  { value: 'line', label: 'LINE', icon: '💬' },
+  { value: 'google_ads', label: 'Google ad', icon: '📣' },
   { value: 'tiktok', label: 'TikTok', icon: '🎵' },
   { value: 'search', label: 'ค้นหาออนไลน์', icon: '🔍' },
   {

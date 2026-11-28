@@ -24,7 +24,7 @@ export function LogoCloud({ logos }: LogoCloudProps) {
           >
             <img
               alt={logo.alt}
-              className="max-h-[88%] max-w-[92%] select-none object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.14)]"
+              className="max-h-[88%] max-w-[92%] select-none object-contain grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition duration-300"
               loading="eager"
               src={logo.src}
               style={logo.scale ? { transform: `scale(${logo.scale})` } : undefined}

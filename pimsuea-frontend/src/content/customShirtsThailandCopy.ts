@@ -12,7 +12,8 @@ export const CUSTOM_SHIRTS_THAILAND_COPY = {
     sub: "Design it yourself in your browser, watch the baht price update as you go, and pay by card. No minimum, no quote requests, no “admin will reply tomorrow”.",
     ctaPrimary: 'Design your shirt',
     ctaSecondary: 'See prices',
-    chips: ['1 pc minimum', 'English on LINE', 'Card or PromptPay', `${GEO.printing.provinces} provinces`],
+    // Provinces live in the hero stat pill (HeroTrustStats).
+    chips: ['1 pc minimum', 'English on LINE', 'Card or PromptPay'],
     demo: {
       toolbar: 'PimSuea Studio',
       hint: 'Drop your logo here',
@@ -52,7 +53,7 @@ export const CUSTOM_SHIRTS_THAILAND_COPY = {
     sub: 'ออกแบบเองบนเบราว์เซอร์ เห็นราคาเป็นบาทระหว่างออกแบบ จ่ายบัตรหรือ PromptPay ไม่มีขั้นต่ำ ไม่ต้องขอใบเสนอราคา ไม่ต้องรอแอดมินตอบ',
     ctaPrimary: 'เริ่มออกแบบเสื้อ',
     ctaSecondary: 'ดูราคา',
-    chips: ['สั่ง 1 ตัวได้', 'ไทย / อังกฤษ ทาง LINE', 'บัตร หรือ PromptPay', `ส่ง ${GEO.printing.provinces} จังหวัด`],
+    chips: ['สั่ง 1 ตัวได้', 'ไทย / อังกฤษ ทาง LINE', 'บัตร หรือ PromptPay'],
     demo: {
       toolbar: 'PimSuea Studio',
       hint: 'ลากโลโก้มาวางตรงนี้',

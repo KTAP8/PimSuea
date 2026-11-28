@@ -1,8 +1,11 @@
 import { Edit2, Trash2, Plus, Loader2, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
+import { Copy as CopyIcon } from "lucide-react";
+import { ProfileNudgeCard } from "@/components/profile/ProfileNudgeCard";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { getMyDesigns, deleteDesign } from "@/services/api";
+import { getMyDesigns, deleteDesign, duplicateDesign } from "@/services/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,9 +38,24 @@ export default function MyProducts() {
           setDesigns(prev => prev.filter(d => d.id !== deleteId));
       } catch (error) {
           console.error("Failed to delete design:", error);
-          alert(o.deleteFailed);
+          toast.error(o.deleteFailed);
       } finally {
           setDeleteId(null);
+      }
+  };
+
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const handleDuplicate = async (design: { id: string; design_name?: string }) => {
+      setDuplicatingId(design.id);
+      try {
+          await duplicateDesign(design.id, `${design.design_name || 'Design'} (2)`);
+          setDesigns(await getMyDesigns());
+          toast.success(t.ordering.duplicated);
+      } catch (error) {
+          console.error("Failed to duplicate design:", error);
+          toast.error(t.studioTools.saveErrors.server);
+      } finally {
+          setDuplicatingId(null);
       }
   };
 
@@ -60,6 +78,7 @@ export default function MyProducts() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <ProfileNudgeCard />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
         <div>
           <h1 className="text-4xl font-black tracking-tight text-gray-900">{o.myDesignsTitle}</h1>
@@ -118,7 +137,7 @@ export default function MyProducts() {
               <div className="mb-4">
                   <h3 className="font-bold text-lg sm:text-xl text-gray-900 leading-snug line-clamp-1 mb-1.5" title={design.design_name}>{design.design_name || "Untitled Design"}</h3>
                   <p className="text-xs font-medium text-gray-400">
-                      {o.lastEdited} {formatDate(lang, design.created_at, {
+                      {o.lastEdited} {formatDate(lang, design.updated_at ?? design.created_at, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric',
@@ -150,6 +169,11 @@ export default function MyProducts() {
                           <Edit2 className="w-4 h-4" />
                       </Button>
                   </Link>
+                  <Button variant="outline" onClick={() => void handleDuplicate(design)} disabled={duplicatingId === design.id}
+                      title={t.ordering.duplicate} aria-label={t.ordering.duplicate}
+                      className="shrink-0 h-11 w-11 rounded-xl border-gray-200 hover:border-primary/50 text-gray-600 hover:bg-primary/5 p-0">
+                      {duplicatingId === design.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CopyIcon className="w-4 h-4" />}
+                  </Button>
                   <Button variant="outline" onClick={() => setDeleteId(design.id)} className="shrink-0 h-11 w-11 rounded-xl border-red-100 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 p-0 shadow-sm">
                       <Trash2 className="w-4 h-4" />
                   </Button>

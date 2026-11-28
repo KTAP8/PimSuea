@@ -224,8 +224,27 @@ async function fulfillCheckoutSession(session, { eventType, allowExpired = false
   return result;
 }
 
+/** Readable Stripe line: "PimSuea · 35 custom shirts" + "Club Tee — M×20, L×15". */
+function checkoutLineText(pricedPayload, locale) {
+  const items = pricedPayload.giftEnrichedItems || [];
+  const qty = items.reduce((n, i) => n + (Number(i.quantity) || 0), 0);
+  const byDesign = new Map();
+  for (const i of items) {
+    const name = i.designName || i.design_name || 'Design';
+    const sizes = byDesign.get(name) || [];
+    sizes.push(`${i.size}×${i.quantity}`);
+    byDesign.set(name, sizes);
+  }
+  const description = [...byDesign.entries()].map(([n, s]) => `${n} — ${s.join(', ')}`).join(' · ').slice(0, 480);
+  const name = locale === 'th' ? `PimSuea · เสื้อสกรีน ${qty} ตัว` : `PimSuea · ${qty} custom shirt${qty === 1 ? '' : 's'}`;
+  return { name, ...(description ? { description } : {}) };
+}
+
 exports.createCheckoutSession = async (req, res) => {
   try {
+    if (req.user.is_anonymous) {
+      return res.status(403).json({ error: 'account_required' });
+    }
     const userId = req.user.id;
     const { items, shipping, coupon_code, attribution } = req.body;
 
@@ -271,12 +290,11 @@ exports.createCheckoutSession = async (req, res) => {
         price_data: {
           currency: 'thb',
           unit_amount: amountSatang,
-          product_data: {
-            name: 'PimSuea Custom Order',
-            description: 'Custom printed apparel order',
-          },
+          product_data: checkoutLineText(pricedPayload, req.body?.locale),
         },
       }],
+      locale: req.body?.locale === 'th' ? 'th' : 'en',
+      ...(req.user.email ? { customer_email: req.user.email } : {}),
       metadata: {
         draft_id: draft.id,
         user_id: userId,

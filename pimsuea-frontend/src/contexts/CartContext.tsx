@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useCallback, createContext, useContext, useEffect, useState } from 'react';
 import {
     getCartFromDB,
     upsertCartItemToDB,
@@ -8,6 +8,8 @@ import {
 } from '@/services/api';
 import { useAuth } from './AuthContext';
 import { trackMeta } from '@/lib/analytics';
+import { toast } from 'sonner';
+import { useLanguage } from '@/i18n/LanguageContext';
 
 // Define the shape of a Cart Item
 export interface CartItem {
@@ -40,7 +42,12 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
-    const { user, loading: authLoading } = useAuth();
+    const { user, lastClaim, loading: authLoading } = useAuth();
+    const { t } = useLanguage();
+    const syncFailed = useCallback((err: unknown) => {
+        console.error('[cart] sync failed', err);
+        toast.error(t.studioTools.cartSyncFailed, { id: 'cart-sync' });
+    }, [t]);
 
     // Load from DB when user is authenticated; clear on logout
     useEffect(() => {
@@ -75,13 +82,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
         loadCart();
-    }, [authLoading, user?.id]);
+    // lastClaim: a guest's cart was just moved into this account — reload it.
+    }, [authLoading, user?.id, lastClaim]);
 
     const addToCart = (item: Omit<CartItem, 'id'>): string => {
         const id = crypto.randomUUID();
         const newItem = { ...item, id };
         setCartItems(prev => [...prev, newItem]);
-        upsertCartItemToDB(newItem).catch(console.error);
+        upsertCartItemToDB(newItem).catch(syncFailed);
         trackMeta('AddToCart', {
             content_type: 'product',
             content_ids: String(item.product_id),
@@ -94,17 +102,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const removeFromCart = (id: string) => {
         setCartItems(prev => prev.filter(i => i.id !== id));
-        removeCartItemFromDB(id).catch(console.error);
+        removeCartItemFromDB(id).catch(syncFailed);
     };
 
     const updateCartItem = (id: string, updates: Partial<CartItem>) => {
         setCartItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
-        updateCartItemInDB(id, updates).catch(console.error);
+        updateCartItemInDB(id, updates).catch(syncFailed);
     };
 
     const clearCart = () => {
         setCartItems([]);
-        clearCartInDB().catch(console.error);
+        clearCartInDB().catch(syncFailed);
     };
 
     return (

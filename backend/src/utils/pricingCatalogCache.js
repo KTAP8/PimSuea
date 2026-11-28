@@ -158,6 +158,7 @@ function calculatePriceFromCache(input) {
 }
 
 module.exports = {
+  get catalog() { return catalog; },
   ensureCatalogFresh,
   calculatePriceFromCache,
   resolveColorNameFromCache,

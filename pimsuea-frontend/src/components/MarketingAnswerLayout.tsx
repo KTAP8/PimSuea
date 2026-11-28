@@ -6,7 +6,7 @@ import { pickLocalized, type LocalizedText } from '@/i18n/localized';
 import { SiteFooter } from '@/components/SiteFooter';
 import { TermsModal } from '@/components/TermsModal';
 import { Button } from '@/components/ui/button';
-import { appUrl } from '@/lib/site';
+import { studioUrl } from '@/lib/site';
 import { JsonLdScript } from '@/lib/geoSchema';
 import { LanguageSwitcher } from '@/i18n/LanguageSwitcher';
 import { useMarketingLang } from '@/i18n/LanguageContext';
@@ -73,7 +73,7 @@ export function MarketingAnswerLayout({
             <div className="flex items-center gap-4">
               <LanguageSwitcher />
 
-              <a href={appUrl('/catalog')}>
+              <a href={studioUrl()}>
                 <Button className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm">
                   <span>{lang === 'en' ? ctaLabelEn : ctaLabelTh}</span>
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -115,7 +115,7 @@ export function MarketingAnswerLayout({
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-                <a href={appUrl('/catalog')}>
+                <a href={studioUrl()}>
                   <Button
                     size="lg"
                     className="bg-action text-action-foreground hover:bg-action/90 font-bold uppercase tracking-wider text-sm sm:text-base px-8 h-12 shadow-lg shadow-action/25 hover:shadow-xl hover:shadow-action/30 transition-all cursor-pointer"
