@@ -1,4 +1,3 @@
-import { DEFAULT_STUDIO_PRODUCT_ID } from '@/content/catalogBlanks';
 /** Production app origin (login, catalog, studio). */
 export const APP_ORIGIN =
   import.meta.env.VITE_APP_URL?.replace(/\/$/, '') ?? 'https://app.pimsuea.com';
@@ -36,7 +35,13 @@ export function appUrl(path: string): string {
   return `${APP_ORIGIN}${normalized}`;
 }
 
-/** Straight into the design studio (no login needed — guests can design). Defaults to the cheapest blank. */
+/** App home from marketing CTAs → catalog (or dashboard if logged in). */
+export function appEntryUrl(): string {
+  return appUrl('/');
+}
+
+/** Studio for a specific blank; omit productId for the app entry (not straight into canvas). */
 export function studioUrl(productId?: string): string {
-  return appUrl(`/studio/${productId ?? DEFAULT_STUDIO_PRODUCT_ID}`);
+  if (!productId) return appEntryUrl();
+  return appUrl(`/studio/${productId}`);
 }
